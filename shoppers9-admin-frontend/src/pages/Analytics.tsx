@@ -59,8 +59,8 @@ const Analytics: React.FC = () => {
       
       const data = await authService.getSalesAnalytics(period);
       setAnalyticsData(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch analytics data');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch analytics data');
     } finally {
       setIsLoading(false);
     }
@@ -166,7 +166,7 @@ const Analytics: React.FC = () => {
               <div className={`flex items-center mt-2 ${getGrowthColor(analyticsData.revenueGrowth)}`}>
                 {getGrowthIcon(analyticsData.revenueGrowth)}
                 <span className="text-sm ml-1">
-                  {analyticsData.revenueGrowth > 0 ? '+' : ''}{analyticsData.revenueGrowth.toFixed(1)}%
+                  {analyticsData.revenueGrowth > 0 ? '+' : ''}{(analyticsData.revenueGrowth || 0).toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -186,7 +186,7 @@ const Analytics: React.FC = () => {
               <div className={`flex items-center mt-2 ${getGrowthColor(analyticsData.orderGrowth)}`}>
                 {getGrowthIcon(analyticsData.orderGrowth)}
                 <span className="text-sm ml-1">
-                  {analyticsData.orderGrowth > 0 ? '+' : ''}{analyticsData.orderGrowth.toFixed(1)}%
+                  {analyticsData.orderGrowth > 0 ? '+' : ''}{(analyticsData.orderGrowth || 0).toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -206,7 +206,7 @@ const Analytics: React.FC = () => {
               <div className={`flex items-center mt-2 ${getGrowthColor(analyticsData.userGrowth)}`}>
                 {getGrowthIcon(analyticsData.userGrowth)}
                 <span className="text-sm ml-1">
-                  {analyticsData.userGrowth > 0 ? '+' : ''}{analyticsData.userGrowth.toFixed(1)}%
+                  {analyticsData.userGrowth > 0 ? '+' : ''}{(analyticsData.userGrowth || 0).toFixed(1)}%
                 </span>
               </div>
             </div>
@@ -259,7 +259,7 @@ const Analytics: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-gray-900">{status.count}</div>
-                  <div className="text-xs text-gray-500">{status.percentage.toFixed(1)}%</div>
+                  <div className="text-xs text-gray-500">{(status.percentage || 0).toFixed(1)}%</div>
                 </div>
               </div>
             ))}
@@ -318,7 +318,7 @@ const Analytics: React.FC = () => {
               </thead>
               <tbody>
                 {analyticsData.monthlyRevenue.map((month, index) => (
-                  <tr key={index} className="border-b border-gray-100">
+                  <tr key={`month-${month.month}`} className="border-b border-gray-100">
                     <td className="py-3 text-sm text-gray-900">{month.month}</td>
                     <td className="py-3 text-sm text-gray-900 text-right">
                       {formatCurrency(month.revenue)}
@@ -356,7 +356,7 @@ const Analytics: React.FC = () => {
               </thead>
               <tbody>
                 {analyticsData.categoryPerformance.map((category, index) => (
-                  <tr key={index} className="border-b border-gray-100">
+                  <tr key={`category-${category.categoryName}`} className="border-b border-gray-100">
                     <td className="py-3 text-sm text-gray-900">{category.categoryName}</td>
                     <td className="py-3 text-sm text-gray-900 text-right">
                       {formatNumber(category.productCount)}

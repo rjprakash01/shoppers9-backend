@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import CategoryForm from '../components/CategoryForm';
+import CategoryDetailModal from '../components/CategoryDetailModal';
 import {
   Search,
   RefreshCw,
@@ -35,6 +36,16 @@ interface CategoriesResponse {
   };
 }
 
+interface CategoryFormData {
+  name: string;
+  description: string;
+  slug: string;
+  image: string;
+  parentCategory: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 const Categories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [pagination, setPagination] = useState({
@@ -49,19 +60,23 @@ const Categories: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [updatingCategory, setUpdatingCategory] = useState<string | null>(null);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [isCategoryDetailOpen, setIsCategoryDetailOpen] = useState(false);
 
-  const fetchCategories = async (page: number = 1, search: string = '', status: string = '') => {
+  const fetchCategories = async (page: number = 1, limit: number = 10, search: string = '', status: string = '') => {
     try {
       setIsLoading(true);
       setError('');
       
-      const data: CategoriesResponse = await authService.getAllCategories(page, 10, search, status);
+      const data: CategoriesResponse = await authService.getAllCategories(page, limit, search, status);
       setCategories(data.categories);
       setPagination(data.pagination);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch categories');
+      setCurrentPage(data.pagination.currentPage);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch categories');
     } finally {
       setIsLoading(false);
     }
@@ -69,11 +84,11 @@ const Categories: React.FC = () => {
 
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
-      fetchCategories(currentPage, searchTerm, statusFilter);
+      fetchCategories(currentPage, pageSize, searchTerm, statusFilter);
     }, 300);
 
     return () => clearTimeout(delayedSearch);
-  }, [currentPage, searchTerm, statusFilter]);
+  }, [currentPage, pageSize, searchTerm, statusFilter]);
 
   const handleStatusToggle = async (categoryId: string, currentStatus: boolean) => {
     try {
@@ -86,23 +101,37 @@ const Categories: React.FC = () => {
           ? { ...category, isActive: !currentStatus }
           : category
       ));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update category status');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update category status');
     } finally {
       setUpdatingCategory(null);
     }
   };
 
-  const handleCreateCategory = async (categoryData: any) => {
+  const handleCreateCategory = async (categoryData: CategoryFormData) => {
     try {
       await authService.createCategory(categoryData);
       // Refresh the categories list
-      fetchCategories(currentPage, searchTerm, statusFilter);
+      fetchCategories(currentPage, pageSize, searchTerm, statusFilter);
       setIsCategoryFormOpen(false);
-    } catch (err: any) {
-      setError(err.message || 'Failed to create category');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create category');
       throw err;
     }
+  };
+
+  const handleCategoryClick = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setIsCategoryDetailOpen(true);
+  };
+
+  const handleCategoryDetailClose = () => {
+    setIsCategoryDetailOpen(false);
+    setSelectedCategoryId(null);
+  };
+
+  const handleCategoryUpdate = () => {
+    fetchCategories(currentPage, pageSize, searchTerm, statusFilter);
   };
 
   const formatDate = (dateString: string) => {
@@ -138,7 +167,7 @@ const Categories: React.FC = () => {
             Add Category
           </button>
           <button
-            onClick={() => fetchCategories(currentPage, searchTerm, statusFilter)}
+            onClick={() => fetchCategories(currentPage, pageSize, searchTerm, statusFilter)}
             className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -229,7 +258,11 @@ const Categories: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {categories.map((category) => (
-                  <tr key={category.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={category.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleCategoryClick(category.id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -239,7 +272,7 @@ const Categories: React.FC = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{category.name}</div>
-                          <div className="text-sm text-gray-500">ID: {category.id.slice(-8)}</div>
+                          <div className="text-sm text-gray-500">ID: {(category.id || '').slice(-8)}</div>
                         </div>
                       </div>
                     </td>
@@ -267,7 +300,10 @@ const Categories: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleStatusToggle(category.id, category.isActive)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusToggle(category.id, category.isActive);
+                        }}
                 disabled={updatingCategory === category.id}
                         className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -303,8 +339,28 @@ const Categories: React.FC = () => {
         {!isLoading && categories.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Showing page {pagination.currentPage} of {pagination.totalPages}
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-700">
+                  Showing page {pagination.currentPage} of {pagination.totalPages}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700">Show:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const newPageSize = parseInt(e.target.value);
+                      setPageSize(newPageSize);
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-gray-700">per page</span>
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -338,6 +394,16 @@ const Categories: React.FC = () => {
         onClose={() => setIsCategoryFormOpen(false)}
         onSubmit={handleCreateCategory}
       />
+
+      {/* Category Detail Modal */}
+      {selectedCategoryId && (
+        <CategoryDetailModal
+          isOpen={isCategoryDetailOpen}
+          onClose={handleCategoryDetailClose}
+          categoryId={selectedCategoryId}
+          onCategoryUpdate={handleCategoryUpdate}
+        />
+      )}
     </div>
   );
 };
