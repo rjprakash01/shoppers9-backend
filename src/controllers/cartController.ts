@@ -11,7 +11,7 @@ import { AuthenticatedRequest } from '../types';
 export const getCart = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  let cart: any = await Cart.findOne({ user: userId })
+  let cart: any = await Cart.findOne({ userId: userId })
     .populate({
       path: 'items.product',
       select: 'name images price discountPrice brand category subCategory isActive'
@@ -19,7 +19,7 @@ export const getCart = async (req: AuthenticatedRequest, res: Response) => {
     .lean();
 
   if (!cart) {
-    const newCart = new Cart({ user: userId, items: [] });
+    const newCart = new Cart({ userId: userId, items: [] });
     cart = await newCart.save();
   }
 
@@ -36,9 +36,9 @@ export const getCart = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
-  const { productId, variantId, size, quantity = 1 } = req.body;
+  const { product: productId, variantId, size, quantity = 1 } = req.body;
 
-  // Verify product exists and is active
+  // Validate product exists and is active
   const product = await Product.findOne({ _id: productId, isActive: true });
   if (!product) {
     throw new AppError('Product not found', 404);
@@ -64,15 +64,15 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
     }
   }
 
-  let cart = await Cart.findOne({ user: userId });
+  let cart = await Cart.findOne({ userId: userId });
   if (!cart) {
-    cart = new Cart({ user: userId, items: [] });
+    cart = new Cart({ userId: userId, items: [] });
   }
 
   // Check if item already exists in cart
   const existingItemIndex = cart.items.findIndex(item => 
-    item.productId.toString() === productId &&
-    item.variantId.toString() === variantId &&
+    item.product?.toString() === productId &&
+    item.variantId?.toString() === variantId &&
     item.size === size
   );
 
@@ -95,7 +95,7 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
     }
     
     cart.items.push({
-      productId: productId,
+      product: productId,
       variantId,
       size,
       quantity,
@@ -131,7 +131,7 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
   const { itemId } = req.params;
   const { quantity } = req.body;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
@@ -144,12 +144,16 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
   const item = cart.items[itemIndex];
   
   // Verify stock availability
-  const product = await Product.findById(item.productId);
+  if (!item.product) {
+    throw new AppError('Invalid cart item: missing product reference', 400);
+  }
+  
+  const product = await Product.findById(item.product);
   if (!product) {
     throw new AppError('Product not found', 404);
   }
 
-  const variant = product.variants.find(v => v._id?.toString() === item.variantId.toString());
+  const variant = product.variants.find(v => v._id?.toString() === item.variantId?.toString());
   if (!variant) {
     throw new AppError('Product variant not found', 404);
   }
@@ -190,7 +194,7 @@ export const removeFromCart = async (req: AuthenticatedRequest, res: Response) =
   const userId = req.user!.userId;
   const { itemId } = req.params;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
@@ -224,7 +228,7 @@ export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) =
   const userId = req.user!.userId;
   const { itemId } = req.params;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
@@ -237,20 +241,20 @@ export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) =
   const item = cart.items[itemIndex];
 
   // Add to wishlist
-  let wishlist = await Wishlist.findOne({ user: userId });
+  let wishlist = await Wishlist.findOne({ userId: userId });
   if (!wishlist) {
-    wishlist = new Wishlist({ user: userId, items: [] });
+    wishlist = new Wishlist({ userId: userId, items: [] });
   }
 
   // Check if item already exists in wishlist
   const existsInWishlist = wishlist.items.some(wishItem => 
-    wishItem.productId.toString() === item.productId.toString() &&
+    wishItem.product.toString() === item.product.toString() &&
     wishItem.variantId?.toString() === item.variantId.toString()
   );
 
   if (!existsInWishlist) {
     wishlist.items.push({
-      productId: item.productId,
+      product: item.product,
       variantId: item.variantId,
       addedAt: new Date()
     });
@@ -281,7 +285,7 @@ export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) =
 export const clearCart = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
@@ -307,7 +311,7 @@ export const applyCoupon = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
   const { couponCode } = req.body;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart || cart.items.length === 0) {
     throw new AppError('Cart is empty', 400);
   }
@@ -342,7 +346,7 @@ export const applyCoupon = async (req: AuthenticatedRequest, res: Response) => {
 export const removeCoupon = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  const cart = await Cart.findOne({ user: userId });
+  const cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
@@ -352,7 +356,7 @@ export const removeCoupon = async (req: AuthenticatedRequest, res: Response) => 
   await cart.save();
 
   await cart.populate({
-    path: 'items.product',
+    path: 'items.productId',
     select: 'name images price discountPrice brand category subCategory isActive'
   });
 
@@ -371,7 +375,7 @@ export const removeCoupon = async (req: AuthenticatedRequest, res: Response) => 
 export const getCartSummary = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  const cart = await Cart.findOne({ user: userId })
+  const cart = await Cart.findOne({ userId: userId })
     .populate({
       path: 'items.product',
       select: 'name images price discountPrice brand category subCategory isActive'

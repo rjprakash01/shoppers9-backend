@@ -11,7 +11,7 @@ import { AuthenticatedRequest } from '../types';
 export const getWishlist = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  let wishlist: any = await Wishlist.findOne({ user: userId })
+  let wishlist: any = await Wishlist.findOne({ userId: userId })
     .populate({
       path: 'items.product',
       select: 'name images price discountPrice brand category subCategory isActive variants'
@@ -19,7 +19,7 @@ export const getWishlist = async (req: AuthenticatedRequest, res: Response) => {
     .lean();
 
   if (!wishlist) {
-    const newWishlist = new Wishlist({ user: userId, items: [] });
+    const newWishlist = new Wishlist({ userId: userId, items: [] });
     wishlist = await newWishlist.save();
   }
 
@@ -36,7 +36,7 @@ export const getWishlist = async (req: AuthenticatedRequest, res: Response) => {
  */
 export const addToWishlist = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
-  const { productId, variantId } = req.body;
+  const { product: productId, variantId } = req.body;
 
   // Verify product exists and is active
   const product = await Product.findOne({ _id: productId, isActive: true });
@@ -50,14 +50,14 @@ export const addToWishlist = async (req: AuthenticatedRequest, res: Response) =>
     throw new AppError('Product variant not found', 404);
   }
 
-  let wishlist = await Wishlist.findOne({ user: userId });
+  let wishlist = await Wishlist.findOne({ userId: userId });
   if (!wishlist) {
-    wishlist = new Wishlist({ user: userId, items: [] });
+    wishlist = new Wishlist({ userId: userId, items: [] });
   }
 
   // Check if item already exists in wishlist
   const existsInWishlist = wishlist.items.some((item: any) => 
-    item.productId.toString() === productId &&
+    item.product?.toString() === productId &&
     item.variantId?.toString() === variantId
   );
 
@@ -67,7 +67,7 @@ export const addToWishlist = async (req: AuthenticatedRequest, res: Response) =>
 
   // Add new item
   wishlist.items.push({
-    productId: productId,
+    product: productId,
     variantId: variantId || undefined,
     addedAt: new Date()
   });
@@ -96,13 +96,13 @@ export const removeFromWishlist = async (req: AuthenticatedRequest, res: Respons
   const userId = req.user!.userId;
   const { productId } = req.params;
 
-  const wishlist = await Wishlist.findOne({ user: userId });
+  const wishlist = await Wishlist.findOne({ userId: userId });
   if (!wishlist) {
     throw new AppError('Wishlist not found', 404);
   }
 
   const itemIndex = wishlist.items.findIndex((item: any) => 
-    item.productId.toString() === productId
+    item.product?.toString() === productId
   );
   
   if (itemIndex === -1) {
@@ -134,13 +134,13 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
   const { productId } = req.params;
   const { size, quantity = 1 } = req.body;
 
-  const wishlist = await Wishlist.findOne({ user: userId });
+  const wishlist = await Wishlist.findOne({ userId: userId });
   if (!wishlist) {
     throw new AppError('Wishlist not found', 404);
   }
 
   const itemIndex = wishlist.items.findIndex((item: any) => 
-    item.productId.toString() === productId
+    item.product?.toString() === productId
   );
   
   if (itemIndex === -1) {
@@ -175,15 +175,15 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // Add to cart
-  let cart = await Cart.findOne({ user: userId });
+  let cart = await Cart.findOne({ userId: userId });
   if (!cart) {
-    cart = new Cart({ user: userId, items: [] });
+    cart = new Cart({ userId: userId, items: [] });
   }
 
   // Check if item already exists in cart
   const existingCartItemIndex = cart.items.findIndex((item: any) => 
-    item.productId.toString() === productId &&
-    item.variantId.toString() === wishlistItem.variantId?.toString() &&
+    item.product?.toString() === productId &&
+    item.variantId?.toString() === wishlistItem.variantId?.toString() &&
     item.size === size
   );
 
@@ -194,7 +194,7 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
     // Add new item
     const price = (product as any).discountPrice || (product as any).price;
     cart.items.push({
-      productId: productId,
+      product: productId,
       variantId: wishlistItem.variantId!,
       size,
       quantity,
@@ -231,7 +231,7 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
 export const clearWishlist = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
 
-  const wishlist = await Wishlist.findOne({ user: userId });
+  const wishlist = await Wishlist.findOne({ userId: userId });
   if (!wishlist) {
     throw new AppError('Wishlist not found', 404);
   }
@@ -255,10 +255,10 @@ export const checkInWishlist = async (req: AuthenticatedRequest, res: Response) 
   const userId = req.user!.userId;
   const { productId } = req.params;
 
-  const wishlist = await Wishlist.findOne({ user: userId });
+  const wishlist = await Wishlist.findOne({ userId: userId });
   
   const isInWishlist = wishlist ? 
-    wishlist.items.some((item: any) => item.productId.toString() === productId) : 
+    wishlist.items.some((item: any) => item.product?.toString() === productId) : 
     false;
 
   res.json({
