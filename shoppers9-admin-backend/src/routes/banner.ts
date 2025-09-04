@@ -91,7 +91,7 @@ router.post('/upload/banner', auth, uploadBannerImage, handleUploadError, async 
       message: 'Banner image uploaded and converted successfully',
       data: {
         filename: path.basename(result.svgPath),
-        path: urlPath,
+        imageUrl: urlPath,
         originalName: req.file.originalname,
         size: req.file.size
       }

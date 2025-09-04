@@ -15,7 +15,7 @@ export const getCategoryFilters = async (req: Request, res: Response): Promise<v
     const limit = parseInt(req.query.limit as string) || 50;
     const status = req.query.status as string;
 
-    // Check if category exists and is level 3 (sub-subcategory)
+    // Check if category exists
     const category = await Category.findById(categoryId);
     if (!category) {
       res.status(404).json({
@@ -25,13 +25,8 @@ export const getCategoryFilters = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    if (category.level !== 2 && category.level !== 3) {
-      res.status(400).json({
-        success: false,
-        message: 'Filters can only be assigned to subcategories (level 2) and sub-subcategories (level 3)'
-      });
-      return;
-    }
+    // Allow filters for any category level that has been tagged with filters
+    // This enables dynamic filter assignment based on business needs
 
     const query: any = { category: categoryId };
 
@@ -107,7 +102,7 @@ export const assignFilterToCategory = async (req: AuthRequest, res: Response): P
     const { categoryId } = req.params;
     const { filterId, isRequired, sortOrder } = req.body;
 
-    // Check if category exists and is level 3
+    // Check if category exists
     const category = await Category.findById(categoryId);
     if (!category) {
       res.status(404).json({
@@ -117,13 +112,8 @@ export const assignFilterToCategory = async (req: AuthRequest, res: Response): P
       return;
     }
 
-    if (category.level !== 2 && category.level !== 3) {
-      res.status(400).json({
-        success: false,
-        message: 'Filters can only be assigned to subcategories (level 2) and sub-subcategories (level 3)'
-      });
-      return;
-    }
+    // Allow filters to be assigned to any category level
+    // This enables dynamic filter assignment based on business needs
 
     // Check if filter exists
     const filter = await Filter.findById(filterId);
@@ -257,7 +247,7 @@ export const bulkAssignFiltersToCategory = async (req: AuthRequest, res: Respons
       return;
     }
 
-    // Check if category exists and is level 3
+    // Check if category exists
     const category = await Category.findById(categoryId);
     if (!category) {
       res.status(404).json({
@@ -267,13 +257,8 @@ export const bulkAssignFiltersToCategory = async (req: AuthRequest, res: Respons
       return;
     }
 
-    if (category.level !== 2 && category.level !== 3) {
-      res.status(400).json({
-        success: false,
-        message: 'Filters can only be assigned to subcategories (level 2) and sub-subcategories (level 3)'
-      });
-      return;
-    }
+    // Allow filters to be assigned to any category level
+    // This enables dynamic filter assignment based on business needs
 
     // Validate all filter IDs exist
     const filterIds = filters.map((f: any) => f.filterId);
@@ -333,7 +318,7 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
     const { categoryId } = req.params;
     const search = req.query.search as string;
 
-    // Check if category exists and is level 3
+    // Check if category exists
     const category = await Category.findById(categoryId);
     if (!category) {
       res.status(404).json({
@@ -343,13 +328,8 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
       return;
     }
 
-    if (category.level !== 2 && category.level !== 3) {
-      res.status(400).json({
-        success: false,
-        message: 'Filters can only be assigned to subcategories (level 2) and sub-subcategories (level 3)'
-      });
-      return;
-    }
+    // Allow filters to be assigned to any category level
+    // This enables dynamic filter assignment based on business needs
 
     // Get already assigned filter IDs
     const assignedFilters = await CategoryFilter.find({ category: categoryId });
@@ -358,7 +338,8 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
     // Build query for available filters
     const query: any = {
       _id: { $nin: assignedFilterIds },
-      isActive: true
+      isActive: true,
+      categoryLevels: { $in: [category.level] } // Only show filters that apply to this category level
     };
 
     if (search) {
