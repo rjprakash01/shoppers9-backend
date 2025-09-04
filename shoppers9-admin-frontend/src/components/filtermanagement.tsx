@@ -558,7 +558,7 @@ const FilterManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
+                    value={formData?.name || ''}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -571,7 +571,7 @@ const FilterManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.displayName}
+                    value={formData?.displayName || ''}
                     onChange={(e) => handleInputChange('displayName', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -585,7 +585,7 @@ const FilterManagement: React.FC = () => {
                     Type *
                   </label>
                   <select
-                    value={formData.type}
+                    value={formData?.type || 'single'}
                     onChange={(e) => handleInputChange('type', e.target.value as 'single' | 'multiple')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -600,7 +600,7 @@ const FilterManagement: React.FC = () => {
                     Data Type *
                   </label>
                   <select
-                    value={formData.dataType}
+                    value={formData?.dataType || 'string'}
                     onChange={(e) => handleInputChange('dataType', e.target.value as 'string' | 'number' | 'boolean')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -617,7 +617,7 @@ const FilterManagement: React.FC = () => {
                   Description
                 </label>
                 <textarea
-                  value={formData.description}
+                  value={formData?.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -703,7 +703,7 @@ const FilterManagement: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={formData.sortOrder}
+                  value={formData?.sortOrder || 0}
                   onChange={(e) => handleInputChange('sortOrder', parseInt(e.target.value) || 0)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="0"

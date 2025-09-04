@@ -17,6 +17,7 @@ import filterRoutes from './routes/filter';
 import categoryFilterRoutes from './routes/categoryFilter';
 import productFilterValueRoutes from './routes/productFilterValue';
 import filterOptionRoutes from './routes/filterOption';
+import bannerRoutes from './routes/banner';
 
 // Load environment variables
 dotenv.config();
@@ -42,8 +43,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static('uploads'));
+// Serve static files from uploads directory with CORS headers
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static('uploads'));
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -127,6 +133,7 @@ app.use('/api/admin/filters', filterRoutes);
 app.use('/api/admin/filter-options', filterOptionRoutes);
 app.use('/api/admin', categoryFilterRoutes);
 app.use('/api/admin', productFilterValueRoutes);
+app.use('/api/admin/banners', bannerRoutes);
 // General admin routes (for admin management)
 app.use('/api/admin', adminRoutes);
 

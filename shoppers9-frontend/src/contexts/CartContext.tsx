@@ -82,7 +82,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       // Load server cart
       const serverCart = await cartService.getCart();
       setCart(serverCart);
-    } catch (error) {
+    } catch {
       // Silently handle cart loading errors for unauthenticated users
       // This is expected behavior when users are not logged in
       setCart(null);
@@ -136,8 +136,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       if (isAuthenticated) {
-        // For server cart, we need the item ID
-        const updatedCart = await cartService.removeFromCart(itemIdOrProductId, variantId, size);
+        // For server cart, we only need the item ID
+        const updatedCart = await cartService.removeFromCart(itemIdOrProductId);
         setCart(updatedCart);
       } else {
         const updatedLocalCart = cartService.removeFromLocalCart(itemIdOrProductId, variantId, size);

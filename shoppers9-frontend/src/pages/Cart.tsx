@@ -9,7 +9,7 @@ import type { CartItem } from '../services/cart';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, isLoading } = useCart();
+  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 

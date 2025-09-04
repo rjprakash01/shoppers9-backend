@@ -69,7 +69,7 @@ class CartService {
     return cart;
   }
 
-  async updateCartItem(itemId: string, variantId: string, size: string, quantity: number): Promise<Cart> {
+  async updateCartItem(itemId: string, _variantId: string, _size: string, quantity: number): Promise<Cart> {
     const response = await api.put(`/cart/item/${itemId}/quantity`, { quantity });
     const cart = response.data.data.cart;
     
@@ -85,7 +85,7 @@ class CartService {
     return cart;
   }
 
-  async removeFromCart(itemId: string, variantId?: string, size?: string): Promise<Cart> {
+  async removeFromCart(itemId: string): Promise<Cart> {
     const response = await api.delete(`/cart/item/${itemId}`);
     const cart = response.data.data.cart;
     

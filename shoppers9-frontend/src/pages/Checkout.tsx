@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Truck, MapPin, User, Mail, Phone, Lock } from 'lucide-react';
+import { CreditCard, Truck, MapPin, User, Mail, Lock } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPrice } from '../utils/currency';
@@ -29,7 +29,7 @@ const Checkout: React.FC = () => {
   const { cart, localCart, cartTotal, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [,] = useState(1);
   
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: user?.name || '',
@@ -171,7 +171,7 @@ const Checkout: React.FC = () => {
             <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              value={shippingAddress.fullName}
+              value={shippingAddress?.fullName || ''}
               onChange={(e) => handleShippingChange('fullName', e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Enter your full name"
@@ -187,7 +187,7 @@ const Checkout: React.FC = () => {
             <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="email"
-              value={shippingAddress.email}
+              value={shippingAddress?.email || ''}
               onChange={(e) => handleShippingChange('email', e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Enter your email"
@@ -202,7 +202,7 @@ const Checkout: React.FC = () => {
           <div className="relative">
             <input
               type="tel"
-              value={`+91 ${shippingAddress.phone}`}
+              value={`+91 ${shippingAddress?.phone || ''}`}
               onChange={(e) => {
                 const value = e.target.value;
                 if (value.startsWith('+91 ')) {
@@ -237,7 +237,7 @@ const Checkout: React.FC = () => {
           <div className="relative">
             <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <textarea
-              value={shippingAddress.address}
+              value={shippingAddress?.address || ''}
               onChange={(e) => handleShippingChange('address', e.target.value)}
               rows={3}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -252,7 +252,7 @@ const Checkout: React.FC = () => {
           </label>
           <input
             type="text"
-            value={shippingAddress.city}
+            value={shippingAddress?.city || ''}
             onChange={(e) => handleShippingChange('city', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter your city"
@@ -265,7 +265,7 @@ const Checkout: React.FC = () => {
           </label>
           <input
             type="text"
-            value={shippingAddress.state}
+            value={shippingAddress?.state || ''}
             onChange={(e) => handleShippingChange('state', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter your state"
@@ -278,7 +278,7 @@ const Checkout: React.FC = () => {
           </label>
           <input
             type="text"
-            value={shippingAddress.pincode}
+            value={shippingAddress?.pincode || ''}
             onChange={(e) => handleShippingChange('pincode', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter your pincode"
@@ -290,7 +290,7 @@ const Checkout: React.FC = () => {
             Country *
           </label>
           <select
-            value={shippingAddress.country}
+            value={shippingAddress?.country || ''}
             onChange={(e) => handleShippingChange('country', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
@@ -317,7 +317,7 @@ const Checkout: React.FC = () => {
             <CreditCard className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              value={paymentDetails.cardNumber}
+              value={paymentDetails?.cardNumber || ''}
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '').replace(/(\d{4})(?=\d)/g, '$1 ');
                 if (value.length <= 19) handlePaymentChange('cardNumber', value);
@@ -335,7 +335,7 @@ const Checkout: React.FC = () => {
           </label>
           <input
             type="text"
-            value={paymentDetails.expiryDate}
+            value={paymentDetails?.expiryDate || ''}
             onChange={(e) => {
               const value = e.target.value.replace(/\D/g, '').replace(/(\d{2})(?=\d)/, '$1/');
               if (value.length <= 5) handlePaymentChange('expiryDate', value);
@@ -354,7 +354,7 @@ const Checkout: React.FC = () => {
             <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              value={paymentDetails.cvv}
+              value={paymentDetails?.cvv || ''}
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, '');
                 if (value.length <= 3) handlePaymentChange('cvv', value);
@@ -372,7 +372,7 @@ const Checkout: React.FC = () => {
           </label>
           <input
             type="text"
-            value={paymentDetails.cardholderName}
+            value={paymentDetails?.cardholderName || ''}
             onChange={(e) => handlePaymentChange('cardholderName', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter cardholder name"

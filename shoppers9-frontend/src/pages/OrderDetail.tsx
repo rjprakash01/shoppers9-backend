@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Calendar, MapPin, Truck, CheckCircle, Clock, XCircle, CreditCard, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Truck, CheckCircle, Clock, XCircle, CreditCard, Phone, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { orderService, type Order } from '../services/orders';
 import { formatPrice } from '../utils/currency';

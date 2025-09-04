@@ -9,6 +9,7 @@ import {
   FolderTree,
   BarChart3,
   Filter,
+  Image,
   Menu,
   X,
   LogOut,
@@ -56,6 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Orders', href: '/orders', icon: ShoppingCart },
     { name: 'Categories', href: '/categories', icon: FolderTree },
     { name: 'Filters', href: '/filters', icon: Filter },
+    { name: 'Banners', href: '/banners', icon: Image },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 

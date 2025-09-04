@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const user = await authService.fetchCurrentUser();
           setUser(user);
         }
-      } catch (error) {
+      } catch {
         // Token is invalid, clear auth data silently
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
@@ -54,12 +54,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (phone: string, otp: string) => {
-    try {
-      const { user: loggedInUser } = await authService.verifyOTP(phone, otp);
-      setUser(loggedInUser);
-    } catch (error) {
-      throw error;
-    }
+    const { user: loggedInUser } = await authService.verifyOTP(phone, otp);
+    setUser(loggedInUser);
   };
 
   const logout = () => {
@@ -68,12 +64,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const updateUser = async (userData: Partial<User>) => {
-    try {
-      const updatedUser = await authService.updateProfile(userData);
-      setUser(updatedUser);
-    } catch (error) {
-      throw error;
-    }
+    const updatedUser = await authService.updateProfile(userData);
+    setUser(updatedUser);
   };
 
   const setUserData = (userData: User) => {

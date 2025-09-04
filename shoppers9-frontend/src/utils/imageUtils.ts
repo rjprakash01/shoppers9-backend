@@ -2,6 +2,8 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const BACKEND_BASE_URL = API_BASE_URL.replace('/api', '');
+// Admin backend URL for uploaded images
+const ADMIN_BACKEND_URL = 'http://localhost:4000';
 
 /**
  * Converts a relative image path to an absolute URL
@@ -28,12 +30,19 @@ export const getImageUrl = (imagePath: string | undefined): string => {
     return imagePath;
   }
 
-  // If it's a relative path starting with /, prepend backend base URL
+  // If it's a relative path starting with /, check if it's an uploaded image
   if (imagePath.startsWith('/')) {
+    // Use admin backend for uploaded images
+    if (imagePath.startsWith('/uploads/')) {
+      return `${ADMIN_BACKEND_URL}${imagePath}`;
+    }
     return `${BACKEND_BASE_URL}${imagePath}`;
   }
 
-  // If it's a relative path without /, prepend backend base URL with /
+  // If it's a relative path without /, prepend appropriate backend URL
+  if (imagePath.startsWith('uploads/')) {
+    return `${ADMIN_BACKEND_URL}/${imagePath}`;
+  }
   return `${BACKEND_BASE_URL}/${imagePath}`;
 };
 

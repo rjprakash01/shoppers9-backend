@@ -21,10 +21,10 @@ class WishlistService {
     return response.data.data.wishlist;
   }
 
-  async addToWishlist(productId: string, variantId?: string): Promise<Wishlist> {
+  async addToWishlist(productId: string, _variantId?: string): Promise<Wishlist> {
     const requestBody: any = { product: productId };
-    if (variantId && variantId !== 'default') {
-      requestBody.variantId = variantId;
+    if (_variantId && _variantId !== 'default') {
+      requestBody.variantId = _variantId;
     }
     const response = await api.post('/wishlist/add', requestBody);
     return response.data.data.wishlist;
@@ -44,7 +44,7 @@ class WishlistService {
     try {
       const wishlist = await this.getWishlist();
       return wishlist.items.some(item => item.product._id === productId);
-    } catch (error) {
+    } catch {
       return false;
     }
   }

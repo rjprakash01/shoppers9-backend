@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Phone, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth';
 
@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [, setOtpSent] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
 

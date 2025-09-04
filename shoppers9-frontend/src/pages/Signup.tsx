@@ -167,7 +167,7 @@ const Signup: React.FC = () => {
                     name="name"
                     type="text"
                     required
-                    value={formData.name}
+                    value={formData?.name || ''}
                     onChange={handleInputChange}
                     className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                     placeholder="Enter your full name"
@@ -187,7 +187,7 @@ const Signup: React.FC = () => {
                     id="email"
                     name="email"
                     type="text"
-                    value={formData.email}
+                    value={formData?.email || ''}
                     onChange={handleInputChange}
                     className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                     placeholder="Enter your email address"
@@ -208,7 +208,7 @@ const Signup: React.FC = () => {
                     name="phone"
                     type="tel"
                     required
-                    value={formData.phone}
+                    value={formData?.phone || ''}
                     onChange={handleInputChange}
                     className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                     placeholder="Enter 10-digit mobile number"

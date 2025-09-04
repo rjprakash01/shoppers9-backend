@@ -50,9 +50,13 @@ export interface Product {
 
 export interface ProductsResponse {
   products: Product[];
-  total: number;
-  page: number;
-  pages: number;
+  pagination: {
+    totalItems: number;
+    currentPage: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export interface ProductFilters {
@@ -91,9 +95,13 @@ class ProductService {
     if (response.data.success && response.data.data) {
       return {
         products: response.data.data.products,
-        total: response.data.data.pagination.totalItems,
-        page: response.data.data.pagination.currentPage,
-        pages: response.data.data.pagination.totalPages
+        pagination: {
+          totalItems: response.data.data.pagination.totalItems,
+          currentPage: response.data.data.pagination.currentPage,
+          totalPages: response.data.data.pagination.totalPages,
+          hasNext: response.data.data.pagination.hasNext,
+          hasPrev: response.data.data.pagination.hasPrev
+        }
       };
     }
     

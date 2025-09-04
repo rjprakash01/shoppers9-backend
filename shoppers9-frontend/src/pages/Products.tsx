@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Grid, List, ChevronDown, Star, Heart } from 'lucide-react';
+import { Search, Filter, Grid, List, Heart } from 'lucide-react';
 import { productService, type Product, type ProductFilters } from '../services/products';
 import { wishlistService } from '../services/wishlist';
 import { useCart } from '../contexts/CartContext';
@@ -55,7 +55,7 @@ const Products: React.FC = () => {
       setIsLoading(true);
       const response = await productService.getProducts(filters);
       setProducts(response.products);
-      setTotalPages(response.pages);
+      setTotalPages(response.pagination.totalPages);
     } catch (error) {
       console.error('Failed to fetch products:', error);
     } finally {
@@ -148,7 +148,7 @@ const Products: React.FC = () => {
           <div className="flex p-4">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
-                src={getImageUrl(firstVariant?.images?.[0] || product.images?.[0])}
+                src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
                 alt={product.name}
                 className="w-32 h-40 object-cover"
                 onError={(e) => {
@@ -223,7 +223,7 @@ const Products: React.FC = () => {
         <div className="relative overflow-hidden">
           <Link to={`/products/${product._id}`} className="block">
             <img
-              src={getImageUrl(firstVariant?.images?.[0] || product.images?.[0])}
+              src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
               alt={product.name}
               className="w-full aspect-[3/4] object-cover group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {

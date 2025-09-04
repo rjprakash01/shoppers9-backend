@@ -8,8 +8,8 @@ import Users from './pages/Users';
 import ProductManagement from './pages/ProductManagement';
 import Orders from './pages/Orders';
 import CategoryManagement from './components/CategoryManagement';
-import FilterManagement from './components/FilterManagement';
-
+import FilterManagement from './components/filtermanagement';
+import BannerManagement from './components/BannerManagement';
 import FilterOptionManagement from './components/FilterOptionManagement';
 
 import Analytics from './pages/Analytics';
@@ -69,6 +69,13 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <FilterManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/banners" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerManagement />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -239,7 +239,7 @@ const Profile: React.FC = () => {
                   <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
-                    value={profileForm.name}
+                    value={profileForm?.name || ''}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter your name"
@@ -255,7 +255,7 @@ const Profile: React.FC = () => {
                   <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <input
                     type="email"
-                    value={profileForm.email}
+                    value={profileForm?.email || ''}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter your email"
@@ -338,7 +338,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.name}
+                    value={addressForm?.name || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter full name"
@@ -352,7 +352,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="tel"
-                    value={addressForm.phone}
+                    value={addressForm?.phone || ''}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
                       if (value.length <= 10) {
@@ -375,7 +375,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.addressLine1}
+                    value={addressForm?.addressLine1 || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, addressLine1: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="House/Flat/Block No., Building Name"
@@ -389,7 +389,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.addressLine2}
+                    value={addressForm?.addressLine2 || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, addressLine2: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Street Name, Area, Colony (Optional)"
@@ -402,7 +402,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.city}
+                    value={addressForm?.city || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, city: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter city"
@@ -416,7 +416,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.state}
+                    value={addressForm?.state || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, state: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter state"
@@ -430,7 +430,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.pincode}
+                    value={addressForm?.pincode || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, pincode: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Enter PIN code"
@@ -444,7 +444,7 @@ const Profile: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={addressForm.landmark}
+                    value={addressForm?.landmark || ''}
                     onChange={(e) => setAddressForm(prev => ({ ...prev, landmark: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Nearby landmark (Optional)"
@@ -505,7 +505,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.name}
+                            value={addressForm?.name || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, name: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
@@ -518,7 +518,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="tel"
-                            value={addressForm.phone}
+                            value={addressForm?.phone || ''}
                             onChange={(e) => {
                               const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
                               if (value.length <= 10) {
@@ -541,7 +541,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.addressLine1}
+                            value={addressForm?.addressLine1 || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, addressLine1: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
@@ -554,7 +554,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.addressLine2}
+                            value={addressForm?.addressLine2 || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, addressLine2: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           />
@@ -566,7 +566,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.city}
+                            value={addressForm?.city || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, city: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
@@ -579,7 +579,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.state}
+                            value={addressForm?.state || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, state: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
@@ -592,7 +592,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.pincode}
+                            value={addressForm?.pincode || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, pincode: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
@@ -605,7 +605,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={addressForm.landmark}
+                            value={addressForm?.landmark || ''}
                             onChange={(e) => setAddressForm(prev => ({ ...prev, landmark: e.target.value }))}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           />

@@ -122,10 +122,12 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
       data: {
         products: transformedProducts,
         pagination: {
-          page,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
           limit,
-          total,
-          pages: Math.ceil(total / limit)
+          hasPrev: page > 1,
+          hasNext: page < Math.ceil(total / limit)
         }
       }
     });

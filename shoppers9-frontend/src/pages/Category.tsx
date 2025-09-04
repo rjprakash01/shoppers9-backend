@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { productService, type Product, type ProductFilters } from '../services/products';
 import { formatPrice, formatPriceRange } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
-import { Star, Heart, Grid, List } from 'lucide-react';
+import { Heart, Grid, List } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 
 const Category: React.FC = () => {
@@ -39,7 +39,7 @@ const Category: React.FC = () => {
       
       const response = await productService.getProducts(categoryFilters);
       setProducts(response.products);
-      setTotalPages(response.pages);
+      setTotalPages(response.pagination.totalPages);
       
       // Set category name from slug (capitalize first letter)
       if (categorySlug) {
@@ -68,7 +68,7 @@ const Category: React.FC = () => {
           <div className="flex p-4">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
-                src={getImageUrl(firstVariant?.images?.[0])}
+                src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
                 alt={product.name}
                 className="w-32 h-40 object-cover"
                 onError={(e) => {
@@ -118,7 +118,7 @@ const Category: React.FC = () => {
         <Link to={`/products/${product._id}`}>
           <div className="relative overflow-hidden">
             <img
-              src={getImageUrl(firstVariant?.images?.[0])}
+              src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
               alt={product.name}
               className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
               onError={(e) => {

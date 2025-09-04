@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner API Frontend Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .banner-item { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Banner API Frontend Test</h1>
+        
+        <div class="test-section info">
+            <h3>Test Instructions:</h3>
+            <p>1. Click "Login as Admin" first</p>
+            <p>2. Then click "Fetch Banners" to test the API</p>
+            <p>3. Check console for detailed logs</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>Authentication Test</h3>
+            <button onclick="loginAsAdmin()">Login as Admin</button>
+            <button onclick="checkToken()">Check Stored Token</button>
+            <div id="auth-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Banner API Test</h3>
+            <button onclick="fetchBanners()">Fetch Banners</button>
+            <button onclick="testDirectAPI()">Test Direct API Call</button>
+            <div id="banner-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Network Configuration Test</h3>
+            <button onclick="testCORS()">Test CORS</button>
+            <button onclick="testAPIBase()">Test API Base URL</button>
+            <div id="network-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Banner List</h3>
+            <div id="banner-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:4000/api';
+        let authToken = null;
+        
+        function log(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function updateResult(elementId, content, className = '') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = className;
+        }
+        
+        async function loginAsAdmin() {
+            try {
+                log('Attempting admin login...');
+                const response = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@shoppers9.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                log('Login response:', 'info');
+                console.log(data);
+                
+                if (data.success) {
+                    authToken = data.data.accessToken;
+                    localStorage.setItem('adminToken', authToken);
+                    updateResult('auth-result', 
+                        `<div class="success">✅ Login successful!<br>Token: ${authToken.substring(0, 30)}...</div>`);
+                    log('Login successful, token stored');
+                } else {
+                    updateResult('auth-result', 
+                        `<div class="error">❌ Login failed: ${data.message}</div>`);
+                    log('Login failed: ' + data.message, 'error');
+                }
+            } catch (error) {
+                updateResult('auth-result', 
+                    `<div class="error">❌ Login error: ${error.message}</div>`);
+                log('Login error: ' + error.message, 'error');
+            }
+        }
+        
+        function checkToken() {
+            const token = localStorage.getItem('adminToken');
+            if (token) {
+                authToken = token;
+                updateResult('auth-result', 
+                    `<div class="success">✅ Token found in localStorage<br>Token: ${token.substring(0, 30)}...</div>`);
+                log('Token found in localStorage');
+            } else {
+                updateResult('auth-result', 
+                    `<div class="error">❌ No token found in localStorage</div>`);
+                log('No token found in localStorage', 'error');
+            }
+        }
+        
+        async function fetchBanners() {
+            if (!authToken) {
+                updateResult('banner-result', 
+                    `<div class="error">❌ Please login first</div>`);
+                return;
+            }
+            
+            try {
+                log('Fetching banners...');
+                const response = await fetch(`${API_BASE_URL}/admin/banners`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`Response status: ${response.status}`);
+                log(`Response headers:`, 'info');
+                console.log([...response.headers.entries()]);
+                
+                const data = await response.json();
+                log('Banner response:', 'info');
+                console.log(data);
+                
+                if (data.success) {
+                    updateResult('banner-result', 
+                        `<div class="success">✅ Banners fetched successfully!<br>Total: ${data.data.pagination.total}<br>Returned: ${data.data.banners.length}</div>`);
+                    displayBanners(data.data.banners);
+                    log('Banners fetched successfully');
+                } else {
+                    updateResult('banner-result', 
+                        `<div class="error">❌ Failed to fetch banners: ${data.message}</div>`);
+                    log('Failed to fetch banners: ' + data.message, 'error');
+                }
+            } catch (error) {
+                updateResult('banner-result', 
+                    `<div class="error">❌ Fetch error: ${error.message}</div>`);
+                log('Fetch error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testDirectAPI() {
+            if (!authToken) {
+                updateResult('banner-result', 
+                    `<div class="error">❌ Please login first</div>`);
+                return;
+            }
+            
+            try {
+                log('Testing direct API call with XMLHttpRequest...');
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${API_BASE_URL}/admin/banners`, true);
+                xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        log(`XHR status: ${xhr.status}`);
+                        if (xhr.status === 200) {
+                            const data = JSON.parse(xhr.responseText);
+                            updateResult('banner-result', 
+                                `<div class="success">✅ Direct API call successful!<br>Total: ${data.data.pagination.total}</div>`);
+                            log('Direct API call successful');
+                        } else {
+                            updateResult('banner-result', 
+                                `<div class="error">❌ Direct API call failed: ${xhr.status}</div>`);
+                            log('Direct API call failed: ' + xhr.status, 'error');
+                        }
+                    }
+                };
+                
+                xhr.send();
+            } catch (error) {
+                updateResult('banner-result', 
+                    `<div class="error">❌ Direct API error: ${error.message}</div>`);
+                log('Direct API error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testCORS() {
+            try {
+                log('Testing CORS...');
+                const response = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'http://localhost:5173'
+                    }
+                });
+                
+                if (response.ok) {
+                    updateResult('network-result', 
+                        `<div class="success">✅ CORS test passed</div>`);
+                    log('CORS test passed');
+                } else {
+                    updateResult('network-result', 
+                        `<div class="error">❌ CORS test failed: ${response.status}</div>`);
+                    log('CORS test failed: ' + response.status, 'error');
+                }
+            } catch (error) {
+                updateResult('network-result', 
+                    `<div class="error">❌ CORS error: ${error.message}</div>`);
+                log('CORS error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testAPIBase() {
+            try {
+                log('Testing API base URL...');
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateResult('network-result', 
+                        `<div class="success">✅ API base URL working<br>Message: ${data.message}</div>`);
+                    log('API base URL working');
+                } else {
+                    updateResult('network-result', 
+                        `<div class="error">❌ API base URL failed</div>`);
+                    log('API base URL failed', 'error');
+                }
+            } catch (error) {
+                updateResult('network-result', 
+                    `<div class="error">❌ API base error: ${error.message}</div>`);
+                log('API base error: ' + error.message, 'error');
+            }
+        }
+        
+        function displayBanners(banners) {
+            const bannerList = document.getElementById('banner-list');
+            if (banners.length === 0) {
+                bannerList.innerHTML = '<p>No banners found</p>';
+                return;
+            }
+            
+            let html = '<h4>Banner List:</h4>';
+            banners.forEach((banner, index) => {
+                html += `
+                    <div class="banner-item">
+                        <strong>${index + 1}. ${banner.title}</strong><br>
+                        <small>ID: ${banner.id}</small><br>
+                        <small>Display Type: ${banner.displayType || 'Not set'}</small><br>
+                        <small>Category: ${banner.categoryId || 'None'}</small><br>
+                        <small>Status: ${banner.isActive ? 'Active' : 'Inactive'}</small>
+                    </div>
+                `;
+            });
+            bannerList.innerHTML = html;
+        }
+        
+        // Auto-check for existing token on page load
+        window.onload = function() {
+            checkToken();
+            log('Page loaded, checking for existing token');
+        };
+    </script>
+</body>
+</html>

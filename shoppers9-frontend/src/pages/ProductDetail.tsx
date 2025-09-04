@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Heart, ShoppingCart, Truck, Shield, RotateCcw } from 'lucide-react';
+import { Heart, ShoppingCart, Truck, Shield, RotateCcw } from 'lucide-react';
 import { productService, type Product } from '../services/products';
 import { wishlistService } from '../services/wishlist';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPrice } from '../utils/currency';
-import { getImageUrl, getImageUrls } from '../utils/imageUtils';
+import { getImageUrls } from '../utils/imageUtils';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();

@@ -55,13 +55,14 @@ export const getProducts = async (req: Request, res: Response) => {
         isActive: true
       });
       if (categoryDoc) {
-        // Use ObjectId for filtering since products store category as ObjectId
-        query.category = categoryDoc._id;
+        // Use ObjectId string for filtering since products store category as ObjectId string
+        query.category = categoryDoc._id.toString();
       } else {
         // Fallback to direct category matching (for backward compatibility)
         query.category = category;
       }
     } catch (error) {
+      console.error('Error finding category:', error);
       // Fallback to direct category name matching
       query.category = category;
     }
@@ -117,17 +118,12 @@ export const getProducts = async (req: Request, res: Response) => {
       break;
   }
 
+
+  
   const [products, total] = await Promise.all([
     Product.find(query)
       .populate('category', 'name slug level parentCategory')
       .populate('subCategory', 'name slug level parentCategory')
-      .populate({
-        path: 'filterValues',
-        populate: [
-          { path: 'filter', select: 'name displayName type' },
-          { path: 'filterOption', select: 'value displayValue colorCode' }
-        ]
-      })
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit)),
@@ -214,13 +210,6 @@ export const searchProducts = async (req: Request, res: Response) => {
     Product.find(query)
       .populate('category', 'name slug level parentCategory')
       .populate('subCategory', 'name slug level parentCategory')
-      .populate({
-        path: 'filterValues',
-        populate: [
-          { path: 'filter', select: 'name displayName type' },
-          { path: 'filterOption', select: 'value displayValue colorCode' }
-        ]
-      })
       .sort({ popularity: -1, createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -251,31 +240,22 @@ export const searchProducts = async (req: Request, res: Response) => {
  * Get all categories
  */
 export const getCategories = async (req: Request, res: Response) => {
-  const categories = await Category.find({ isActive: true })
+  // Only get level 1 categories (those without a parent)
+  const categories = await Category.find({ 
+    isActive: true,
+    $or: [
+      { parentCategory: { $exists: false } },
+      { parentCategory: null },
+      { parentCategory: '' }
+    ]
+  })
     .sort({ sortOrder: 1, name: 1 })
     .lean();
-
-  // Group categories by parent
-  const categoryTree = categories.reduce((acc: any, category: any) => {
-    if (!category.parent) {
-      // Root category
-      acc[category._id] = {
-        ...category,
-        children: []
-      };
-    } else {
-      // Child category
-      if (acc[category.parent]) {
-        acc[category.parent].children.push(category);
-      }
-    }
-    return acc;
-  }, {});
 
   res.json({
     success: true,
     data: {
-      categories: Object.values(categoryTree)
+      categories: categories
     }
   });
 };
@@ -427,14 +407,7 @@ export const getProductById = async (req: Request, res: Response) => {
     isActive: true
   })
     .populate('category', 'name slug level parentCategory')
-    .populate('subCategory', 'name slug level parentCategory')
-    .populate({
-      path: 'filterValues',
-      populate: [
-        { path: 'filter', select: 'name displayName type dataType' },
-        { path: 'filterOption', select: 'value displayValue colorCode' }
-      ]
-    });
+    .populate('subCategory', 'name slug level parentCategory');
 
   if (!product) {
     throw new AppError('Product not found', 404);
@@ -475,13 +448,6 @@ export const getRelatedProducts = async (req: Request, res: Response) => {
   })
     .populate('category', 'name slug level parentCategory')
     .populate('subCategory', 'name slug level parentCategory')
-    .populate({
-      path: 'filterValues',
-      populate: [
-        { path: 'filter', select: 'name displayName type' },
-        { path: 'filterOption', select: 'value displayValue colorCode' }
-      ]
-    })
     .sort({ popularity: -1, createdAt: -1 })
     .limit(12)
     .lean();

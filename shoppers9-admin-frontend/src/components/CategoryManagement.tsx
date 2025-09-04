@@ -433,7 +433,7 @@ const CategoryManagement: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.name}
+                  value={formData?.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
@@ -445,7 +445,7 @@ const CategoryManagement: React.FC = () => {
                   Description
                 </label>
                 <textarea
-                  value={formData.description}
+                  value={formData?.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   rows={3}
@@ -475,7 +475,7 @@ const CategoryManagement: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={formData.sortOrder}
+                  value={formData?.sortOrder || 0}
                   onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />

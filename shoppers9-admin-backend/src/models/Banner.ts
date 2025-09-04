@@ -1,8 +1,6 @@
-import mongoose, { Schema } from 'mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IBanner extends Document {
-  _id: string;
   title: string;
   subtitle?: string;
   description?: string;
@@ -13,9 +11,10 @@ export interface IBanner extends Document {
   order: number;
   startDate?: Date;
   endDate?: Date;
-  // New fields for banner placement
-  displayType: 'carousel' | 'category-card' | 'both';
-  categoryId?: string; // For category-specific banners
+  displayType?: 'carousel' | 'category-card' | 'both';
+  categoryId?: string;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,22 +24,21 @@ const bannerSchema = new Schema<IBanner>({
     type: String,
     required: true,
     trim: true,
-    maxlength: 100
+    maxlength: 200
   },
   subtitle: {
     type: String,
     trim: true,
-    maxlength: 150
+    maxlength: 300
   },
   description: {
     type: String,
     trim: true,
-    maxlength: 300
+    maxlength: 500
   },
   image: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   link: {
     type: String,
@@ -49,7 +47,7 @@ const bannerSchema = new Schema<IBanner>({
   buttonText: {
     type: String,
     trim: true,
-    maxlength: 30
+    maxlength: 50
   },
   isActive: {
     type: Boolean,
@@ -68,22 +66,28 @@ const bannerSchema = new Schema<IBanner>({
   displayType: {
     type: String,
     enum: ['carousel', 'category-card', 'both'],
-    default: 'carousel',
-    required: true
+    default: 'carousel'
   },
   categoryId: {
     type: String,
-    trim: true,
-    // Required only when displayType is 'category-card' or 'both'
     validate: {
       validator: function(this: IBanner, value: string) {
-        if (this.displayType === 'category-card' || this.displayType === 'both') {
-          return value && value.length > 0;
+        // Category is required if displayType is 'category-card' or 'both'
+        if ((this.displayType === 'category-card' || this.displayType === 'both') && !value) {
+          return false;
         }
         return true;
       },
-      message: 'Category ID is required for category-card banners'
+      message: 'Category is required for category-card and both display types'
     }
+  },
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  updatedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'Admin'
   }
 }, {
   timestamps: true,
@@ -102,16 +106,6 @@ bannerSchema.index({ isActive: 1, order: 1 });
 bannerSchema.index({ startDate: 1, endDate: 1 });
 bannerSchema.index({ createdAt: -1 });
 
-// Method to check if banner is currently active
-bannerSchema.methods.isCurrentlyActive = function() {
-  if (!this.isActive) return false;
-  
-  const now = new Date();
-  
-  if (this.startDate && now < this.startDate) return false;
-  if (this.endDate && now > this.endDate) return false;
-  
-  return true;
-};
+const Banner = mongoose.model<IBanner>('Banner', bannerSchema);
 
-export const Banner = mongoose.model<IBanner>('Banner', bannerSchema);
+export default Banner;

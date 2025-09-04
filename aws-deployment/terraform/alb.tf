@@ -154,8 +154,12 @@ resource "aws_lb_listener_rule" "backend" {
   priority     = 100
 
   action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.backend.arn
+      }
+    }
   }
 
   condition {
@@ -208,8 +212,12 @@ resource "aws_lb_listener_rule" "admin" {
   priority     = 200
 
   action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.admin.arn
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.admin.arn
+      }
+    }
   }
 
   condition {

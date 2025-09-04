@@ -8,9 +8,10 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Create subdirectories for categories and products
+// Create subdirectories for categories, products, and banners
 const categoriesDir = path.join(uploadsDir, 'categories');
 const productsDir = path.join(uploadsDir, 'products');
+const bannersDir = path.join(uploadsDir, 'banners');
 
 if (!fs.existsSync(categoriesDir)) {
   fs.mkdirSync(categoriesDir, { recursive: true });
@@ -18,6 +19,10 @@ if (!fs.existsSync(categoriesDir)) {
 
 if (!fs.existsSync(productsDir)) {
   fs.mkdirSync(productsDir, { recursive: true });
+}
+
+if (!fs.existsSync(bannersDir)) {
+  fs.mkdirSync(bannersDir, { recursive: true });
 }
 
 // Configure multer storage
@@ -36,6 +41,9 @@ const storage = multer.diskStorage({
     } else if (req.originalUrl.includes('/products') || req.path.includes('products')) {
       console.log('Saving to products directory');
       cb(null, productsDir);
+    } else if (req.originalUrl.includes('/banners') || req.path.includes('banners')) {
+      console.log('Saving to banners directory');
+      cb(null, bannersDir);
     } else {
       console.log('Saving to main uploads directory');
       cb(null, uploadsDir);
@@ -101,6 +109,9 @@ export const uploadCategoryImage = upload.single('image');
 
 // Middleware for multiple product images upload (max 6)
 export const uploadProductImages = upload.array('images', 6);
+
+// Middleware for single banner image upload
+export const uploadBannerImage = upload.single('image');
 
 // Error handling middleware for multer
 export const handleUploadError = (error: any, req: any, res: any, next: any) => {

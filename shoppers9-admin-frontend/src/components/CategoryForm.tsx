@@ -243,7 +243,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.name}
+                value={formData?.name || ''}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.name ? 'border-red-500' : 'border-gray-300'
@@ -259,7 +259,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.slug}
+                value={formData?.slug || ''}
                 onChange={(e) => handleInputChange('slug', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.slug ? 'border-red-500' : 'border-gray-300'
@@ -276,7 +276,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               Description *
             </label>
             <textarea
-              value={formData.description}
+              value={formData?.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
               rows={4}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -329,7 +329,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
                 Parent Category
               </label>
               <select
-                value={formData.parentCategory}
+                value={formData?.parentCategory || ''}
                 onChange={(e) => handleInputChange('parentCategory', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -354,7 +354,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               <input
                 type="number"
                 min="0"
-                value={formData.sortOrder}
+                value={formData?.sortOrder || 0}
                 onChange={(e) => handleInputChange('sortOrder', parseInt(e.target.value) || 0)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.sortOrder ? 'border-red-500' : 'border-gray-300'

@@ -38,6 +38,7 @@ interface Filter {
 
 interface FilterOption {
   _id: string;
+  id?: string; // Add optional id property for compatibility
   filter: string;
   value: string;
   displayValue: string;
@@ -219,11 +220,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
           const parentSubId = getParentCategoryId(subSubCat.parentCategory);
           const parentSubCat = categories.find(cat => (cat.id || cat._id) === parentSubId);
           if (parentSubCat) {
-            subCatId = parentSubCat.id || parentSubCat._id;
+            subCatId = parentSubCat.id || parentSubCat._id || '';
             const grandParentId = getParentCategoryId(parentSubCat.parentCategory);
             const grandParentCat = categories.find(cat => (cat.id || cat._id) === grandParentId);
             if (grandParentCat) {
-              mainCatId = grandParentCat.id || grandParentCat._id;
+              mainCatId = grandParentCat.id || grandParentCat._id || '';
             }
           }
         }
@@ -236,7 +237,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           const parentId = getParentCategoryId(subCat.parentCategory);
           const parentCat = categories.find(cat => (cat.id || cat._id) === parentId);
           if (parentCat) {
-            mainCatId = parentCat.id || parentCat._id;
+            mainCatId = parentCat.id || parentCat._id || '';
           }
         }
       }
@@ -888,7 +889,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData.name}
+                        value={formData?.name || ''}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.name ? 'border-red-500' : 'border-gray-300'
@@ -904,7 +905,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData.brand}
+                        value={formData?.brand || ''}
                         onChange={(e) => handleInputChange('brand', e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.brand ? 'border-red-500' : 'border-gray-300'
@@ -920,7 +921,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       Description *
                     </label>
                     <textarea
-                      value={formData.description}
+                      value={formData?.description || ''}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       rows={4}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
@@ -946,7 +947,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.originalPrice}
+                        value={formData?.originalPrice || 0}
                         onChange={(e) => handleInputChange('originalPrice', parseFloat(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.originalPrice ? 'border-red-500' : 'border-gray-300'
@@ -964,7 +965,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.price}
+                        value={formData?.price || 0}
                         onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.price ? 'border-red-500' : 'border-gray-300'
@@ -982,7 +983,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData.stock}
+                        value={formData?.stock || 0}
                         onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.stock ? 'border-red-500' : 'border-gray-300'
@@ -1192,7 +1193,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                         checked={isChecked}
                                         onChange={(e) => {
                                           e.stopPropagation();
-                                          handleMultipleFilterValueChange(categoryFilter.filter._id, optionId, e.target.checked);
+                                          handleMultipleFilterValueChange(categoryFilter.filter._id, optionId || '', e.target.checked);
                                         }}
                                         className="mr-2"
                                       />

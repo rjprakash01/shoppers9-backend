@@ -367,7 +367,7 @@ const FilterOptionManagement: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.value}
+                  value={formData?.value || ''}
                   onChange={(e) => handleInputChange('value', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., red, large, xl"
@@ -381,7 +381,7 @@ const FilterOptionManagement: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.displayValue}
+                  value={formData?.displayValue || ''}
                   onChange={(e) => handleInputChange('displayValue', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Red, Large, XL"
@@ -402,7 +402,7 @@ const FilterOptionManagement: React.FC = () => {
                   />
                   <input
                     type="text"
-                    value={formData.colorCode}
+                    value={formData?.colorCode || ''}
                     onChange={(e) => handleInputChange('colorCode', e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="#000000 (optional)"
@@ -419,7 +419,7 @@ const FilterOptionManagement: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={formData.sortOrder}
+                  value={formData?.sortOrder || 0}
                   onChange={(e) => handleInputChange('sortOrder', parseInt(e.target.value) || 0)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="0"

@@ -925,7 +925,10 @@ const ProductManagement: React.FC = () => {
             setEditingProduct(null);
           }}
           onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-          initialData={editingProduct ? editingProduct : selectedCategory ? {
+          initialData={editingProduct ? {
+            ...editingProduct,
+            category: typeof editingProduct.category === 'object' ? editingProduct.category.id : editingProduct.category
+          } : selectedCategory ? {
             category: selectedCategory
           } : undefined}
           isEditing={!!editingProduct}
