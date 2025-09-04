@@ -48,6 +48,13 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.tfvars
 *.swo
 *~
 
