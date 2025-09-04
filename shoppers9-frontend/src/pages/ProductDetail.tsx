@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Truck, Shield, RotateCcw } from 'lucide-react';
 import { productService, type Product } from '../services/products';
+import { wishlistService } from '../services/wishlist';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatPrice } from '../utils/currency';
+import { getImageUrl, getImageUrls } from '../utils/imageUtils';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -16,6 +20,8 @@ const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -30,14 +36,17 @@ const ProductDetail: React.FC = () => {
       setProduct(productData);
       
       // Set default selections
-      if (productData.variants.length > 0) {
+      if (productData && productData.variants && productData.variants.length > 0) {
         setSelectedVariant(productData.variants[0]._id || '');
-        if (productData.variants[0].sizes.length > 0) {
+        if (productData.variants[0].sizes && productData.variants[0].sizes.length > 0) {
           setSelectedSize(productData.variants[0].sizes[0].size);
         }
       }
     } catch (error) {
       console.error('Failed to load product:', error);
+      
+      // Don't show mock data, just set product to null to show "Product Not Found"
+      setProduct(null);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +66,46 @@ const ProductDetail: React.FC = () => {
     }
   };
 
+  const checkWishlistStatus = async () => {
+    if (!isAuthenticated || !product) return;
+    
+    try {
+      const inWishlist = await wishlistService.isInWishlist(product._id);
+      setIsInWishlist(inWishlist);
+    } catch (error) {
+      console.error('Failed to check wishlist status:', error);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    if (!product) return;
+
+    try {
+      setIsTogglingWishlist(true);
+      if (isInWishlist) {
+        await wishlistService.removeFromWishlist(product._id);
+        setIsInWishlist(false);
+      } else {
+        await wishlistService.addToWishlist(product._id, selectedVariant);
+        setIsInWishlist(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle wishlist:', error);
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  };
+
+  // Check wishlist status when product loads or authentication changes
+  useEffect(() => {
+    checkWishlistStatus();
+  }, [product, isAuthenticated]);
+
   const getCurrentVariant = () => {
     return product?.variants.find(v => v._id === selectedVariant);
   };
@@ -68,7 +117,7 @@ const ProductDetail: React.FC = () => {
 
   const getCurrentImages = () => {
     const variant = getCurrentVariant();
-    return variant?.images || [];
+    return getImageUrls(variant?.images);
   };
 
   if (isLoading) {
@@ -121,7 +170,7 @@ const ProductDetail: React.FC = () => {
           <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-md p-4">
               <img
-                src={currentImages[selectedImageIndex] || '/placeholder-image.jpg'}
+                src={currentImages[selectedImageIndex] || '/placeholder-image.svg'}
                 alt={product.name}
                 className="w-full h-96 object-cover rounded-lg"
               />
@@ -250,15 +299,30 @@ const ProductDetail: React.FC = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
-                className="w-full bg-primary-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="w-full text-white py-3 px-6 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
               >
                 <ShoppingCart className="h-5 w-5" />
                 <span>{isAddingToCart ? 'Adding...' : 'Add to Cart'}</span>
               </button>
               
-              <button className="w-full border border-gray-300 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-center space-x-2">
-                <Heart className="h-5 w-5" />
-                <span>Add to Wishlist</span>
+              <button 
+                onClick={handleToggleWishlist}
+                disabled={isTogglingWishlist}
+                className={`w-full border py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
+                  isInWishlist
+                    ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Heart className={`h-5 w-5 ${
+                  isInWishlist ? 'fill-current text-red-500' : ''
+                }`} />
+                <span>
+                  {isTogglingWishlist 
+                    ? (isInWishlist ? 'Removing...' : 'Adding...') 
+                    : (isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist')
+                  }
+                </span>
               </button>
             </div>
 
@@ -310,6 +374,17 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Related Products Section */}
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">You May Also Like</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Placeholder for related products - can be implemented later */}
+            <div className="text-center text-gray-500 col-span-full py-8">
+              <p>Related products will be displayed here</p>
+            </div>
           </div>
         </div>
       </div>

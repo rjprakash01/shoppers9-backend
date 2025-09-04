@@ -26,14 +26,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         const mockToken = generateToken('mock-admin-id');
         res.status(200).json({
           success: true,
-          token: mockToken,
-          user: {
-            id: 'mock-admin-id',
-            name: 'Test Admin',
-            email: 'admin@shoppers9.com',
-            phone: '9999999999',
-            role: 'admin',
-            avatar: null
+          data: {
+            accessToken: mockToken,
+            user: {
+              id: 'mock-admin-id',
+              name: 'Test Admin',
+              email: 'admin@shoppers9.com',
+              phone: '9999999999',
+              role: 'admin',
+              avatar: null
+            }
           }
         });
         return;
@@ -86,14 +88,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       success: true,
-      token,
-      user: {
-        id: admin._id,
-        name: `${admin.firstName} ${admin.lastName}`,
-        email: admin.email,
-        phone: admin.phone,
-        role: admin.role,
-        avatar: null
+      data: {
+        accessToken: token,
+        user: {
+          id: admin._id,
+          name: `${admin.firstName} ${admin.lastName}`,
+          email: admin.email,
+          phone: admin.phone,
+          role: admin.role,
+          avatar: null
+        }
       }
     });
   } catch (error) {

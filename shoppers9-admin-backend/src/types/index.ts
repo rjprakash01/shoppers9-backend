@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
 // Admin interface
 export interface IAdmin extends Document {
@@ -39,41 +39,58 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+// Product Size interface
+export interface IProductSize extends Document {
+  size: string;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  stock: number;
+  // sku: string; // Removed to fix duplicate key error
+}
+
+// Product Variant interface
+export interface IProductVariant extends Document {
+  color: string;
+  colorCode?: string;
+  sizes: IProductSize[];
+  images: string[];
+}
+
+// Product Specification interface
+export interface IProductSpecification {
+  fabric?: string;
+  fit?: string;
+  washCare?: string;
+  material?: string;
+  capacity?: string;
+  microwaveSafe?: boolean;
+  dimensions?: string;
+  weight?: string;
+}
+
 // Product interface
 export interface IProduct extends Document {
   _id: string;
   name: string;
   description: string;
-  price: number;
-  originalPrice?: number;
-  category: string;
-  subcategory?: string;
-  brand?: string;
-  sku: string;
-  stock: number;
+  category: mongoose.Types.ObjectId | ICategory;
+  subCategory: mongoose.Types.ObjectId | ICategory;
+  subSubCategory?: mongoose.Types.ObjectId | ICategory;
+  brand: string;
   images: string[];
-  thumbnail?: string;
-  specifications?: Record<string, any>;
-  features?: string[];
-  tags?: string[];
+  variants: IProductVariant[];
+  specifications: IProductSpecification;
+  tags: string[];
   isActive: boolean;
-  isFeatured: boolean;
-  discount?: {
-    type: 'percentage' | 'fixed';
-    value: number;
-    startDate?: Date;
-    endDate?: Date;
-  };
-  seo?: {
-    title?: string;
-    description?: string;
-    keywords?: string[];
-  };
-
-  createdBy?: string;
-  updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Virtual properties
+  minPrice: number;
+  maxPrice: number;
+  totalStock: number;
+  filterValues?: IProductFilterValue[];
 }
 
 // User interface
@@ -150,6 +167,7 @@ export interface ICategory extends Document {
   slug: string;
   image?: string;
   parentCategory?: string;
+  level: 1 | 2 | 3; // 1 = Category, 2 = Subcategory, 3 = Sub-Subcategory
   isActive: boolean;
   sortOrder: number;
   createdBy?: string;
@@ -237,4 +255,68 @@ export interface UserQueryParams extends QueryParams {
   status?: string;
   verified?: boolean;
   role?: string;
+}
+
+// Filter System Interfaces
+export interface IFilter extends Document {
+  _id: string;
+  name: string;
+  displayName: string;
+  type: 'single' | 'multiple' | 'range';
+  dataType: 'string' | 'number' | 'boolean';
+  description?: string;
+  categoryLevels: (1 | 2 | 3)[]; // Which category levels this filter applies to
+  categories: mongoose.Types.ObjectId[]; // Specific category IDs this filter is assigned to
+  isActive: boolean;
+  sortOrder: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IFilterOption extends Document {
+  _id: string;
+  filter: string;
+  value: string;
+  displayValue: string;
+  colorCode?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICategoryFilter extends Document {
+  _id: string;
+  category: string;
+  filter: string;
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IProductFilterValue extends Document {
+  _id: string;
+  product: string;
+  filter: string;
+  filterOption: string;
+  customValue?: string;
+  isActive: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Enhanced Product Query Params with Filters
+export interface EnhancedProductQueryParams extends ProductQueryParams {
+  filters?: { [filterName: string]: string | string[] };
+  priceRange?: { min?: number; max?: number };
 }

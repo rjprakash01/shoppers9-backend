@@ -44,10 +44,12 @@ export const addToWishlist = async (req: AuthenticatedRequest, res: Response) =>
     throw new AppError('Product not found', 404);
   }
 
-  // Find the variant
-  const variant = product.variants.find((v: any) => v._id?.toString() === variantId);
-  if (!variant) {
-    throw new AppError('Product variant not found', 404);
+  // Find the variant (only if variantId is provided)
+  if (variantId) {
+    const variant = product.variants.find((v: any) => v._id?.toString() === variantId);
+    if (!variant) {
+      throw new AppError('Product variant not found', 404);
+    }
   }
 
   let wishlist = await Wishlist.findOne({ userId: userId });

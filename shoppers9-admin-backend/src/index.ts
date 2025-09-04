@@ -13,24 +13,34 @@ import userRoutes from './routes/user';
 import orderRoutes from './routes/order';
 import analyticsRoutes from './routes/analytics';
 import categoryRoutes from './routes/category';
+import filterRoutes from './routes/filter';
+import categoryFilterRoutes from './routes/categoryFilter';
+import productFilterValueRoutes from './routes/productFilterValue';
+import filterOptionRoutes from './routes/filterOption';
 
 // Load environment variables
 dotenv.config();
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5001;
 
 // Connect to database
 connectDB();
 
 // Middleware
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5174'],
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path} - ${new Date().toLocaleTimeString()}`);
+  next();
+});
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
@@ -105,12 +115,20 @@ app.post('/api/init-super-admin', async (req, res): Promise<void> => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/admins', adminRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/analytics', analyticsRoutes);
+// Public category routes (for frontend dropdown access)
 app.use('/api/categories', categoryRoutes);
+// Specific admin routes must come before the general admin route
+app.use('/api/admin/products', productRoutes);
+app.use('/api/admin/users', userRoutes);
+app.use('/api/admin/orders', orderRoutes);
+app.use('/api/admin/analytics', analyticsRoutes);
+app.use('/api/admin/categories', categoryRoutes);
+app.use('/api/admin/filters', filterRoutes);
+app.use('/api/admin/filter-options', filterOptionRoutes);
+app.use('/api/admin', categoryFilterRoutes);
+app.use('/api/admin', productFilterValueRoutes);
+// General admin routes (for admin management)
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
@@ -121,6 +139,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Shoppers9 Admin Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔧 Access restrictions removed - all authenticated users can access admin features`);
+  console.log(`🌟 Server ready to accept connections`);
 });
 
 export default app;

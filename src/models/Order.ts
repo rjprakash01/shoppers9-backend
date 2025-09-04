@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { IOrder, IOrderItem, IAddress, OrderStatus, OrderItemStatus, PaymentStatus, RefundStatus } from '../types';
 
 const orderItemSchema = new Schema<IOrderItem>({
-  productId: {
+  product: {
     type: String,
     required: true,
     ref: 'Product'

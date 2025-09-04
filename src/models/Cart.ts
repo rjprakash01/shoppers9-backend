@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { ICart, ICartItem } from '../types';
 
 const cartItemSchema = new Schema<ICartItem>({
-  productId: {
+  product: {
     type: String,
     required: true,
     ref: 'Product'
@@ -90,7 +90,7 @@ const cartSchema = new Schema<ICart>({
 
 // Indexes
 // userId already has unique index from schema definition
-cartSchema.index({ 'items.productId': 1 });
+cartSchema.index({ 'items.product': 1 });
 
 // Pre-save middleware to calculate totals
 cartSchema.pre('save', function(next: any) {
@@ -115,7 +115,7 @@ cartSchema.pre('save', function(next: any) {
 cartSchema.methods.addItem = function(item: ICartItem) {
   const existingItemIndex = this.items.findIndex(
     (cartItem: any) => 
-      cartItem.productId === item.productId && 
+      cartItem.product === item.product && 
       cartItem.variantId === item.variantId && 
       cartItem.size === item.size
   );
@@ -136,7 +136,7 @@ cartSchema.methods.addItem = function(item: ICartItem) {
 cartSchema.methods.removeItem = function(productId: string, variantId: string, size: string) {
   this.items = this.items.filter(
     (item: any) => 
-      !(item.productId === productId && 
+      !(item.product === productId && 
         item.variantId === variantId && 
         item.size === size)
   );
@@ -147,7 +147,7 @@ cartSchema.methods.removeItem = function(productId: string, variantId: string, s
 cartSchema.methods.updateQuantity = function(productId: string, variantId: string, size: string, quantity: number) {
   const item = this.items.find(
     (cartItem: any) => 
-      cartItem.productId === productId && 
+      cartItem.product === productId && 
       cartItem.variantId === variantId && 
       cartItem.size === size
   );

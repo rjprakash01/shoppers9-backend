@@ -244,7 +244,7 @@ const Analytics: React.FC = () => {
             <PieChart className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-3">
-            {analyticsData.orderStatusBreakdown.map((status, index) => (
+            {(analyticsData.orderStatusBreakdown || []).map((status, index) => (
               <div key={status.status} className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div 
@@ -273,7 +273,7 @@ const Analytics: React.FC = () => {
             <BarChart3 className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-4">
-            {analyticsData.topSellingProducts.slice(0, 5).map((product, index) => (
+            {(analyticsData.topSellingProducts || []).slice(0, 5).map((product, index) => (
               <div key={product.productId} className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -300,7 +300,7 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* Monthly Revenue Trend */}
-      {analyticsData.monthlyRevenue && analyticsData.monthlyRevenue.length > 0 && (
+      {analyticsData.monthlyRevenue && Array.isArray(analyticsData.monthlyRevenue) && analyticsData.monthlyRevenue.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Monthly Revenue Trend</h3>
@@ -317,7 +317,7 @@ const Analytics: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {analyticsData.monthlyRevenue.map((month, index) => (
+                {(analyticsData.monthlyRevenue || []).map((month, index) => (
                   <tr key={`month-${month.month}`} className="border-b border-gray-100">
                     <td className="py-3 text-sm text-gray-900">{month.month}</td>
                     <td className="py-3 text-sm text-gray-900 text-right">
@@ -338,7 +338,7 @@ const Analytics: React.FC = () => {
       )}
 
       {/* Category Performance */}
-      {analyticsData.categoryPerformance && analyticsData.categoryPerformance.length > 0 && (
+      {analyticsData.categoryPerformance && Array.isArray(analyticsData.categoryPerformance) && analyticsData.categoryPerformance.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Category Performance</h3>
@@ -355,7 +355,7 @@ const Analytics: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {analyticsData.categoryPerformance.map((category, index) => (
+                {(analyticsData.categoryPerformance || []).map((category, index) => (
                   <tr key={`category-${category.categoryName}`} className="border-b border-gray-100">
                     <td className="py-3 text-sm text-gray-900">{category.categoryName}</td>
                     <td className="py-3 text-sm text-gray-900 text-right">

@@ -20,6 +20,8 @@ import orderRoutes from './routes/order';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
 import bannerRoutes from './routes/banner';
+import analyticsRoutes from './routes/analytics';
+import categoryRoutes from './routes/category';
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +29,9 @@ dotenv.config();
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Trust proxy for load balancer
+app.set('trust proxy', true);
 
 // Connect to MongoDB (non-blocking)
 connectDB().catch(console.error);
@@ -36,14 +41,18 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting
+// Rate limiting - increased for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // increased limit for development
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For header from load balancer or fallback to connection IP
+    return req.headers['x-forwarded-for'] as string || req.ip || req.connection.remoteAddress || 'unknown';
+  },
   legacyHeaders: false
 });
 app.use('/api/', limiter);
@@ -51,8 +60,10 @@ app.use('/api/', limiter);
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL 
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174'],
+    ? [
+        process.env.FRONTEND_URL || ''
+      ].filter(url => url !== '')
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -75,6 +86,9 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -89,12 +103,14 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/banners', bannerRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

@@ -5,6 +5,7 @@ import {
   getUserById,
   updateUserStatus,
   getAllProducts,
+  getProductsByCategory,
   updateProductStatus,
   getAllOrders,
   getOrderDetails,
@@ -67,6 +68,13 @@ router.get('/dashboard/stats',
   getDashboardStats
 );
 
+// Analytics routes
+router.get('/analytics/dashboard', 
+  authenticateToken, 
+  requireAdmin, 
+  getDashboardStats
+);
+
 router.get('/analytics/sales', 
   authenticateToken, 
   requireAdmin, 
@@ -98,6 +106,12 @@ router.get('/products',
   authenticateToken, 
   requireAdmin, 
   getAllProducts
+);
+
+router.get('/products/category/:categoryId', 
+  authenticateToken, 
+  requireAdmin, 
+  getProductsByCategory
 );
 
 router.patch('/products/:productId/status', 

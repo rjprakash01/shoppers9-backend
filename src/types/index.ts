@@ -58,7 +58,6 @@ export interface IProductSize {
   originalPrice: number;
   discount: number;
   stock: number;
-  sku: string;
 }
 
 export interface IProductSpecification {
@@ -102,7 +101,7 @@ export interface ICart extends Document {
 
 export interface ICartItem {
   _id?: string;
-  productId: string;
+  product: string;
   variantId: string;
   size: string;
   quantity: number;
@@ -123,7 +122,7 @@ export interface IWishlist extends Document {
 
 export interface IWishlistItem {
   _id?: string;
-  productId: string;
+  product: string;
   variantId?: string;
   addedAt: Date;
 }
@@ -169,7 +168,7 @@ export interface IOrder extends Document {
 
 export interface IOrderItem {
   _id?: string;
-  productId: string;
+  product: string;
   variantId: string;
   size: string;
   quantity: number;

@@ -12,6 +12,7 @@ import { auth } from '../middleware/auth';
 const router = express.Router();
 
 router.post('/login', login);
+router.post('/admin/login', login); // Admin-specific login route
 router.post('/logout', auth, logout);
 router.post('/refresh-token', refreshToken);
 router.post('/forgot-password', forgotPassword);

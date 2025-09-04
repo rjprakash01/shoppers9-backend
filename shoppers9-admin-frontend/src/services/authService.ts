@@ -1,9 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5002/api';
+// Use relative URL in development to leverage Vite proxy, absolute URL in production
+const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:4000');
 
 class AuthService {
-  private token: string | null = null;
+  private getErrorMessage(error: unknown, defaultMessage: string): string {
+    return error instanceof Error && 'response' in error && 
+      typeof error.response === 'object' && error.response !== null &&
+      'data' in error.response && typeof error.response.data === 'object' &&
+      error.response.data !== null && 'message' in error.response.data
+      ? String(error.response.data.message)
+      : defaultMessage;
+  }
 
   constructor() {
     // Set up axios defaults
@@ -39,7 +47,6 @@ class AuthService {
   }
 
   setAuthToken(token: string | null) {
-    this.token = token;
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
@@ -51,46 +58,46 @@ class AuthService {
     try {
       const payload = loginType === 'email' 
         ? { email: loginField, password }
-        : { phoneNumber: loginField, password };
+        : { phone: loginField, password };
       
-      const response = await axios.post('/auth/login', payload);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/admin/login`, payload);
       
       if (response.data.success) {
-        const { token, user } = response.data;
-        localStorage.setItem('adminToken', token);
+        const { accessToken, user } = response.data.data;
+        localStorage.setItem('adminToken', accessToken);
         localStorage.setItem('adminUser', JSON.stringify(user));
-        this.setAuthToken(token);
+        this.setAuthToken(accessToken);
         return { success: true, user };
       } else {
         return { success: false, message: response.data.message };
       }
-    } catch (error: any) {
-      return { success: false, message: error.response?.data?.message || 'Login failed' };
+    } catch (error: unknown) {
+      return { success: false, message: this.getErrorMessage(error, 'Login failed') };
     }
   }
 
   async sendOTP(phone: string) {
     try {
-      const response = await axios.post('/auth/send-otp', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/send-otp`, {
         phone
       });
       
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to send OTP');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to send OTP'));
     }
   }
 
   async verifyOTP(phone: string, otp: string) {
     try {
-      const response = await axios.post('/auth/verify-otp', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, {
         phone,
         otp
       });
       
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'OTP verification failed');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'OTP verification failed'));
     }
   }
 
@@ -101,19 +108,19 @@ class AuthService {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       
-      const response = await axios.get(`/analytics/dashboard?${params}`);
+      const response = await axios.get(`${API_BASE_URL}/api/admin/analytics/dashboard?${params.toString()}`);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch dashboard stats');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch dashboard stats'));
     }
   }
 
   async getSalesAnalytics(period: string = '30d') {
     try {
-      const response = await axios.get(`/analytics/sales?period=${period}`);
+      const response = await axios.get(`${API_BASE_URL}/api/admin/analytics/sales?period=${period}`);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch sales analytics');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch sales analytics'));
     }
   }
 
@@ -123,49 +130,77 @@ class AuthService {
         page: page.toString(),
         limit: limit.toString()
       });
-      if (search) params.append('search', search);
       
-      const response = await axios.get(`/users?${params}`);
+      if (search) {
+        params.append('search', search);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/api/admin/users?${params.toString()}`);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch users');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch users'));
     }
   }
 
   async updateUserStatus(userId: string, isVerified: boolean) {
     try {
-      const response = await axios.patch(`/users/${userId}/toggle-status`, {
+      const response = await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, {
         isVerified
       });
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update user status');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update user status'));
     }
   }
 
-  async getAllProducts(page: number = 1, limit: number = 10, search?: string) {
+  async getAllProducts(page: number = 1, limit: number = 10, search?: string, status?: string, category?: string) {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString()
       });
-      if (search) params.append('search', search);
       
-      const response = await axios.get(`/products?${params}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch products');
+      if (search) {
+        params.append('search', search);
+      }
+      
+      if (status) {
+        params.append('status', status);
+      }
+      
+      if (category) {
+        params.append('category', category);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/api/admin/products?${params.toString()}`);
+      
+      if (response.data.success) {
+        return {
+          products: response.data.data.products,
+          pagination: {
+            currentPage: response.data.data.pagination.page,
+            totalPages: response.data.data.pagination.pages,
+            totalProducts: response.data.data.pagination.total,
+            hasNext: response.data.data.pagination.page < response.data.data.pagination.pages,
+            hasPrev: response.data.data.pagination.page > 1
+          }
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch products');
+      }
+    } catch (error) {
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch products'));
     }
   }
 
   async updateProductStatus(productId: string, isActive: boolean) {
     try {
-      const response = await axios.put(`/products/${productId}/toggle-status`, {
+      const response = await axios.patch(`${API_BASE_URL}/api/admin/products/${productId}/status`, {
         isActive
       });
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update product status');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update product status'));
     }
   }
 
@@ -175,24 +210,68 @@ class AuthService {
         page: page.toString(),
         limit: limit.toString()
       });
-      if (status) params.append('status', status);
       
-      const response = await axios.get(`/orders?${params}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch orders');
+      if (status) {
+        params.append('status', status);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/api/admin/orders?${params.toString()}`);
+      
+      if (response.data.success) {
+        return {
+          orders: response.data.data.orders.map((order: any) => ({
+            id: order.id,
+            orderId: order.orderNumber,
+            userId: {
+              id: order.user?.id || order.user,
+              name: order.user ? `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() : 'Unknown User',
+              phone: order.user?.phone || 'N/A'
+            },
+            items: order.items.map((item: any) => ({
+              productId: item.product?.id || item.product,
+              productName: item.name,
+              quantity: item.quantity,
+              price: item.price
+            })),
+            totalAmount: order.subtotal,
+            finalAmount: order.total,
+            orderStatus: order.status,
+            paymentStatus: order.paymentStatus,
+            shippingAddress: {
+              street: order.shippingAddress?.street || '',
+              city: order.shippingAddress?.city || '',
+              state: order.shippingAddress?.state || '',
+              pinCode: order.shippingAddress?.zipCode || ''
+            },
+            trackingId: order.trackingNumber,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt
+          })),
+          pagination: {
+            currentPage: response.data.data.pagination.page,
+            totalPages: response.data.data.pagination.pages,
+            totalOrders: response.data.data.pagination.total,
+            hasNext: response.data.data.pagination.page < response.data.data.pagination.pages,
+            hasPrev: response.data.data.pagination.page > 1
+          }
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch orders');
+      }
+    } catch (error) {
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch orders'));
     }
   }
 
   async updateOrderStatus(orderId: string, status: string, trackingId?: string) {
     try {
-      const response = await axios.patch(`/orders/${orderId}/status`, {
+      const response = await axios.patch(`${API_BASE_URL}/api/admin/orders/${orderId}/status`, {
         status,
         trackingId
       });
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update order status');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update order status'));
     }
   }
 
@@ -203,28 +282,40 @@ class AuthService {
         limit: limit.toString()
       });
       
-      if (search) params.append('search', search);
-      if (status) params.append('status', status);
+      if (search) {
+        params.append('search', search);
+      }
       
-      const response = await axios.get(`/categories?${params}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch categories');
+      if (status) {
+        params.append('status', status);
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/api/admin/categories?${params.toString()}`);
+      
+      // Handle the backend response format: {success: true, data: {categories: [...], pagination: {...}}}
+      if (response.data && response.data.success && response.data.data) {
+        return response.data.data;
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error: unknown) {
+      console.error('Error in getAllCategories:', error);
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch categories'));
     }
   }
 
   async updateCategoryStatus(categoryId: string, isActive: boolean) {
     try {
-      const response = await axios.patch(`/categories/${categoryId}/status`, {
+      const response = await axios.patch(`${API_BASE_URL}/api/admin/categories/${categoryId}/status`, {
         isActive
       });
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update category status');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update category status'));
     }
   }
 
-  async createProduct(productData: any) {
+  async createProduct(productData: FormData | object) {
     try {
       const config = productData instanceof FormData ? {
         headers: {
@@ -232,14 +323,14 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.post('/products', productData, config);
+      const response = await axios.post(`${API_BASE_URL}/api/admin/products`, productData, config);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create product');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to create product'));
     }
   }
 
-  async createCategory(categoryData: any) {
+  async createCategory(categoryData: FormData | object) {
     try {
       const config = categoryData instanceof FormData ? {
         headers: {
@@ -247,14 +338,14 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.post('/categories', categoryData, config);
+      const response = await axios.post(`${API_BASE_URL}/api/admin/categories`, categoryData, config);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create category');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to create category'));
     }
   }
 
-  async updateProduct(productId: string, productData: any) {
+  async updateProduct(productId: string, productData: FormData | object) {
     try {
       const config = productData instanceof FormData ? {
         headers: {
@@ -262,14 +353,14 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.put(`/products/${productId}`, productData, config);
+      const response = await axios.put(`${API_BASE_URL}/api/admin/products/${productId}`, productData, config);
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update product');
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update product'));
     }
   }
 
-  async updateCategory(categoryId: string, categoryData: any) {
+  async updateCategory(categoryId: string, categoryData: FormData | object) {
     try {
       const config = categoryData instanceof FormData ? {
         headers: {
@@ -277,10 +368,95 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.put(`/categories/${categoryId}`, categoryData, config);
+      const response = await axios.put(`${API_BASE_URL}/api/admin/categories/${categoryId}`, categoryData, config);
       return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to update category'));
+    }
+  }
+
+  async getProductById(productId: string) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/products/${productId}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to get product'));
+    }
+  }
+
+  async getCategoryById(categoryId: string) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/categories/${categoryId}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to get category'));
+    }
+  }
+
+  async getProductsByCategory(categoryId: string, page: number = 1, limit: number = 10) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/products?category=${categoryId}&page=${page}&limit=${limit}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to get products by category'));
+    }
+  }
+
+  async deleteProduct(productId: string) {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/api/admin/products/${productId}`);
+      return response.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to delete product'));
+    }
+  }
+
+  async getCategoryTree() {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/categories/tree`);
+      return response.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to get category tree'));
+    }
+  }
+
+  async get(url: string) {
+    try {
+      const response = await axios.get(url);
+      return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update category');
+      // Preserve the original error structure for better error handling
+      throw error;
+    }
+  }
+
+  async post(url: string, data?: any) {
+    try {
+      const response = await axios.post(url, data);
+      return response.data;
+    } catch (error: any) {
+      // Preserve the original error structure for better error handling
+      throw error;
+    }
+  }
+
+  async put(url: string, data?: any) {
+    try {
+      const response = await axios.put(url, data);
+      return response.data;
+    } catch (error: any) {
+      // Preserve the original error structure for better error handling
+      throw error;
+    }
+  }
+
+  async delete(url: string) {
+    try {
+      const response = await axios.delete(url);
+      return response.data;
+    } catch (error: any) {
+      // Preserve the original error structure for better error handling
+      throw error;
     }
   }
 }

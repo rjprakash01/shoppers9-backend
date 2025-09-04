@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -8,10 +8,13 @@ import {
   ShoppingCart,
   FolderTree,
   BarChart3,
+  Filter,
   Menu,
   X,
   LogOut,
-  User
+  User,
+  Bell,
+  Settings
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -20,9 +23,31 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024);
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -30,6 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Products', href: '/products', icon: Package },
     { name: 'Orders', href: '/orders', icon: ShoppingCart },
     { name: 'Categories', href: '/categories', icon: FolderTree },
+    { name: 'Filters', href: '/filters', icon: Filter },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
@@ -39,11 +65,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+      } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shadow-lg`}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-gray-900">Shoppers9 Admin</h1>
           <button
@@ -114,34 +140,56 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            
-            <div className="flex-1 flex justify-center lg:justify-start">
-              <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                {location.pathname.slice(1) || 'dashboard'}
-              </h2>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 capitalize truncate">
+                  {location.pathname.slice(1) || 'dashboard'}
+                </h2>
+              </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:block">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden md:block">
                 <span className="text-sm text-gray-500">Welcome back, {user?.name}</span>
+              </div>
+              
+              {/* Notification Bell */}
+              <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md transition-colors relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              </button>
+              
+              {/* Settings */}
+              <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+                <Settings className="h-5 w-5" />
+              </button>
+              
+              {/* User Avatar */}
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="py-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <div className="py-4 sm:py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {children}
+              <div className="min-h-full">
+                {children}
+              </div>
             </div>
           </div>
         </main>

@@ -86,11 +86,28 @@ class ProductService {
     });
 
     const response = await api.get(`/products?${params.toString()}`);
+    
+    // Handle the nested response structure from backend
+    if (response.data.success && response.data.data) {
+      return {
+        products: response.data.data.products,
+        total: response.data.data.pagination.totalItems,
+        page: response.data.data.pagination.currentPage,
+        pages: response.data.data.pagination.totalPages
+      };
+    }
+    
+    // Fallback for direct response structure
     return response.data;
   }
 
   async getProduct(id: string): Promise<Product> {
     const response = await api.get(`/products/${id}`);
+    // Handle the nested response structure from backend
+    if (response.data.success && response.data.data) {
+      return response.data.data.product;
+    }
+    // Fallback for direct response structure
     return response.data.product;
   }
 

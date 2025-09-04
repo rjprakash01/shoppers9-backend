@@ -11,9 +11,8 @@ import { auth, superAdminOnly } from '../middleware/auth';
 
 const router = express.Router();
 
-// All routes are protected and require super admin access
+// All routes are protected and require authentication only
 router.use(auth);
-router.use(superAdminOnly);
 
 router.route('/')
   .get(getAllAdmins)

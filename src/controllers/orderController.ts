@@ -25,9 +25,9 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
 
     // Validate stock availability
     for (const item of cart.items) {
-      const product = await Product.findById(item.productId);
+      const product = await Product.findById(item.product);
       if (!product) {
-        return next(new AppError(`Product ${item.productId} not found`, 404));
+        return next(new AppError(`Product ${item.product} not found`, 404));
       }
 
       const variant = product.variants.find(v => v._id?.toString() === item.variantId);
@@ -76,7 +76,7 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     for (const item of cart.items) {
       await Product.updateOne(
         {
-          _id: item.productId,
+          _id: item.product,
           'variants._id': item.variantId,
           'variants.sizes.size': item.size
         },
@@ -128,7 +128,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response, ne
       .sort({ createdAt: -1 })
       .limit(Number(limit) * 1)
       .skip((Number(page) - 1) * Number(limit))
-      .populate('items.productId', 'name images');
+      .populate('items.product', 'name images');
 
     const total = await Order.countDocuments(query);
 
@@ -160,7 +160,7 @@ export const getOrderById = async (req: AuthenticatedRequest, res: Response, nex
     }
 
     const order = await Order.findOne({ orderId, userId })
-      .populate('items.productId', 'name images brand');
+      .populate('items.product', 'name images brand');
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -213,7 +213,7 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
     for (const item of order.items) {
       await Product.updateOne(
         {
-          _id: item.productId,
+          _id: item.product,
           'variants._id': item.variantId,
           'variants.sizes.size': item.size
         },

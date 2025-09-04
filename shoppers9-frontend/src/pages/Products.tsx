@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Grid, List, ChevronDown, Star, Heart } from 'lucide-react';
 import { productService, type Product, type ProductFilters } from '../services/products';
+import { wishlistService } from '../services/wishlist';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatPrice, formatPriceRange } from '../utils/currency';
+import { getImageUrl } from '../utils/imageUtils';
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
@@ -15,6 +19,7 @@ const Products: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [wishlistItems, setWishlistItems] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
     limit: 12,
@@ -92,6 +97,47 @@ const Products: React.FC = () => {
     }
   };
 
+  const loadWishlistItems = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const wishlist = await wishlistService.getWishlist();
+      const itemIds = new Set(wishlist.items.map(item => item.product._id));
+      setWishlistItems(itemIds);
+    } catch (error) {
+      console.error('Failed to load wishlist:', error);
+    }
+  };
+
+  const handleToggleWishlist = async (productId: string) => {
+    if (!isAuthenticated) {
+      // Redirect to login or show login modal
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      if (wishlistItems.has(productId)) {
+        await wishlistService.removeFromWishlist(productId);
+        setWishlistItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
+      } else {
+        await wishlistService.addToWishlist(productId);
+        setWishlistItems(prev => new Set([...prev, productId]));
+      }
+    } catch (error) {
+      console.error('Failed to toggle wishlist:', error);
+    }
+  };
+
+  // Load wishlist items when authenticated
+  useEffect(() => {
+    loadWishlistItems();
+  }, [isAuthenticated]);
+
   const renderProductCard = (product: Product) => {
     const firstVariant = product.variants?.[0];
     const priceRange = product.minPrice !== product.maxPrice;
@@ -102,12 +148,12 @@ const Products: React.FC = () => {
           <div className="flex p-4">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
-                src={firstVariant?.images?.[0] || '/placeholder-image.jpg'}
+                src={getImageUrl(firstVariant?.images?.[0] || product.images?.[0])}
                 alt={product.name}
                 className="w-32 h-40 object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-image.jpg';
+                  target.src = '/placeholder-image.svg';
                 }}
               />
             </Link>
@@ -136,13 +182,31 @@ const Products: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <button className="p-2 text-gray-400 hover:text-pink-500 transition-colors">
-                    <Heart className="h-4 w-4" />
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleToggleWishlist(product._id);
+                    }}
+                    className={`p-2 transition-colors ${
+                      wishlistItems.has(product._id)
+                        ? 'text-red-500 hover:text-red-600'
+                        : 'text-gray-400 hover:text-red-500'
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${
+                      wishlistItems.has(product._id) ? 'fill-current' : ''
+                    }`} />
                   </button>
                   <button
                     onClick={() => handleAddToCart(product)}
                     disabled={product.totalStock === 0}
-                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className={`px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                      product.totalStock === 0 
+                        ? 'bg-gray-300 text-gray-700' 
+                        : 'text-white'
+                    }`}
+                    style={product.totalStock === 0 ? {} : { backgroundColor: '#322F61' }}
                   >
                     {product.totalStock === 0 ? 'Out of Stock' : 'Add to Bag'}
                   </button>
@@ -156,15 +220,15 @@ const Products: React.FC = () => {
     
     return (
       <div key={product._id} className="group bg-white border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-        <Link to={`/products/${product._id}`} className="block">
-          <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden">
+          <Link to={`/products/${product._id}`} className="block">
             <img
-              src={firstVariant?.images?.[0] || '/placeholder-image.jpg'}
+              src={getImageUrl(firstVariant?.images?.[0] || product.images?.[0])}
               alt={product.name}
               className="w-full aspect-[3/4] object-cover group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-image.jpg';
+                target.src = '/placeholder-image.svg';
               }}
             />
             {product.totalStock === 0 && (
@@ -172,11 +236,24 @@ const Products: React.FC = () => {
                 <span className="text-white font-medium text-sm bg-red-500 px-3 py-1">Out of Stock</span>
               </div>
             )}
-            <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <Heart className="h-4 w-4 text-gray-600 hover:text-pink-500" />
-            </button>
-          </div>
-        </Link>
+          </Link>
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleToggleWishlist(product._id);
+            }}
+            className={`absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${
+              wishlistItems.has(product._id) ? 'opacity-100' : ''
+            }`}
+          >
+            <Heart className={`h-4 w-4 transition-colors ${
+              wishlistItems.has(product._id)
+                ? 'text-red-500 fill-current'
+                : 'text-gray-600 hover:text-red-500'
+            }`} />
+          </button>
+        </div>
         
         <div className="p-3">
           <Link to={`/products/${product._id}`} className="block">
@@ -200,7 +277,12 @@ const Products: React.FC = () => {
           <button
             onClick={() => handleAddToCart(product)}
             disabled={product.totalStock === 0}
-            className="w-full py-2 text-xs font-medium border border-gray-300 text-gray-700 hover:border-pink-500 hover:text-pink-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-700"
+            className={`w-full py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+              product.totalStock === 0 
+                ? 'bg-gray-300 text-gray-700' 
+                : 'text-white'
+            }`}
+            style={product.totalStock === 0 ? {} : { backgroundColor: '#322F61' }}
           >
             {product.totalStock === 0 ? 'Out of Stock' : 'Add to Bag'}
           </button>

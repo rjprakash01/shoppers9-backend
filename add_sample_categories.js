@@ -31,7 +31,7 @@ function createCategory(categoryData) {
     const options = {
       hostname: 'localhost',
       port: 5002,
-      path: '/api/categories',
+      path: '/api/admin/categories',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

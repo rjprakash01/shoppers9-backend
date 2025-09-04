@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-import { Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -73,9 +73,25 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           isActive: initialData.isActive ?? true,
           sortOrder: initialData.sortOrder || 0,
           imageFile: undefined,
-          imagePreview: initialData.image || undefined
+          imagePreview: initialData.image ? 
+            (initialData.image.startsWith('http') ? initialData.image : `${window.location.origin}${initialData.image}`) 
+            : undefined
         });
       }
+    } else {
+      // Reset form when modal closes
+      setFormData({
+        name: '',
+        description: '',
+        slug: '',
+        image: '',
+        parentCategory: '',
+        isActive: true,
+        sortOrder: 0,
+        imageFile: undefined,
+        imagePreview: undefined
+      });
+      setErrors({});
     }
   }, [isOpen, initialData]);
 
@@ -117,12 +133,12 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     }));
   };
 
-  const handleInputChange = (field: keyof CategoryFormData, value: any) => {
+  const handleInputChange = (field: keyof CategoryFormData, value: string | boolean | number) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
       
       // Auto-generate slug when name changes
-      if (field === 'name' && !isEditing) {
+      if (field === 'name' && !isEditing && typeof value === 'string') {
         updated.slug = generateSlug(value);
       }
       
@@ -284,6 +300,9 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
                   onChange={handleImageChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="text-xs text-gray-500">
+                  Upload an image for the category. Maximum file size: 10MB. Supported formats: JPG, PNG, WebP.
+                </p>
                 
                 {/* Image Preview */}
                 {formData.imagePreview && (

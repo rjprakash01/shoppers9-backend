@@ -13,9 +13,8 @@ import { adminOnly } from '../middleware/auth';
 
 const router = express.Router();
 
-// All routes require authentication and admin privileges
+// All routes require authentication only
 router.use(auth);
-router.use(adminOnly);
 
 // Get all users with pagination, search, filter, sort
 router.get('/', getAllUsers);

@@ -85,11 +85,8 @@ const Checkout: React.FC = () => {
     
     setIsLoading(true);
     try {
-      // First create the shipping address if user is authenticated
-      let shippingAddressId = '';
-      
-      if (isAuthenticated) {
-        const addressData = {
+      const orderData = {
+        shippingAddress: {
           name: shippingAddress.fullName,
           phone: shippingAddress.phone,
           addressLine1: shippingAddress.address,
@@ -97,28 +94,14 @@ const Checkout: React.FC = () => {
           city: shippingAddress.city,
           state: shippingAddress.state,
           pincode: shippingAddress.pincode,
-          landmark: '',
-          isDefault: false
-        };
-        
-        const { authService } = await import('../services/auth');
-        const createdAddress = await authService.addAddress(addressData);
-        shippingAddressId = createdAddress.id;
-      }
-      
-      const orderData = {
-        items: cartItems.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        shippingAddressId,
+          landmark: ''
+        },
         paymentMethod: 'card'
       };
       
       const order = await orderService.createOrder(orderData);
       await clearCart();
-      navigate(`/orders/${order._id}`);
+      navigate(`/orders/${order.orderId}`);
     } catch (error) {
       console.error('Failed to place order:', error);
       alert('Failed to place order. Please try again.');
@@ -135,12 +118,12 @@ const Checkout: React.FC = () => {
         {cartItems.map((item, index) => (
           <div key={index} className="flex items-center space-x-4">
             <img
-              src={item.variant?.images?.[0] || '/placeholder-image.jpg'}
-              alt={item.product?.name || 'Product'}
+              src={item.variant?.images?.[0] || '/placeholder-image.svg'}
+              alt={item.productData?.name || 'Product'}
               className="w-16 h-16 object-cover rounded-lg"
             />
             <div className="flex-1">
-              <h4 className="font-medium text-gray-900">{item.product?.name}</h4>
+              <h4 className="font-medium text-gray-900">{item.productData?.name}</h4>
               <p className="text-sm text-gray-600">
                 {item.variant?.color} • Size: {item.size}
               </p>

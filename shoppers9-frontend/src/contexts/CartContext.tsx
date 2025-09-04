@@ -33,46 +33,59 @@ interface CartProviderProps {
 }
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [localCart, setLocalCart] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load local cart on mount
+  // Load local cart on mount and when authentication changes
   useEffect(() => {
-    if (!isAuthenticated) {
-      const savedCart = localStorage.getItem('localCart');
-      if (savedCart) {
-        setLocalCart(JSON.parse(savedCart));
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        const savedCart = localStorage.getItem('localCart');
+        if (savedCart) {
+          setLocalCart(JSON.parse(savedCart));
+        }
+      } else {
+        // When user logs in, prepare to sync local cart
+        const savedCart = localStorage.getItem('localCart');
+        if (savedCart) {
+          setLocalCart(JSON.parse(savedCart));
+        }
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   // Load server cart when user is authenticated
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (!authLoading && isAuthenticated && user) {
       loadServerCart();
-    } else {
+    } else if (!authLoading && !isAuthenticated) {
       setCart(null);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, authLoading]);
 
   const loadServerCart = async () => {
     try {
       setIsLoading(true);
+      
+      // First, sync local cart with server if there are local items
+      if (localCart.length > 0) {
+        const syncedCart = await cartService.syncLocalCartWithServer();
+        if (syncedCart) {
+          setCart(syncedCart);
+          setLocalCart([]);
+          return;
+        }
+      }
+      
+      // Load server cart
       const serverCart = await cartService.getCart();
       setCart(serverCart);
-      
-      // Sync local cart with server if there are local items
-      if (localCart.length > 0) {
-        await cartService.syncLocalCartWithServer();
-        setLocalCart([]);
-        // Reload cart after sync
-        const updatedCart = await cartService.getCart();
-        setCart(updatedCart);
-      }
     } catch (error) {
-      console.error('Failed to load cart:', error);
+      // Silently handle cart loading errors for unauthenticated users
+      // This is expected behavior when users are not logged in
+      setCart(null);
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +94,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addToCart = async (product: Product, variantId: string, size: string, quantity: number = 1) => {
     try {
       setIsLoading(true);
+      console.log('CartContext - addToCart called with:', { productId: product._id, variantId, size, quantity });
       
       if (isAuthenticated) {
         const updatedCart = await cartService.addToCart(product._id, variantId, size, quantity);
@@ -97,17 +111,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  const updateCartItem = async (productId: string, variantId: string, size: string, quantity: number) => {
+  const updateCartItem = async (itemIdOrProductId: string, variantId: string, size: string, quantity: number) => {
     try {
       setIsLoading(true);
       
       if (isAuthenticated) {
-        // For server cart, we need the item ID, not product ID
-        // This would need to be updated based on how the backend handles updates
-        const updatedCart = await cartService.updateCartItem(productId, quantity);
+        // For server cart, we need the item ID
+        const updatedCart = await cartService.updateCartItem(itemIdOrProductId, variantId, size, quantity);
         setCart(updatedCart);
       } else {
-        const updatedLocalCart = cartService.updateLocalCartItem(productId, variantId, size, quantity);
+        const updatedLocalCart = cartService.updateLocalCartItem(itemIdOrProductId, variantId, size, quantity);
         setLocalCart(updatedLocalCart);
       }
     } catch (error) {
@@ -118,16 +131,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
-  const removeFromCart = async (productId: string, variantId?: string, size?: string) => {
+  const removeFromCart = async (itemIdOrProductId: string, variantId?: string, size?: string) => {
     try {
       setIsLoading(true);
       
       if (isAuthenticated) {
-        // For server cart, we need the item ID, not product ID
-        const updatedCart = await cartService.removeFromCart(productId);
+        // For server cart, we need the item ID
+        const updatedCart = await cartService.removeFromCart(itemIdOrProductId, variantId, size);
         setCart(updatedCart);
       } else {
-        const updatedLocalCart = cartService.removeFromLocalCart(productId, variantId, size);
+        const updatedLocalCart = cartService.removeFromLocalCart(itemIdOrProductId, variantId, size);
         setLocalCart(updatedLocalCart);
       }
     } catch (error) {
@@ -159,7 +172,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const refreshCart = async () => {
     if (isAuthenticated) {
-      await loadServerCart();
+      try {
+        setIsLoading(true);
+        console.log('Refreshing cart from server...');
+        const serverCart = await cartService.getCart();
+        console.log('Server cart received:', serverCart);
+        console.log('Server cart items:', serverCart?.items);
+        setCart(serverCart);
+      } catch (error) {
+        console.error('Failed to refresh cart:', error);
+        setCart(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

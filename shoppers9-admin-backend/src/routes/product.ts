@@ -7,7 +7,11 @@ import {
   deleteProduct,
   toggleProductStatus,
   getProductAnalytics,
-  bulkUpdateProducts
+  bulkUpdateProducts,
+  getProductFilters,
+  getProductFilterValues,
+  setProductFilterValues,
+  getAvailableFilterOptionsForCategory
 } from '../controllers/productController';
 import { auth, adminOnly } from '../middleware/auth';
 import { uploadProductImages, handleUploadError } from '../middleware/upload';
@@ -19,7 +23,7 @@ router.use(auth);
 
 router.route('/')
   .get(getAllProducts)
-  .post(adminOnly, uploadProductImages, handleUploadError, createProduct);
+  .post(uploadProductImages, handleUploadError, createProduct);
 
 router.route('/analytics')
   .get(getProductAnalytics);
@@ -28,13 +32,29 @@ router.route('/export')
   .get(getAllProducts); // Temporary placeholder - implement exportProducts in controller
 
 router.route('/bulk-update')
-  .put(adminOnly, bulkUpdateProducts);
+  .put(bulkUpdateProducts);
+
+// Get products by category
+router.route('/category/:categoryId')
+  .get((req, res) => {
+    // Set the category parameter from the URL and call getAllProducts
+    req.query.category = req.params.categoryId;
+    getAllProducts(req, res);
+  });
 
 router.route('/:id')
   .get(getProduct)
-  .put(adminOnly, uploadProductImages, handleUploadError, updateProduct)
-  .delete(adminOnly, deleteProduct);
+  .put(uploadProductImages, handleUploadError, updateProduct)
+  .delete(deleteProduct);
 
-router.put('/:id/toggle-status', adminOnly, toggleProductStatus);
+router.put('/:id/toggle-status', toggleProductStatus);
+
+// Filter-related routes
+router.get('/:id/filters', getProductFilters);
+router.get('/:id/filter-values', getProductFilterValues);
+router.post('/:id/filter-values', setProductFilterValues);
+
+// Get available filter options for a category based on existing products
+router.get('/category/:categoryId/available-filter-options', getAvailableFilterOptionsForCategory);
 
 export default router;

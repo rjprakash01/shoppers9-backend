@@ -3,6 +3,7 @@ import { Package, Calendar, MapPin, Eye, Truck, CheckCircle, Clock, XCircle } fr
 import { useAuth } from '../contexts/AuthContext';
 import { orderService, type Order } from '../services/orders';
 import { formatPrice } from '../utils/currency';
+import { getImageUrl } from '../utils/imageUtils';
 import { useNavigate } from 'react-router-dom';
 
 const Orders: React.FC = () => {
@@ -190,7 +191,7 @@ const Orders: React.FC = () => {
                             <div key={index} className="flex items-center space-x-3">
                               {item.product?.images?.[0] && (
                                 <img
-                                  src={item.product.images[0]}
+                                  src={getImageUrl(item.product.images[0])}
                                   alt={item.product.name}
                                   className="w-12 h-12 object-cover rounded-lg"
                                 />
@@ -229,11 +230,11 @@ const Orders: React.FC = () => {
                               Shipping Address
                             </h4>
                             <div className="text-sm text-gray-600">
-                              <p>{order.shippingAddress.street}</p>
+                              <p>{order.shippingAddress.addressLine1}</p>
+                              {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
                               <p>
-                                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
                               </p>
-                              <p>{order.shippingAddress.country}</p>
                             </div>
                           </div>
                         )}

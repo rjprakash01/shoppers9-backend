@@ -56,26 +56,26 @@ resource "aws_iam_role" "ecs_task_role" {
 }
 
 # CloudWatch Log Groups
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${var.project_name}-backend"
-  retention_in_days = 30
+# resource "aws_cloudwatch_log_group" "backend" {
+#   name              = "/ecs/${var.project_name}-backend"
+#   retention_in_days = 30
+#
+#   tags = var.tags
+# }
 
-  tags = var.tags
-}
+# resource "aws_cloudwatch_log_group" "admin" {
+#   name              = "/ecs/${var.project_name}-admin"
+#   retention_in_days = 30
+#
+#   tags = var.tags
+# }
 
-resource "aws_cloudwatch_log_group" "admin" {
-  name              = "/ecs/${var.project_name}-admin"
-  retention_in_days = 30
-
-  tags = var.tags
-}
-
-resource "aws_cloudwatch_log_group" "frontend" {
-  name              = "/ecs/${var.project_name}-frontend"
-  retention_in_days = 30
-
-  tags = var.tags
-}
+# resource "aws_cloudwatch_log_group" "frontend" {
+#   name              = "/ecs/${var.project_name}-frontend"
+#   retention_in_days = 30
+#
+#   tags = var.tags
+# }
 
 # Security Groups
 resource "aws_security_group" "ecs_backend" {
@@ -170,7 +170,7 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-group"         = "/ecs/${var.project_name}-backend"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
@@ -214,7 +214,7 @@ resource "aws_ecs_task_definition" "admin" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.admin.name
+          "awslogs-group"         = "/ecs/${var.project_name}-admin"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
@@ -258,7 +258,7 @@ resource "aws_ecs_task_definition" "frontend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
+          "awslogs-group"         = "/ecs/${var.project_name}-frontend"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }

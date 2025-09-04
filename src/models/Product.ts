@@ -29,12 +29,11 @@ const productSizeSchema = new Schema<IProductSize>({
     min: 0,
     default: 0
   },
-  sku: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  }
+  // sku: {
+  //   type: String,
+  //   required: true,
+  //   trim: true
+  // }
 });
 
 const productVariantSchema = new Schema<IProductVariant>({
@@ -111,14 +110,8 @@ const productSchema = new Schema<IProduct>({
   }
 }, {
   timestamps: true,
-  toJSON: {
-    transform: function(doc: any, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-      return ret;
-    }
-  }
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indexes
@@ -130,38 +123,53 @@ productSchema.index({ createdAt: -1 });
 productSchema.index({ 'variants.sizes.price': 1 });
 
 // Virtual for minimum price
-productSchema.virtual('minPrice').get(function() {
+productSchema.virtual('minPrice').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
   let minPrice = Infinity;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      if (size.price < minPrice) {
-        minPrice = size.price;
-      }
-    });
+    if (variant.sizes && Array.isArray(variant.sizes)) {
+      variant.sizes.forEach((size: any) => {
+        if (size.price < minPrice) {
+          minPrice = size.price;
+        }
+      });
+    }
   });
   return minPrice === Infinity ? 0 : minPrice;
 });
 
 // Virtual for maximum price
-productSchema.virtual('maxPrice').get(function() {
+productSchema.virtual('maxPrice').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
   let maxPrice = 0;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      if (size.price > maxPrice) {
-        maxPrice = size.price;
-      }
-    });
+    if (variant.sizes && Array.isArray(variant.sizes)) {
+      variant.sizes.forEach((size: any) => {
+        if (size.price > maxPrice) {
+          maxPrice = size.price;
+        }
+      });
+    }
   });
   return maxPrice;
 });
 
 // Virtual for total stock
-productSchema.virtual('totalStock').get(function() {
+productSchema.virtual('totalStock').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
   let totalStock = 0;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      totalStock += size.stock;
-    });
+    if (variant.sizes && Array.isArray(variant.sizes)) {
+      variant.sizes.forEach((size: any) => {
+        totalStock += size.stock;
+      });
+    }
   });
   return totalStock;
 });

@@ -23,12 +23,21 @@ if (!fs.existsSync(productsDir)) {
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Determine destination based on the route
-    if (req.route?.path.includes('categories')) {
+    // Determine destination based on the URL path
+    console.log('Upload destination check:', {
+      originalUrl: req.originalUrl,
+      path: req.path,
+      route: req.route?.path
+    });
+    
+    if (req.originalUrl.includes('/categories') || req.path.includes('categories')) {
+      console.log('Saving to categories directory');
       cb(null, categoriesDir);
-    } else if (req.route?.path.includes('products')) {
+    } else if (req.originalUrl.includes('/products') || req.path.includes('products')) {
+      console.log('Saving to products directory');
       cb(null, productsDir);
     } else {
+      console.log('Saving to main uploads directory');
       cb(null, uploadsDir);
     }
   },
@@ -40,12 +49,41 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter to allow only images
+// File filter to allow specific image formats
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  if (file.mimetype.startsWith('image/')) {
+  console.log('File filter check:', {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    fieldname: file.fieldname,
+    size: file.size
+  });
+  
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/svg+xml',
+    'image/webp',
+    'image/gif',
+    'image/bmp',
+    'image/tiff'
+  ];
+  
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg', '.webp', '.gif', '.bmp', '.tiff', '.tif'];
+  const fileExtension = path.extname(file.originalname).toLowerCase();
+  
+  console.log('Validation check:', {
+    fileExtension,
+    mimetypeAllowed: allowedMimeTypes.includes(file.mimetype),
+    extensionAllowed: allowedExtensions.includes(fileExtension)
+  });
+  
+  if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+    console.log('File accepted:', file.originalname);
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'));
+    console.log('File rejected:', file.originalname, 'mimetype:', file.mimetype, 'extension:', fileExtension);
+    cb(new Error('Only image files (JPG, JPEG, PNG, SVG, WebP, GIF, BMP, TIFF) are allowed!'));
   }
 };
 
@@ -54,7 +92,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
   }
 });
 
@@ -70,7 +108,7 @@ export const handleUploadError = (error: any, req: any, res: any, next: any) => 
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'File size too large. Maximum size is 5MB.'
+        message: 'File size too large. Maximum size is 10MB.'
       });
     }
     if (error.code === 'LIMIT_FILE_COUNT') {
@@ -81,10 +119,10 @@ export const handleUploadError = (error: any, req: any, res: any, next: any) => 
     }
   }
   
-  if (error.message === 'Only image files are allowed!') {
+  if (error.message === 'Only image files (JPG, JPEG, PNG, SVG, WebP, GIF, BMP, TIFF) are allowed!') {
     return res.status(400).json({
       success: false,
-      message: 'Only image files are allowed!'
+      message: 'Only image files (JPG, JPEG, PNG, SVG, WebP, GIF, BMP, TIFF) are allowed!'
     });
   }
   

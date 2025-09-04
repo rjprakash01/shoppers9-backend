@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Validation schemas
 const addToCartSchema = Joi.object({
-  productId: Joi.string().required(),
+  product: Joi.string().required(),
   variantId: Joi.string().required(),
   size: Joi.string().optional(),
   quantity: Joi.number().integer().min(1).default(1)

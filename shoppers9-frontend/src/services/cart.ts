@@ -3,7 +3,8 @@ import type { Product } from './products';
 
 export interface CartItem {
   _id?: string;
-  productId: string;
+  product: string;
+  productId?: string; // Keep for backward compatibility during transition
   variantId: string;
   size: string;
   quantity: number;
@@ -11,7 +12,7 @@ export interface CartItem {
   originalPrice: number;
   discount: number;
   isSelected: boolean;
-  product?: Product;
+  productData?: Product;
   variant?: {
     color: string;
     colorCode?: string;
@@ -31,33 +32,78 @@ export interface Cart {
 class CartService {
   async getCart(): Promise<Cart> {
     const response = await api.get('/cart');
-    return response.data.cart;
+    const cart = response.data.data.cart;
+    
+    // Map populated product data to productData field
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => ({
+        ...item,
+        productData: item.product, // Map the populated product to productData
+        product: typeof item.product === 'object' ? item.product._id : item.product
+      }));
+    }
+    
+    return cart;
   }
 
   async addToCart(productId: string, variantId: string, size: string, quantity: number = 1): Promise<Cart> {
-    const response = await api.post('/cart/add', {
-      productId,
+    const payload = {
+      product: productId,
       variantId,
       size,
       quantity
-    });
-    return response.data.cart;
+    };
+    console.log('Cart service - sending payload:', payload);
+    const response = await api.post('/cart/add', payload);
+    const cart = response.data.data.cart;
+    
+    // Map populated product data to productData field
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => ({
+        ...item,
+        productData: item.product, // Map the populated product to productData
+        product: typeof item.product === 'object' ? item.product._id : item.product
+      }));
+    }
+    
+    return cart;
   }
 
-  async updateCartItem(itemId: string, quantity: number): Promise<Cart> {
-    const response = await api.put(`/cart/items/${itemId}`, {
-      quantity
-    });
-    return response.data.cart;
+  async updateCartItem(itemId: string, variantId: string, size: string, quantity: number): Promise<Cart> {
+    const response = await api.put(`/cart/item/${itemId}/quantity`, { quantity });
+    const cart = response.data.data.cart;
+    
+    // Map populated product data to productData field
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => ({
+        ...item,
+        productData: item.product, // Map the populated product to productData
+        product: typeof item.product === 'object' ? item.product._id : item.product
+      }));
+    }
+    
+    return cart;
   }
 
-  async removeFromCart(itemId: string): Promise<Cart> {
-    const response = await api.delete(`/cart/items/${itemId}`);
-    return response.data.cart;
+  async removeFromCart(itemId: string, variantId?: string, size?: string): Promise<Cart> {
+    const response = await api.delete(`/cart/item/${itemId}`);
+    const cart = response.data.data.cart;
+    
+    
+    // Map populated product data to productData field
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => ({
+        ...item,
+        productData: item.product, // Map the populated product to productData
+        product: typeof item.product === 'object' ? item.product._id : item.product
+      }));
+    }
+    
+    return cart;
   }
 
   async clearCart(): Promise<void> {
-    await api.delete('/cart/clear');
+    await api.delete('/cart');
   }
 
   // Local cart management for non-authenticated users
@@ -73,7 +119,7 @@ class CartService {
   addToLocalCart(product: Product, variantId: string, size: string, quantity: number = 1): CartItem[] {
     const cart = this.getLocalCart();
     const existingItem = cart.find(item => 
-      item.productId === product._id && 
+      (item.product || item.productId) === product._id && 
       item.variantId === variantId && 
       item.size === size
     );
@@ -91,7 +137,8 @@ class CartService {
     } else {
       cart.push({
         _id: `local_${Date.now()}`,
-        productId: product._id,
+        product: product._id,
+        productId: product._id, // Keep for backward compatibility
         variantId,
         size,
         quantity,
@@ -99,7 +146,7 @@ class CartService {
         originalPrice: sizeInfo.originalPrice,
         discount: sizeInfo.discount,
         isSelected: true,
-        product,
+        productData: product,
         variant: {
           color: variant.color,
           colorCode: variant.colorCode,
@@ -158,13 +205,23 @@ class CartService {
 
   // Sync local cart with server cart when user logs in
   async syncLocalCartWithServer(): Promise<Cart | null> {
+    // Check if user is authenticated before attempting sync
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      console.log('User not authenticated, skipping cart sync');
+      return null;
+    }
+
     const localCart = this.getLocalCart();
     if (localCart.length === 0) return null;
 
     try {
       // Add each local cart item to server cart
       for (const item of localCart) {
-        await this.addToCart(item.productId, item.variantId, item.size, item.quantity);
+        const productId = item.product || item.productId;
+        if (productId) {
+          await this.addToCart(productId, item.variantId, item.size, item.quantity);
+        }
       }
 
       // Clear local cart after sync

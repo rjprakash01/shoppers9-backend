@@ -56,6 +56,12 @@ const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
 });
 
+const adminLoginSchema = Joi.object({
+  email: Joi.string().email().optional(),
+  phone: Joi.string().optional(),
+  password: Joi.string().required()
+}).or('email', 'phone');
+
 // Routes
 
 /**
@@ -116,6 +122,12 @@ router.get('/me',
 router.post('/resend-otp',
   validateRequest(sendOTPSchema),
   asyncHandler(authController.resendOTP)
+);
+
+// Admin login endpoint
+router.post('/admin/login',
+  validateRequest(adminLoginSchema),
+  asyncHandler((req: any, res: any) => authController.adminLogin(req, res))
 );
 
 export default router;

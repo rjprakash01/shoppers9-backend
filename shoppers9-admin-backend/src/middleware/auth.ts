@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import Admin from '../models/Admin';
 import { AuthRequest } from '../types';
 
@@ -16,6 +17,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
+    
     const admin = await Admin.findById(decoded.id).select('-password');
 
     if (!admin) {

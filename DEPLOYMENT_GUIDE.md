@@ -4,6 +4,29 @@ This guide will help you deploy the Shoppers9 e-commerce application to AWS usin
 
 ## 🚀 Quick Start
 
+## ⚡ For Experienced Users
+
+**Critical Steps (Do NOT skip)**:
+
+1. **Create IAM user** with these managed policies:
+   - `AmazonEC2FullAccess`, `AmazonECS_FullAccess`, `AmazonRDSFullAccess`
+   - `CloudWatchFullAccess`, `ElasticLoadBalancingFullAccess`
+   - Plus inline policy with `iam:*`, `kms:*`, `logs:*`
+
+2. **Request quota increase**: IAM managed policies per user (10 → 20)
+
+3. **Configure AWS CLI** with the new user credentials
+
+4. **Deploy**:
+   ```bash
+   git clone https://github.com/rjprakash01/shoppers9-backend.git
+   cd shoppers9-backend
+   cp aws-deployment/.env.example aws-deployment/.env
+   # Edit .env with your values
+   cd aws-deployment/terraform
+   terraform init && terraform apply -auto-approve
+   ```
+
 ### Prerequisites
 
 1. **AWS Account** with appropriate permissions
@@ -29,32 +52,87 @@ cp aws-deployment/.env.example aws-deployment/.env
 
 ## 📋 Detailed Setup
 
-### Step 1: AWS Configuration
+### Step 1: AWS Account Preparation
 
-1. **Install AWS CLI**:
-   ```bash
-   # macOS
-   brew install awscli
-   
-   # Linux
-   curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-   unzip awscliv2.zip
-   sudo ./aws/install
+#### 1.1 Install AWS CLI
+```bash
+# macOS
+brew install awscli
+
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+#### 1.2 Create IAM User with Required Permissions
+
+1. **Go to AWS Console → IAM → Users → Create User**
+2. **User name**: `shoppers9-deployer` (or your preferred name)
+3. **Attach the following managed policies**:
+   - `AmazonEC2FullAccess`
+   - `AmazonECS_FullAccess`
+   - `AmazonRDSFullAccess`
+   - `CloudWatchFullAccess`
+   - `AmazonVPCFullAccess`
+   - `ElasticLoadBalancingFullAccess`
+   - `AmazonRoute53FullAccess`
+   - `AWSCertificateManagerFullAccess`
+   - `SecretsManagerReadWrite`
+   - `AmazonEC2ContainerRegistryFullAccess`
+
+4. **Create an inline policy named `TerraformDeploymentPolicy`**:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "iam:*",
+           "kms:*",
+           "logs:*",
+           "application-autoscaling:*",
+           "elasticloadbalancing:*",
+           "servicediscovery:*"
+         ],
+         "Resource": "*"
+       }
+     ]
+   }
    ```
 
-2. **Configure AWS Credentials**:
-   ```bash
-   aws configure
-   # Enter your AWS Access Key ID
-   # Enter your AWS Secret Access Key
-   # Enter your preferred region (e.g., us-east-1)
-   # Enter output format (json)
-   ```
+5. **Create Access Keys**:
+   - Go to Security credentials tab
+   - Create access key for CLI usage
+   - Download and save the credentials securely
 
-3. **Verify Configuration**:
-   ```bash
-   aws sts get-caller-identity
-   ```
+#### 1.3 Request AWS Service Quota Increases
+
+**Important**: Request these quota increases before deployment:
+
+1. **Go to AWS Console → Service Quotas**
+2. **Request increases for**:
+   - **IAM**: Managed policies per user (increase from 10 to 20)
+   - **EC2**: VPC Elastic IPs (if you have other EIPs in use)
+   - **ECS**: Services per cluster (usually sufficient at default)
+   - **DocumentDB**: Clusters per region (usually sufficient at default)
+
+3. **Processing time**: 24-48 hours for most requests
+
+#### 1.4 Configure AWS Credentials
+```bash
+aws configure
+# Enter your AWS Access Key ID
+# Enter your AWS Secret Access Key  
+# Enter your preferred region (e.g., us-east-1)
+# Enter output format (json)
+```
+
+#### 1.5 Verify Configuration
+```bash
+aws sts get-caller-identity
+```
 
 ### Step 2: Environment Configuration
 
@@ -85,29 +163,112 @@ cp aws-deployment/.env.example aws-deployment/.env
    RAZORPAY_KEY_SECRET=your_razorpay_key_secret_here
    ```
 
-### Step 3: Infrastructure Deployment
+### Step 3: Pre-Deployment Checklist
 
-1. **Deploy Infrastructure Only**:
-   ```bash
-   ./aws-deployment/scripts/deploy.sh infra
-   ```
+**Before running Terraform, ensure**:
 
-2. **Or Deploy Everything**:
-   ```bash
-   ./aws-deployment/scripts/deploy.sh all
-   ```
+- ✅ IAM user created with all required policies
+- ✅ Service quotas requested (if needed)
+- ✅ AWS CLI configured and tested
+- ✅ Environment variables configured
+- ✅ Terraform installed (v1.5.0+)
+- ✅ Docker installed and running
 
-### Step 4: Verify Deployment
+### Step 4: Infrastructure Deployment
 
-1. **Get Application URLs**:
-   ```bash
-   ./aws-deployment/scripts/deploy.sh urls
-   ```
+#### 4.1 Initialize Terraform
+```bash
+cd aws-deployment/terraform
+terraform init
+```
 
-2. **Check Service Status**:
-   ```bash
-   aws ecs describe-services --cluster shoppers9-cluster --services shoppers9-backend shoppers9-admin shoppers9-frontend
-   ```
+#### 4.2 Review Deployment Plan
+```bash
+terraform plan
+```
+
+**Review the output carefully**:
+- Check resource counts (should create ~30-40 resources)
+- Verify region and naming conventions
+- Ensure no unexpected deletions
+
+#### 4.3 Deploy Infrastructure
+```bash
+terraform apply -auto-approve
+```
+
+**Expected deployment time**: 15-20 minutes
+
+**If deployment fails**:
+1. Check error messages for permission issues
+2. Refer to [Troubleshooting section](#-troubleshooting)
+3. Fix permissions and retry
+
+#### 4.4 Build and Push Docker Images
+```bash
+# Return to project root
+cd ../..
+
+# Build and push images
+./aws-deployment/scripts/deploy.sh images
+```
+
+#### 4.5 Deploy ECS Services
+```bash
+./aws-deployment/scripts/deploy.sh services
+```
+
+**Or deploy everything at once**:
+```bash
+./aws-deployment/scripts/deploy.sh all
+```
+
+### Step 5: Verify Deployment
+
+#### 5.1 Check Infrastructure Status
+```bash
+# Check Terraform outputs
+cd aws-deployment/terraform
+terraform output
+
+# Verify ECS cluster
+aws ecs describe-clusters --clusters shoppers9-cluster
+
+# Check DocumentDB cluster
+aws docdb describe-db-clusters --db-cluster-identifier shoppers9-docdb-cluster
+```
+
+#### 5.2 Verify Services
+```bash
+# Check all services
+aws ecs describe-services --cluster shoppers9-cluster --services shoppers9-backend shoppers9-admin shoppers9-frontend
+
+# Check service health
+aws ecs list-tasks --cluster shoppers9-cluster
+```
+
+#### 5.3 Test Application URLs
+```bash
+# Get load balancer DNS
+aws elbv2 describe-load-balancers --names shoppers9-alb --query 'LoadBalancers[0].DNSName' --output text
+```
+
+**Test endpoints**:
+- Frontend: `http://YOUR_ALB_DNS/`
+- Admin: `http://YOUR_ALB_DNS/admin/`
+- API: `http://YOUR_ALB_DNS/api/health`
+
+#### 5.4 Monitor Logs
+```bash
+# Backend logs
+aws logs tail /ecs/shoppers9-backend --follow
+
+# Admin logs  
+aws logs tail /ecs/shoppers9-admin --follow
+
+# Frontend logs
+aws logs tail /ecs/shoppers9-frontend --follow
+```
 
 ## 🏠 Local Development
 
@@ -232,34 +393,214 @@ aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing
 
 ## 🔧 Troubleshooting
 
-### Common Issues
+### Permission Issues (Most Common)
 
-1. **Service Won't Start**
+#### 1. IAM Permission Errors
+
+**Error**: `AccessDeniedException` for various AWS services
+
+**Solution**:
+1. **Check IAM user has all required policies** (see Step 1.2)
+2. **Wait 5-10 minutes** after adding policies for propagation
+3. **Verify policy attachment**:
    ```bash
-   # Check logs
-   aws logs tail /ecs/shoppers9-backend --follow
-   
-   # Check task definition
-   aws ecs describe-task-definition --task-definition shoppers9-backend
+   aws iam list-attached-user-policies --user-name your-username
+   aws iam list-user-policies --user-name your-username
    ```
 
-2. **Database Connection Issues**
-   ```bash
-   # Check DocumentDB cluster status
-   aws docdb describe-db-clusters --db-cluster-identifier shoppers9-docdb-cluster
-   
-   # Check security groups
-   aws ec2 describe-security-groups --group-names shoppers9-docdb
+#### 2. CloudWatch Logs Permission Errors
+
+**Error**: `logs:DeleteLogGroup` access denied
+
+**Solution**:
+1. **Add CloudWatchFullAccess policy** to your IAM user
+2. **Or create inline policy**:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": "logs:*",
+         "Resource": "*"
+       }
+     ]
+   }
    ```
 
-3. **Load Balancer Issues**
-   ```bash
-   # Check load balancer status
-   aws elbv2 describe-load-balancers --names shoppers9-alb
-   
-   # Check target group health
-   aws elbv2 describe-target-health --target-group-arn TARGET_GROUP_ARN
+#### 3. KMS Key Access Errors
+
+**Error**: `KMSKeyNotAccessibleFault`
+
+**Solution**:
+1. **Add KMS permissions** to your IAM user:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": "kms:*",
+         "Resource": "*"
+       }
+     ]
+   }
    ```
+
+#### 4. RDS/DocumentDB Permission Errors
+
+**Error**: `rds:DescribeGlobalClusters` access denied
+
+**Solution**:
+1. **Add AmazonRDSFullAccess policy** to your IAM user
+2. **Ensure DocumentDB permissions** are included
+
+### Deployment Issues
+
+#### 1. Terraform Apply Failures
+
+**Step-by-step resolution**:
+
+1. **Clean up failed resources**:
+   ```bash
+   cd aws-deployment/terraform
+   terraform destroy -auto-approve
+   ```
+
+2. **If destroy fails with permission errors**:
+   - Fix IAM permissions first
+   - Wait 5-10 minutes
+   - Retry destroy
+
+3. **Fresh deployment**:
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply -auto-approve
+   ```
+
+#### 2. Service Won't Start
+
+**Diagnosis**:
+```bash
+# Check logs
+aws logs tail /ecs/shoppers9-backend --follow
+
+# Check task definition
+aws ecs describe-task-definition --task-definition shoppers9-backend
+
+# Check service status
+aws ecs describe-services --cluster shoppers9-cluster --services shoppers9-backend
+```
+
+**Common causes**:
+- Environment variables missing
+- Database connection issues
+- Image pull failures
+- Resource constraints
+
+#### 3. Database Connection Issues
+
+**Diagnosis**:
+```bash
+# Check DocumentDB cluster status
+aws docdb describe-db-clusters --db-cluster-identifier shoppers9-docdb-cluster
+
+# Check security groups
+aws ec2 describe-security-groups --group-names shoppers9-docdb
+
+# Test connectivity from ECS task
+aws ecs run-task --cluster shoppers9-cluster --task-definition shoppers9-backend --launch-type FARGATE
+```
+
+**Solutions**:
+- Verify security group rules
+- Check subnet routing
+- Validate credentials in Secrets Manager
+
+#### 4. Load Balancer Issues
+
+**Diagnosis**:
+```bash
+# Check load balancer status
+aws elbv2 describe-load-balancers --names shoppers9-alb
+
+# Check target group health
+aws elbv2 describe-target-health --target-group-arn TARGET_GROUP_ARN
+
+# Check listener rules
+aws elbv2 describe-listeners --load-balancer-arn LOAD_BALANCER_ARN
+```
+
+**Common issues**:
+- Target group not associated with load balancer
+- Health check failures
+- Security group blocking traffic
+
+### Service Quota Issues
+
+#### 1. IAM Policy Limit Exceeded
+
+**Error**: Cannot attach more policies to user
+
+**Solution**:
+1. **Request quota increase**:
+   - Go to AWS Console → Service Quotas
+   - Search for "IAM"
+   - Request increase for "Managed policies per user"
+   - Increase from 10 to 20
+
+2. **Alternative**: Consolidate policies into fewer, broader policies
+
+#### 2. EIP Limit Exceeded
+
+**Error**: Cannot allocate Elastic IP
+
+**Solution**:
+1. **Check current EIP usage**:
+   ```bash
+   aws ec2 describe-addresses
+   ```
+
+2. **Request quota increase** for VPC Elastic IPs
+
+### Emergency Recovery
+
+#### 1. Complete Infrastructure Reset
+
+```bash
+# Stop all services
+aws ecs update-service --cluster shoppers9-cluster --service shoppers9-backend --desired-count 0
+aws ecs update-service --cluster shoppers9-cluster --service shoppers9-admin --desired-count 0
+aws ecs update-service --cluster shoppers9-cluster --service shoppers9-frontend --desired-count 0
+
+# Wait for services to stop
+aws ecs wait services-stable --cluster shoppers9-cluster --services shoppers9-backend shoppers9-admin shoppers9-frontend
+
+# Force destroy (if normal destroy fails)
+cd aws-deployment/terraform
+terraform state list | xargs -I {} terraform state rm {}
+terraform destroy -auto-approve
+
+# Clean state
+rm -f terraform.tfstate*
+rm -rf .terraform/
+
+# Fresh start
+terraform init
+terraform apply -auto-approve
+```
+
+#### 2. Manual Resource Cleanup
+
+If Terraform fails to destroy resources:
+
+1. **ECS Services**: Stop and delete manually
+2. **Load Balancer**: Delete target groups first, then ALB
+3. **DocumentDB**: Delete cluster instances, then cluster
+4. **VPC**: Delete NAT gateways, then subnets, then VPC
+5. **Security Groups**: Delete custom security groups
+6. **IAM Roles**: Delete roles created by Terraform
 
 ### Debug Commands
 

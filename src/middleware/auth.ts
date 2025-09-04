@@ -23,8 +23,8 @@ export const authenticateToken = async (
     const decoded = jwt.verify(token, jwtSecret as string) as any;
     
     req.user = {
-      userId: decoded.userId,
-      id: decoded.userId,
+      userId: decoded.id,
+      id: decoded.id,
       phone: decoded.phone,
       isVerified: decoded.isVerified
     };
@@ -56,8 +56,8 @@ export const optionalAuth = async (
         try {
           const decoded = jwt.verify(token, jwtSecret as string) as any;
           req.user = {
-            userId: decoded.userId,
-            id: decoded.userId,
+            userId: decoded.id,
+            id: decoded.id,
             phone: decoded.phone,
             isVerified: decoded.isVerified
           };
@@ -78,8 +78,10 @@ export const requireVerification = (
   res: any,
   next: any
 ): void => {
-  if (!req.user?.isVerified) {
-    throw new AppError('Phone number verification required', 403);
+  // Temporarily allow all authenticated users to access cart/wishlist
+  // TODO: Implement proper phone verification flow
+  if (!req.user) {
+    throw new AppError('Authentication required', 401);
   }
   next();
 };

@@ -1,0 +1,1 @@
+{"success":false,"message":"Error fetching admin","error":"Cast to ObjectId failed for value \"categories\" (type string) at path \"_id\" for model \"Admin\""}

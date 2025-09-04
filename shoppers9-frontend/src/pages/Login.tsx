@@ -62,7 +62,20 @@ const Login: React.FC = () => {
       await login(phone, otp);
       navigate(from, { replace: true });
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Invalid OTP');
+      const errorMessage = error.response?.data?.message || 'Invalid OTP';
+      
+      // If the error is about name being required for new users, redirect to signup
+      if (errorMessage.includes('Name is required for new users')) {
+        navigate('/signup', { 
+          state: { 
+            phone: phone,
+            message: 'Please complete your registration to continue'
+          }
+        });
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

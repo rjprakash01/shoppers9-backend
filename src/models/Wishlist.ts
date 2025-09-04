@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { IWishlist, IWishlistItem } from '../types';
 
 const wishlistItemSchema = new Schema<IWishlistItem>({
-  productId: {
+  product: {
     type: String,
     required: true,
     ref: 'Product'
@@ -38,18 +38,18 @@ const wishlistSchema = new Schema<IWishlist>({
 
 // Indexes
 // userId already has unique index from schema definition
-wishlistSchema.index({ 'items.productId': 1 });
+wishlistSchema.index({ 'items.product': 1 });
 wishlistSchema.index({ 'items.addedAt': -1 });
 
 // Method to add item to wishlist
 wishlistSchema.methods.addItem = function(productId: string, variantId?: string) {
   const existingItemIndex = this.items.findIndex(
-    (item: any) => item.productId === productId && item.variantId === variantId
+    (item: any) => item.product === productId && item.variantId === variantId
   );
 
   if (existingItemIndex === -1) {
     this.items.push({
-      productId,
+      product: productId,
       variantId,
       addedAt: new Date()
     });
@@ -61,7 +61,7 @@ wishlistSchema.methods.addItem = function(productId: string, variantId?: string)
 // Method to remove item from wishlist
 wishlistSchema.methods.removeItem = function(productId: string, variantId?: string) {
   this.items = this.items.filter(
-    (item: any) => !(item.productId === productId && item.variantId === variantId)
+    (item: any) => !(item.product === productId && item.variantId === variantId)
   );
   return this.save();
 };
@@ -69,7 +69,7 @@ wishlistSchema.methods.removeItem = function(productId: string, variantId?: stri
 // Method to check if item exists in wishlist
 wishlistSchema.methods.hasItem = function(productId: string, variantId?: string) {
   return this.items.some(
-    (item: any) => item.productId === productId && item.variantId === variantId
+    (item: any) => item.product === productId && item.variantId === variantId
   );
 };
 

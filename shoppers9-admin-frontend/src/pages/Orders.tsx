@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import {
-  Search,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -93,8 +92,8 @@ const Orders: React.FC = () => {
       const data: OrdersResponse = await authService.getAllOrders(page, 10, status);
       setOrders(data.orders);
       setPagination(data.pagination);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch orders');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch orders');
     } finally {
       setIsLoading(false);
     }
@@ -122,8 +121,8 @@ const Orders: React.FC = () => {
       setSelectedOrder(null);
       setNewStatus('');
       setTrackingId('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to update order status');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
       setUpdatingOrder(null);
     }

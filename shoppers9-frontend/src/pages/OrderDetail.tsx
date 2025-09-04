@@ -4,6 +4,7 @@ import { ArrowLeft, Package, Calendar, MapPin, Truck, CheckCircle, Clock, XCircl
 import { useAuth } from '../contexts/AuthContext';
 import { orderService, type Order } from '../services/orders';
 import { formatPrice } from '../utils/currency';
+import { getImageUrl } from '../utils/imageUtils';
 
 const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -250,7 +251,7 @@ const OrderDetail: React.FC = () => {
                 <div key={index} className="flex items-center space-x-4 border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
                   {item.product?.images?.[0] && (
                     <img
-                      src={item.product.images[0]}
+                      src={getImageUrl(item.product.images[0])}
                       alt={item.product.name}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
@@ -286,11 +287,11 @@ const OrderDetail: React.FC = () => {
                 Shipping Address
               </h2>
               <div className="text-gray-600">
-                <p>{order.shippingAddress.street}</p>
+                <p>{order.shippingAddress.addressLine1}</p>
+                {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
                 <p>
-                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
                 </p>
-                <p>{order.shippingAddress.country}</p>
               </div>
             </div>
             

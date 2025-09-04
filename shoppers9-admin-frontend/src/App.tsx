@@ -5,12 +5,15 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
-import Products from './pages/Products';
+import ProductManagement from './pages/ProductManagement';
 import Orders from './pages/Orders';
-import Categories from './pages/Categories';
+import CategoryManagement from './components/CategoryManagement';
+import FilterManagement from './components/FilterManagement';
+
+import FilterOptionManagement from './components/FilterOptionManagement';
+
 import Analytics from './pages/Analytics';
 import ProtectedRoute from './components/ProtectedRoute';
-;
 
 function App() {
   return (
@@ -43,10 +46,11 @@ function App() {
             <Route path="/products" element={
               <ProtectedRoute>
                 <Layout>
-                  <Products />
+                  <ProductManagement />
                 </Layout>
               </ProtectedRoute>
             } />
+
             <Route path="/orders" element={
               <ProtectedRoute>
                 <Layout>
@@ -57,7 +61,22 @@ function App() {
             <Route path="/categories" element={
               <ProtectedRoute>
                 <Layout>
-                  <Categories />
+                  <CategoryManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/filters" element={
+              <ProtectedRoute>
+                <Layout>
+                  <FilterManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/filter-options/:filterId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <FilterOptionManagement />
                 </Layout>
               </ProtectedRoute>
             } />
@@ -68,6 +87,7 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

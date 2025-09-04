@@ -4,15 +4,15 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "taskRoleArn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+    "executionRoleArn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
   "containerDefinitions": [
     {
       "name": "shoppers9-frontend",
-      "image": "YOUR_ECR_REPOSITORY_URI/shoppers9-frontend:latest",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend:latest",
       "portMappings": [
         {
-          "containerPort": 80,
+          "containerPort": 8080,
           "protocol": "tcp"
         }
       ],
@@ -24,21 +24,25 @@
         },
         {
           "name": "NGINX_PORT",
-          "value": "80"
+          "value": "8080"
+        },
+        {
+          "name": "VITE_API_URL",
+          "value": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com:3000/api"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/shoppers9-frontend",
-          "awslogs-region": "YOUR_REGION",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
       },
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "curl -f http://localhost:80/health || exit 1"
+          "curl -f http://localhost:8080/ || exit 1"
         ],
         "interval": 30,
         "timeout": 5,

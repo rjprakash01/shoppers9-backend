@@ -109,19 +109,55 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
     console.log('Creating category with data:', req.body);
     console.log('Uploaded file:', req.file);
     
+    // Handle parentCategory - extract ID if it's an object
+    let parentCategoryId = null;
+    if (req.body.parentCategory) {
+      if (typeof req.body.parentCategory === 'object' && req.body.parentCategory.id) {
+        parentCategoryId = req.body.parentCategory.id;
+      } else if (typeof req.body.parentCategory === 'string' && req.body.parentCategory !== '') {
+        parentCategoryId = req.body.parentCategory;
+      }
+    }
+    
+    // Determine level based on parent
+    let level = 1; // Default to level 1 (top-level category)
+    if (parentCategoryId) {
+      const parentCategory = await Category.findById(parentCategoryId);
+      if (!parentCategory) {
+        res.status(400).json({
+          success: false,
+          message: 'Parent category not found'
+        });
+        return;
+      }
+      level = parentCategory.level + 1; // Child level is parent level + 1
+      
+      // Validate maximum depth (3 levels)
+      if (level > 3) {
+        res.status(400).json({
+          success: false,
+          message: 'Maximum category depth (3 levels) exceeded'
+        });
+        return;
+      }
+    }
+    
     const categoryData = {
       ...req.body,
       createdBy: req.admin?.id,
-      // Convert empty string to null for parentCategory
-      parentCategory: req.body.parentCategory === '' ? null : req.body.parentCategory,
+      parentCategory: parentCategoryId,
+      level: level,
       // Add image URL if file was uploaded
       image: req.file ? `/uploads/categories/${req.file.filename}` : req.body.image || ''
     };
+    
+    // Remove slug from categoryData to let the pre-save hook generate it
+    delete categoryData.slug;
 
     console.log('Processed category data:', categoryData);
 
     const category = await Category.create(categoryData);
-    await category.populate('parentCategory', 'name');
+    await category.populate('parentCategory', 'name level');
 
     console.log('Category created successfully:', category);
 
@@ -136,7 +172,7 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
     if (error instanceof Error && error.message.includes('duplicate key')) {
       res.status(400).json({
         success: false,
-        message: 'Category name already exists'
+        message: 'Category name already exists at this level'
       });
       return;
     }
@@ -154,9 +190,54 @@ export const updateCategory = async (req: AuthRequest, res: Response): Promise<v
     console.log('Updating category with data:', req.body);
     console.log('Uploaded file:', req.file);
     
+    // Handle parentCategory - extract ID if it's an object
+    let parentCategoryId = null;
+    if (req.body.parentCategory) {
+      if (typeof req.body.parentCategory === 'object' && req.body.parentCategory.id) {
+        parentCategoryId = req.body.parentCategory.id;
+      } else if (typeof req.body.parentCategory === 'string' && req.body.parentCategory !== '') {
+        parentCategoryId = req.body.parentCategory;
+      }
+    }
+    
+    // Determine level based on parent
+    let level = 1; // Default to level 1 (top-level category)
+    if (parentCategoryId) {
+      const parentCategory = await Category.findById(parentCategoryId);
+      if (!parentCategory) {
+        res.status(400).json({
+          success: false,
+          message: 'Parent category not found'
+        });
+        return;
+      }
+      level = parentCategory.level + 1; // Child level is parent level + 1
+      
+      // Validate maximum depth (3 levels)
+      if (level > 3) {
+        res.status(400).json({
+          success: false,
+          message: 'Maximum category depth (3 levels) exceeded'
+        });
+        return;
+      }
+      
+      // Check for circular reference (category can't be its own parent or descendant)
+      const categoryId = req.params.id;
+      if (parentCategoryId === categoryId) {
+        res.status(400).json({
+          success: false,
+          message: 'Category cannot be its own parent'
+        });
+        return;
+      }
+    }
+    
     const updateData = {
       ...req.body,
       updatedBy: req.admin?.id,
+      parentCategory: parentCategoryId,
+      level: level,
       // Add image URL if file was uploaded, otherwise keep existing or use provided URL
       ...(req.file && { image: `/uploads/categories/${req.file.filename}` })
     };
@@ -364,6 +445,134 @@ export const bulkUpdateCategories = async (req: AuthRequest, res: Response): Pro
     res.status(500).json({
       success: false,
       message: 'Error updating categories',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get categories by level
+export const getCategoriesByLevel = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const level = parseInt(req.params.level as string);
+    const parentId = req.query.parentId as string;
+    
+    if (![1, 2, 3].includes(level)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid level. Must be 1, 2, or 3'
+      });
+      return;
+    }
+
+    const query: any = { level, isActive: true };
+    
+    if (level > 1 && parentId) {
+      query.parentCategory = parentId;
+    } else if (level === 1) {
+      query.parentCategory = null;
+    }
+
+    const categories = await Category.find(query)
+      .populate('parentCategory', 'name level')
+      .sort({ sortOrder: 1, name: 1 });
+
+    res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching categories by level',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get category tree (hierarchical structure)
+export const getCategoryTree = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // For admin interface, show all categories regardless of status
+    const categories = await Category.find({})
+      .populate('parentCategory', 'name level')
+      .sort({ level: 1, sortOrder: 1, name: 1 });
+
+    // Build hierarchical tree
+    const categoryMap = new Map();
+    const tree: any[] = [];
+
+    // First pass: create all category objects
+    categories.forEach(category => {
+      categoryMap.set(category._id.toString(), {
+        ...category.toJSON(),
+        children: []
+      });
+    });
+
+    // Second pass: build the tree structure
+    categories.forEach(category => {
+      const categoryObj = categoryMap.get(category._id.toString());
+      
+      if (category.parentCategory) {
+        const parentId = typeof category.parentCategory === 'string' 
+          ? category.parentCategory 
+          : (category.parentCategory as any)._id;
+        const parent = categoryMap.get(parentId.toString());
+        if (parent) {
+          parent.children.push(categoryObj);
+        }
+      } else {
+        tree.push(categoryObj);
+      }
+    });
+
+    res.json({
+      success: true,
+      data: tree
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching category tree',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get category path (breadcrumb)
+export const getCategoryPath = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const categoryId = req.params.id;
+    const path: any[] = [];
+    
+    let currentCategory = await Category.findById(categoryId).populate('parentCategory');
+    
+    while (currentCategory) {
+      path.unshift({
+        id: currentCategory._id,
+        name: currentCategory.name,
+        level: currentCategory.level,
+        slug: currentCategory.slug
+      });
+      
+      if (currentCategory.parentCategory) {
+        const parentId = typeof currentCategory.parentCategory === 'string' 
+          ? currentCategory.parentCategory 
+          : (currentCategory.parentCategory as any)._id;
+        currentCategory = await Category.findById(parentId).populate('parentCategory');
+      } else {
+        currentCategory = null;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: path
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching category path',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

@@ -131,10 +131,18 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
   const { itemId } = req.params;
   const { quantity } = req.body;
 
-  const cart = await Cart.findOne({ userId: userId });
+  const cart = await Cart.findOne({ userId });
   if (!cart) {
     throw new AppError('Cart not found', 404);
   }
+
+  // Fix any items that have productId but not product (backward compatibility)
+  cart.items.forEach((item) => {
+    const itemObj = (item as any).toObject ? (item as any).toObject() : item;
+    if (itemObj.productId && !item.product) {
+      item.product = itemObj.productId;
+    }
+  });
 
   const itemIndex = cart.items.findIndex(item => item._id?.toString() === itemId);
   if (itemIndex === -1) {
@@ -142,13 +150,23 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
   }
 
   const item = cart.items[itemIndex];
+  const itemObj = (item as any).toObject ? (item as any).toObject() : item;
   
-  // Verify stock availability
-  if (!item.product) {
+  // Handle both 'product' and 'productId' fields for backward compatibility
+  const productRef = item.product || itemObj.productId;
+  if (!productRef) {
     throw new AppError('Invalid cart item: missing product reference', 400);
   }
   
-  const product = await Product.findById(item.product);
+  // Convert product to string if it's an ObjectId
+  const productId = productRef.toString();
+  
+  // Fix the item if it has productId but not product
+  if (itemObj.productId && !item.product) {
+    item.product = itemObj.productId;
+  }
+  
+  const product = await Product.findById(productId);
   if (!product) {
     throw new AppError('Product not found', 404);
   }

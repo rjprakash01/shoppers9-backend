@@ -164,6 +164,39 @@ resource "aws_lb_listener_rule" "backend" {
     }
   }
 
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# Listener Rule for API path on main domain
+resource "aws_lb_listener_rule" "backend_path" {
+  count = var.certificate_arn != "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend_https[0].arn
+  priority     = 150
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.domain_name, "www.${var.domain_name}"]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+
   tags = var.tags
 }
 
@@ -182,6 +215,33 @@ resource "aws_lb_listener_rule" "admin" {
   condition {
     host_header {
       values = [var.admin_domain_name]
+    }
+  }
+
+  tags = var.tags
+}
+
+# Listener Rule for Admin path on main domain
+resource "aws_lb_listener_rule" "admin_path" {
+  count = var.certificate_arn != "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend_https[0].arn
+  priority     = 250
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.admin.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.domain_name, "www.${var.domain_name}"]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/admin/*"]
     }
   }
 
@@ -210,6 +270,20 @@ resource "aws_lb_listener" "admin" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.admin.arn
+  }
+
+  tags = var.tags
+}
+
+# HTTP Listener for Frontend (development/testing without SSL)
+resource "aws_lb_listener" "frontend_http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "8080"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
   }
 
   tags = var.tags

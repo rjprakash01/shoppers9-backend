@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import {
   Search,
-  Filter,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -59,8 +58,8 @@ const Users: React.FC = () => {
       const data: UsersResponse = await authService.getAllUsers(page, 10, search);
       setUsers(data.users);
       setPagination(data.pagination);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch users');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch users');
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +67,7 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     fetchUsers(currentPage, searchTerm);
-  }, [currentPage]);
+  }, [currentPage, searchTerm]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +84,8 @@ const Users: React.FC = () => {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, isVerified } : user
       ));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update user status');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update user status');
     } finally {
       setUpdatingUser(null);
     }

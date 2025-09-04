@@ -68,10 +68,10 @@ resource "aws_docdb_cluster" "main" {
   db_cluster_parameter_group_name = aws_docdb_cluster_parameter_group.main.name
   vpc_security_group_ids = [aws_security_group.docdb.id]
   
-  storage_encrypted = true
-  kms_key_id       = aws_kms_key.docdb.arn
+  storage_encrypted = false
+  # kms_key_id       = aws_kms_key.docdb.arn
   
-  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
+  # enabled_cloudwatch_logs_exports = ["audit", "profiler"]
   
   tags = var.tags
 }
@@ -82,8 +82,6 @@ resource "aws_docdb_cluster_instance" "cluster_instances" {
   identifier         = "${var.project_name}-docdb-${count.index}"
   cluster_identifier = aws_docdb_cluster.main.id
   instance_class     = var.db_instance_class
-  
-  performance_insights_enabled = true
   
   tags = var.tags
 }
@@ -104,16 +102,16 @@ resource "aws_kms_alias" "docdb" {
 }
 
 # CloudWatch Log Groups for DocumentDB
-resource "aws_cloudwatch_log_group" "docdb_audit" {
-  name              = "/aws/docdb/${var.project_name}/audit"
-  retention_in_days = 30
-  
-  tags = var.tags
-}
+# resource "aws_cloudwatch_log_group" "docdb_audit" {
+#   name              = "/aws/docdb/${var.project_name}/audit"
+#   retention_in_days = 30
+#   
+#   tags = var.tags
+# }
 
-resource "aws_cloudwatch_log_group" "docdb_profiler" {
-  name              = "/aws/docdb/${var.project_name}/profiler"
-  retention_in_days = 7
-  
-  tags = var.tags
-}
+# resource "aws_cloudwatch_log_group" "docdb_profiler" {
+#   name              = "/aws/docdb/${var.project_name}/profiler"
+#   retention_in_days = 7
+#   
+#   tags = var.tags
+# }

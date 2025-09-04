@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Phone, Lock, User, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth';
@@ -7,12 +7,13 @@ import { authService } from '../services/auth';
 const Signup: React.FC = () => {
   const { login, setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: location.state?.phone || ''
   });
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -140,6 +141,13 @@ const Signup: React.FC = () => {
             `We've sent a verification code to ${formData.phone}`
           )}
         </p>
+        {location.state?.message && (
+          <div className="mt-4 mx-auto max-w-md">
+            <div className="rounded-md bg-blue-50 p-4">
+              <div className="text-sm text-blue-700 text-center">{location.state.message}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

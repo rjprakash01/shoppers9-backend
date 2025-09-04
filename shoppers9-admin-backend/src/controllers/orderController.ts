@@ -82,7 +82,7 @@ export const getOrder = async (req: Request, res: Response) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('user', 'firstName lastName email phone')
-      .populate('items.product', 'name images sku');
+      .populate('items.product', 'name images');
 
     if (!order) {
       return res.status(404).json({
@@ -134,7 +134,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
 
     // Populate the updated order
     await order.populate('user', 'firstName lastName email phone');
-    await order.populate('items.product', 'name images sku');
+    await order.populate('items.product', 'name images');
 
     return res.json({
       success: true,
@@ -286,7 +286,7 @@ export const exportOrders = async (req: Request, res: Response) => {
 
     const orders = await Order.find(query)
       .populate('user', 'firstName lastName email phone')
-      .populate('items.product', 'name sku')
+      .populate('items.product', 'name')
       .sort({ createdAt: -1 });
 
     if (format === 'csv') {

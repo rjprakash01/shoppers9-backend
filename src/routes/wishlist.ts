@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Validation schemas
 const addToWishlistSchema = Joi.object({
-  productId: Joi.string().required(),
+  product: Joi.string().required(),
   variantId: Joi.string().required()
 });
 

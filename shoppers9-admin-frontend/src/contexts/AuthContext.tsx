@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { authService } from '../services/authService';
 
@@ -57,16 +58,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (loginField: string, password: string, loginType: 'email' | 'phone' = 'email') => {
-    const response = await authService.login(loginField, password, loginType);
-    
-    if (response.success) {
-      const { user: userData } = response;
-      const accessToken = localStorage.getItem('adminToken'); // Token is already stored by authService
+    try {
+      const result = await authService.login(loginField, password, loginType);
       
-      setToken(accessToken);
-      setUser(userData);
-    } else {
-      throw new Error(response.message || 'Login failed');
+      if (result.success) {
+        // Use a small delay to ensure localStorage is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Get the token and user data from localStorage
+        const token = localStorage.getItem('adminToken');
+        const userStr = localStorage.getItem('adminUser');
+        
+        if (token && userStr) {
+          setToken(token);
+          setUser(JSON.parse(userStr));
+        } else {
+          // Fallback: use data from result if available
+          if (result.user) {
+            setUser(result.user);
+            // Try to get token from localStorage one more time
+            const fallbackToken = localStorage.getItem('adminToken');
+            if (fallbackToken) {
+              setToken(fallbackToken);
+            }
+          } else {
+            throw new Error('Authentication data not properly stored');
+          }
+        }
+      } else {
+        throw new Error(result.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 

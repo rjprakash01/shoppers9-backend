@@ -4,12 +4,12 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "executionRoleArn": "arn:aws:iam::414691912398:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::414691912398:role/ecsTaskRole",
   "containerDefinitions": [
     {
       "name": "shoppers9-backend",
-      "image": "YOUR_ECR_REPOSITORY_URI/shoppers9-backend:latest",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -30,30 +30,34 @@
       "secrets": [
         {
           "name": "MONGODB_URI",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:shoppers9/mongodb-uri"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC"
         },
         {
           "name": "JWT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:shoppers9/jwt-secret"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO"
         },
         {
           "name": "SMS_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:shoppers9/sms-api-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K"
         },
         {
           "name": "RAZORPAY_KEY_ID",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:shoppers9/razorpay-key-id"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X"
         },
         {
           "name": "RAZORPAY_KEY_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_ACCOUNT_ID:secret:shoppers9/razorpay-key-secret"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J"
+        },
+        {
+          "name": "JWT_REFRESH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-refresh-secret-EQ1rLJ"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/shoppers9-backend",
-          "awslogs-region": "YOUR_REGION",
+          "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
       },

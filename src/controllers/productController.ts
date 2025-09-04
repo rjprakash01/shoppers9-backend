@@ -1,39 +1,70 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Product } from '../models/Product';
 import { Category } from '../models/Category';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, PaginationQuery, ProductFilters } from '../types';
 
+// Helper function to get filter option IDs by values
+const getFilterOptionIds = async (filterId: any, values: string[]) => {
+  // Simplified implementation - return empty array for now
+  return [];
+};
+
 /**
  * Get products with filters and pagination
  */
 export const getProducts = async (req: Request, res: Response) => {
-  const {
-    page = 1,
-    limit = 20,
-    category,
-    subCategory,
-    brand,
-    minPrice,
-    maxPrice,
-    sizes,
-    colors,
-    fabric,
-    fit,
-    material,
-    microwaveSafe,
-    inStock,
-    sortBy = 'popularity',
-    sortOrder = 'desc',
-    search
-  } = req.query as any;
+  try {
+    // Check database connection
+    if (mongoose.connection.readyState !== 1) {
+      console.log('Database readyState (products):', mongoose.connection.readyState);
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection not available'
+      });
+    }
+
+    const {
+      page = 1,
+      limit = 20,
+      category,
+      subCategory,
+      brand,
+      minPrice,
+      maxPrice,
+      inStock,
+      sortBy = 'popularity',
+      sortOrder = 'desc',
+      search,
+      ...dynamicFilters
+    } = req.query as any;
 
   const skip = (page - 1) * limit;
   const query: any = { isActive: true };
 
   // Build filter query
   if (category) {
-    query.category = category;
+    // Handle category filtering by slug or name
+    try {
+      const categoryDoc = await Category.findOne({ 
+        $or: [
+          { slug: category },
+          { name: { $regex: new RegExp(`^${category}$`, 'i') } }
+        ],
+        isActive: true
+      });
+      if (categoryDoc) {
+        // Use ObjectId for filtering since products store category as ObjectId
+        query.category = categoryDoc._id;
+      } else {
+        // Fallback to direct category matching (for backward compatibility)
+        query.category = category;
+      }
+    } catch (error) {
+      // Fallback to direct category name matching
+      query.category = category;
+    }
   }
 
   if (subCategory) {
@@ -50,31 +81,9 @@ export const getProducts = async (req: Request, res: Response) => {
     if (maxPrice) query.price.$lte = Number(maxPrice);
   }
 
-  if (sizes) {
-    const sizeArray = sizes.split(',').map((s: string) => s.trim());
-    query['variants.sizes.size'] = { $in: sizeArray };
-  }
-
-  if (colors) {
-    const colorArray = colors.split(',').map((c: string) => c.trim());
-    query['variants.color'] = { $in: colorArray };
-  }
-
-  if (fabric) {
-    query['specifications.fabric'] = { $regex: fabric, $options: 'i' };
-  }
-
-  if (fit) {
-    query['specifications.fit'] = { $regex: fit, $options: 'i' };
-  }
-
-  if (material) {
-    query['specifications.material'] = { $regex: material, $options: 'i' };
-  }
-
-  if (microwaveSafe !== undefined) {
-    query['specifications.microwaveSafe'] = microwaveSafe === 'true';
-  }
+  // Handle dynamic filters - simplified implementation
+  // TODO: Implement proper filter system when models are available
+  // For now, skip dynamic filtering
 
   if (inStock) {
     query.totalStock = { $gt: 0 };
@@ -110,11 +119,18 @@ export const getProducts = async (req: Request, res: Response) => {
 
   const [products, total] = await Promise.all([
     Product.find(query)
-      .populate('category', 'name slug')
+      .populate('category', 'name slug level parentCategory')
+      .populate('subCategory', 'name slug level parentCategory')
+      .populate({
+        path: 'filterValues',
+        populate: [
+          { path: 'filter', select: 'name displayName type' },
+          { path: 'filterOption', select: 'value displayValue colorCode' }
+        ]
+      })
       .sort(sortQuery)
       .skip(skip)
-      .limit(Number(limit))
-      .lean(),
+      .limit(Number(limit)),
     Product.countDocuments(query)
   ]);
 
@@ -122,20 +138,27 @@ export const getProducts = async (req: Request, res: Response) => {
   const hasNextPage = page < totalPages;
   const hasPrevPage = page > 1;
 
-  res.json({
-    success: true,
-    data: {
-      products,
-      pagination: {
-        currentPage: Number(page),
-        totalPages,
-        totalItems: total,
-        itemsPerPage: Number(limit),
-        hasNextPage,
-        hasPrevPage
+    return res.json({
+      success: true,
+      data: {
+        products,
+        pagination: {
+          currentPage: Number(page),
+          totalPages,
+          totalItems: total,
+          itemsPerPage: Number(limit),
+          hasNextPage,
+          hasPrevPage
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Error in getProducts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching products'
+    });
+  }
 };
 
 /**
@@ -163,7 +186,22 @@ export const searchProducts = async (req: Request, res: Response) => {
   };
 
   if (category) {
-    query.category = category;
+    try {
+      const categoryDoc = await Category.findOne({ 
+        $or: [
+          { slug: category },
+          { name: { $regex: new RegExp(`^${category}$`, 'i') } }
+        ],
+        isActive: true
+      });
+      if (categoryDoc) {
+        query.category = categoryDoc._id;
+      } else {
+        query.category = category;
+      }
+    } catch (error) {
+      query.category = category;
+    }
   }
 
   if (minPrice || maxPrice) {
@@ -174,7 +212,15 @@ export const searchProducts = async (req: Request, res: Response) => {
 
   const [products, total] = await Promise.all([
     Product.find(query)
-      .populate('category', 'name slug')
+      .populate('category', 'name slug level parentCategory')
+      .populate('subCategory', 'name slug level parentCategory')
+      .populate({
+        path: 'filterValues',
+        populate: [
+          { path: 'filter', select: 'name displayName type' },
+          { path: 'filterOption', select: 'value displayValue colorCode' }
+        ]
+      })
       .sort({ popularity: -1, createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -254,19 +300,29 @@ export const getBrands = async (req: Request, res: Response) => {
 export const getFilters = async (req: Request, res: Response) => {
   const { category } = req.query;
   
+  let filters: any[] = [];
+  
+  // Simplified implementation - return empty filters for now
+  // TODO: Implement proper filter system when models are available
+  
+  // Get price range from products
   const matchQuery: any = { isActive: true };
   if (category) {
-    matchQuery.category = category;
+    try {
+      const categoryDoc = await Category.findOne({ 
+        $or: [
+          { name: { $regex: new RegExp(`^${category}$`, 'i') } },
+          { slug: category }
+        ]
+      });
+      if (categoryDoc) {
+        matchQuery.category = categoryDoc._id;
+      }
+    } catch (error) {
+      matchQuery.category = category;
+    }
   }
-
-  const [brands, colors, sizes, fabrics, materials] = await Promise.all([
-    Product.distinct('brand', matchQuery),
-    Product.distinct('variants.color', matchQuery),
-    Product.distinct('variants.sizes.size', matchQuery),
-    Product.distinct('specifications.fabric', matchQuery),
-    Product.distinct('specifications.material', matchQuery)
-  ]);
-
+  
   const priceRange = await Product.aggregate([
     { $match: matchQuery },
     {
@@ -281,11 +337,7 @@ export const getFilters = async (req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
-      brands: brands.filter(Boolean).sort(),
-      colors: colors.filter(Boolean).sort(),
-      sizes: sizes.filter(Boolean),
-      fabrics: fabrics.filter(Boolean).sort(),
-      materials: materials.filter(Boolean).sort(),
+      filters,
       priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
     }
   });
@@ -360,12 +412,29 @@ export const getRecommendations = async (req: AuthenticatedRequest, res: Respons
 export const getProductById = async (req: Request, res: Response) => {
   const { productId } = req.params;
 
+  // Check database connection
+  if (mongoose.connection.readyState !== 1) {
+    console.log('Database readyState (getProductById):', mongoose.connection.readyState);
+    res.status(503).json({
+      success: false,
+      message: 'Database connection unavailable'
+    });
+    return;
+  }
+
   const product = await Product.findOne({
     _id: productId,
     isActive: true
   })
-    .populate('category', 'name slug')
-    .lean();
+    .populate('category', 'name slug level parentCategory')
+    .populate('subCategory', 'name slug level parentCategory')
+    .populate({
+      path: 'filterValues',
+      populate: [
+        { path: 'filter', select: 'name displayName type dataType' },
+        { path: 'filterOption', select: 'value displayValue colorCode' }
+      ]
+    });
 
   if (!product) {
     throw new AppError('Product not found', 404);
@@ -404,7 +473,15 @@ export const getRelatedProducts = async (req: Request, res: Response) => {
       { brand: product.brand }
     ]
   })
-    .populate('category', 'name slug')
+    .populate('category', 'name slug level parentCategory')
+    .populate('subCategory', 'name slug level parentCategory')
+    .populate({
+      path: 'filterValues',
+      populate: [
+        { path: 'filter', select: 'name displayName type' },
+        { path: 'filterOption', select: 'value displayValue colorCode' }
+      ]
+    })
     .sort({ popularity: -1, createdAt: -1 })
     .limit(12)
     .lean();

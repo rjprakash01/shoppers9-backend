@@ -16,8 +16,11 @@ export const connectDB = async (): Promise<void> => {
 
     // Set connection timeout to prevent hanging
     mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 3000, // 3 second timeout
-      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 30000, // 30 second timeout for DocumentDB
+      connectTimeoutMS: 30000,
+      socketTimeoutMS: 30000,
+      maxPoolSize: 10,
+      retryWrites: false,
     }).catch((error) => {
       console.log('⚠️ MongoDB connection failed - continuing in development mode');
       console.log('💡 Install MongoDB locally or use MongoDB Atlas for persistent data');

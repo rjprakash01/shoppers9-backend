@@ -11,6 +11,7 @@ export interface OrderItem {
 
 export interface Order {
   _id: string;
+  orderId: string;
   user: string;
   items: OrderItem[];
   totalAmount: number;
@@ -32,13 +33,18 @@ export interface OrdersResponse {
 }
 
 export interface CreateOrderData {
-  items: {
-    productId: string;
-    quantity: number;
-    price: number;
-  }[];
-  shippingAddressId: string;
+  shippingAddress: {
+    name: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    landmark: string;
+  };
   paymentMethod: string;
+  couponCode?: string;
 }
 
 export interface OrderFilters {
@@ -52,7 +58,7 @@ export interface OrderFilters {
 class OrderService {
   async createOrder(orderData: CreateOrderData): Promise<Order> {
     const response = await api.post('/orders', orderData);
-    return response.data.order;
+    return response.data.data.order;
   }
 
   async getOrders(filters: OrderFilters = {}): Promise<OrdersResponse> {
