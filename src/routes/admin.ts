@@ -17,6 +17,7 @@ import {
 import { updateOrderStatus } from '../controllers/orderController';
 import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
+import bannerRoutes from './banner';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -147,6 +148,117 @@ router.get('/categories',
   requireAdmin, 
   getAllCategories
 );
+
+// Category tree endpoint for admin
+router.get('/categories/tree', 
+  authenticateToken, 
+  requireAdmin, 
+  async (req: any, res: any, next: any) => {
+    try {
+      const { Category } = require('../models/Category');
+      const categories = await Category.find({ isActive: true })
+        .sort({ sortOrder: 1, name: 1 });
+
+      // Build hierarchical tree structure
+      const categoryMap = new Map();
+      const tree: any[] = [];
+
+      // First pass: create all category objects
+      categories.forEach((category: any) => {
+        const categoryJson = category.toJSON();
+        categoryMap.set(category._id.toString(), {
+          ...categoryJson,
+          children: []
+        });
+      });
+
+      // Second pass: build the tree structure
+      categories.forEach((category: any) => {
+        const categoryObj = categoryMap.get(category._id.toString());
+        
+        if (category.parentCategory) {
+          const parentId = category.parentCategory.toString();
+          const parent = categoryMap.get(parentId);
+          if (parent) {
+            parent.children.push(categoryObj);
+          }
+        } else {
+          tree.push(categoryObj);
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          categories: tree
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Filters endpoint for admin
+router.get('/filters', 
+  authenticateToken, 
+  requireAdmin, 
+  async (req: any, res: any, next: any) => {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      
+      // Mock filters data for now - replace with actual filter model when available
+      const mockFilters = [
+        {
+          _id: '507f1f77bcf86cd799439011',
+          name: 'Size',
+          type: 'multi-select',
+          options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+          isActive: true,
+          createdAt: new Date()
+        },
+        {
+          _id: '507f1f77bcf86cd799439012',
+          name: 'Color',
+          type: 'multi-select',
+          options: ['Red', 'Blue', 'Green', 'Black', 'White'],
+          isActive: true,
+          createdAt: new Date()
+        },
+        {
+          _id: '507f1f77bcf86cd799439013',
+          name: 'Brand',
+          type: 'single-select',
+          options: ['Nike', 'Adidas', 'Puma', 'Reebok'],
+          isActive: true,
+          createdAt: new Date()
+        }
+      ];
+      
+      const total = mockFilters.length;
+      const filters = mockFilters.slice(skip, skip + parseInt(limit));
+      
+      res.json({
+        success: true,
+        data: {
+          filters,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / parseInt(limit))
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Banner Management - Mount banner routes under admin
+router.use('/banners', bannerRoutes);
 
 router.post('/categories', 
   authenticateToken, 
