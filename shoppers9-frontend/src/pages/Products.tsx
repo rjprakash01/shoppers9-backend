@@ -289,7 +289,7 @@ const Products: React.FC = () => {
   };
 
   const renderPagination = () => {
-    if (totalPages <= 1) return null;
+    if (totalPages <= 1 && products.length <= 12) return null;
     
     const pages = [];
     const maxVisiblePages = 5;
@@ -301,9 +301,9 @@ const Products: React.FC = () => {
         <button
           key={i}
           onClick={() => updateFilters({ page: i })}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
             i === currentPage
-              ? 'bg-pink-500 text-white'
+              ? 'bg-pink-500 text-white shadow-sm'
               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
@@ -313,24 +313,108 @@ const Products: React.FC = () => {
     }
     
     return (
-      <div className="flex items-center justify-center space-x-2 mt-8 py-8">
-        <button
-          onClick={() => updateFilters({ page: currentPage - 1 })}
-          disabled={currentPage === 1}
-          className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
-        >
-          Previous
-        </button>
-        <div className="flex items-center space-x-1">
-          {pages}
+      <div className="mt-8 py-8">
+        {/* Items per page selector and pagination info */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label htmlFor="itemsPerPage" className="text-sm font-medium text-gray-700">
+                Items per page:
+              </label>
+              <select
+                id="itemsPerPage"
+                value={filters.limit || 12}
+                onChange={(e) => updateFilters({ limit: parseInt(e.target.value), page: 1 })}
+                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white text-sm"
+              >
+                <option value={12}>12</option>
+                <option value={24}>24</option>
+                <option value={36}>36</option>
+                <option value={48}>48</option>
+                <option value={60}>60</option>
+              </select>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              Showing {((currentPage - 1) * (filters.limit || 12)) + 1} to {Math.min(currentPage * (filters.limit || 12), products.length)} of {products.length} products
+            </div>
+          </div>
+          
+          {totalPages > 1 && (
+            <div className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => updateFilters({ page: currentPage + 1 })}
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
-        >
-          Next
-        </button>
+        
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center space-x-2">
+            <button
+              onClick={() => updateFilters({ page: 1 })}
+              disabled={currentPage === 1}
+              className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            >
+              First
+            </button>
+            
+            <button
+              onClick={() => updateFilters({ page: currentPage - 1 })}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center space-x-1">
+              {startPage > 1 && (
+                <>
+                  <button
+                    onClick={() => updateFilters({ page: 1 })}
+                    className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    1
+                  </button>
+                  {startPage > 2 && (
+                    <span className="px-2 py-2 text-sm text-gray-500">...</span>
+                  )}
+                </>
+              )}
+              
+              {pages}
+              
+              {endPage < totalPages && (
+                <>
+                  {endPage < totalPages - 1 && (
+                    <span className="px-2 py-2 text-sm text-gray-500">...</span>
+                  )}
+                  <button
+                    onClick={() => updateFilters({ page: totalPages })}
+                    className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            <button
+              onClick={() => updateFilters({ page: currentPage + 1 })}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            >
+              Next
+            </button>
+            
+            <button
+              onClick={() => updateFilters({ page: totalPages })}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            >
+              Last
+            </button>
+          </div>
+        )}
       </div>
     );
   };

@@ -55,7 +55,7 @@ interface CartSummary {
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
-  const { cart, localCart, cartTotal, clearCart } = useCart();
+  const { cart, localCart, cartTotal, clearCart, refreshCart } = useCart();
   const { user, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [cartSummary, setCartSummary] = useState<CartSummary | null>(null);
@@ -312,7 +312,9 @@ const Checkout: React.FC = () => {
       const response = await orderService.createOrder(orderData);
       
       // Clear cart after successful order
-      await cartService.clearCart();
+      await clearCart();
+      // Refresh cart to update UI immediately
+      await refreshCart();
       
       // Navigate to order confirmation
       navigate('/order-confirmation', { 

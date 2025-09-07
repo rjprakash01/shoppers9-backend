@@ -355,13 +355,13 @@ const Dashboard: React.FC = () => {
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <div className="text-xs sm:text-sm font-medium text-gray-900">{order.orderNumber}</div>
                     <div className="text-xs text-gray-500 sm:hidden">
-                      {order.user.firstName} {order.user.lastName}
+                      {order.user?.firstName || 'N/A'} {order.user?.lastName || ''}
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{order.user.firstName} {order.user.lastName}</div>
-                      <div className="text-sm text-gray-500">{order.user.email}</div>
+                      <div className="text-sm font-medium text-gray-900">{order.user?.firstName || 'N/A'} {order.user?.lastName || ''}</div>
+                      <div className="text-sm text-gray-500">{order.user?.email || 'N/A'}</div>
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">

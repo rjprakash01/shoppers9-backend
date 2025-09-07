@@ -50,7 +50,12 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     const discount = cart.totalDiscount + (cart.couponDiscount || 0);
     const platformFee = totalAmount > 500 ? 0 : 20; // Match cart summary calculation
     const deliveryCharge = totalAmount > 500 ? 0 : 50; // Match cart summary calculation
-    const finalAmount = totalAmount - discount + platformFee + deliveryCharge;
+    
+    // Ensure finalAmount is never negative
+    let finalAmount = totalAmount - discount + platformFee + deliveryCharge;
+    if (finalAmount < 0) {
+      finalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
+    }
 
     // Create order
     const order = new Order({

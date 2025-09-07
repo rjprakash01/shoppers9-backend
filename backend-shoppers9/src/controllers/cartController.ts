@@ -408,6 +408,12 @@ export const getCartSummary = async (req: AuthenticatedRequest, res: Response) =
   const platformFee = 20; // Fixed platform fee
   const deliveryFee = cart.subtotal >= 500 ? 0 : 50; // Free delivery above ₹500
   
+  // Calculate total with protection against negative amounts
+  let total = cart.subtotal - (cart.couponDiscount || 0) + platformFee + deliveryFee;
+  if (total < 0) {
+    total = platformFee + deliveryFee; // Minimum amount should be fees only
+  }
+  
   const summary = {
     itemCount: cart.items.length,
     totalQuantity: cart.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -415,7 +421,7 @@ export const getCartSummary = async (req: AuthenticatedRequest, res: Response) =
     couponDiscount: cart.couponDiscount || 0,
     platformFee,
     deliveryFee,
-    total: cart.subtotal - (cart.couponDiscount || 0) + platformFee + deliveryFee,
+    total,
     appliedCoupon: cart.appliedCoupon,
     estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
   };

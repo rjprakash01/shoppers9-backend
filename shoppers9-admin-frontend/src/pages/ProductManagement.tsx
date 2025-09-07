@@ -197,8 +197,18 @@ const ProductManagement: React.FC = () => {
       const responseData = await authService.get(`/api/admin/products?${params}`);
       // Handle backend response format: {success: true, data: {products: [...], pagination: {...}}}
       const data = responseData.success ? responseData.data : responseData;
-      setProducts(data.products || []);
-      setPagination(data.pagination);
+      const products = data.products || [];
+      setProducts(products);
+      
+      // Ensure pagination has proper fallback values
+      const paginationData = data.pagination || {};
+      setPagination({
+        currentPage: paginationData.currentPage || page,
+        totalPages: paginationData.totalPages || Math.ceil(products.length / pageSize) || 1,
+        totalProducts: paginationData.totalProducts || products.length,
+        hasNext: paginationData.hasNext || false,
+        hasPrev: paginationData.hasPrev || page > 1
+      });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -220,8 +230,18 @@ const ProductManagement: React.FC = () => {
       const responseData = await authService.get(`/api/admin/products/category/${categoryId}?${params}`);
       // Handle backend response format: {success: true, data: {products: [...], pagination: {...}}}
       const data = responseData.success ? responseData.data : responseData;
-      setProducts(data.products || []);
-      setPagination(data.pagination);
+      const products = data.products || [];
+      setProducts(products);
+      
+      // Ensure pagination has proper fallback values
+      const paginationData = data.pagination || {};
+      setPagination({
+        currentPage: paginationData.currentPage || page,
+        totalPages: paginationData.totalPages || Math.ceil(products.length / pageSize) || 1,
+        totalProducts: paginationData.totalProducts || products.length,
+        hasNext: paginationData.hasNext || false,
+        hasPrev: paginationData.hasPrev || page > 1
+      });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -750,7 +770,7 @@ const ProductManagement: React.FC = () => {
               )}
               
               {/* Pagination */}
-              {pagination.totalProducts > 0 && !searchQuery.trim() && (
+              {(pagination.totalProducts > 0 || products.length > 0) && (
                 <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 bg-white p-3 rounded-lg border border-gray-200">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                     <div className="text-xs text-gray-600">
@@ -776,9 +796,16 @@ const ProductManagement: React.FC = () => {
                   </div>
                   
                   {/* Mobile Pagination */}
-                  {pagination.totalPages > 1 && (
+                  {(pagination.totalPages > 1 || products.length > pageSize) && (
                     <div className="flex sm:hidden flex-col items-center space-y-2">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                          className="px-2 py-1.5 text-xs font-medium rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          First
+                        </button>
                         <button
                           onClick={() => setCurrentPage(currentPage - 1)}
                           disabled={!pagination.hasPrev}
@@ -786,7 +813,7 @@ const ProductManagement: React.FC = () => {
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <span className="px-2 py-1 text-xs font-medium">
+                        <span className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md">
                           {currentPage} / {pagination.totalPages}
                         </span>
                         <button
@@ -795,6 +822,13 @@ const ProductManagement: React.FC = () => {
                           className="p-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                         >
                           <ChevronRight className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(pagination.totalPages)}
+                          disabled={currentPage === pagination.totalPages}
+                          className="px-2 py-1.5 text-xs font-medium rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          Last
                         </button>
                       </div>
                       
@@ -830,8 +864,17 @@ const ProductManagement: React.FC = () => {
                   )}
                   
                   {/* Desktop Pagination */}
-                  {pagination.totalPages > 1 && (
+                  {(pagination.totalPages > 1 || products.length > pageSize) && (
                     <div className="hidden sm:flex items-center space-x-2">
+                      {/* First Page Button */}
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="flex items-center px-2 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        First
+                      </button>
+                      
                       <button
                         onClick={() => setCurrentPage(currentPage - 1)}
                         disabled={!pagination.hasPrev}
@@ -906,6 +949,15 @@ const ProductManagement: React.FC = () => {
                       >
                         Next
                         <ChevronRight className="h-3 w-3 ml-1" />
+                      </button>
+                      
+                      {/* Last Page Button */}
+                      <button
+                        onClick={() => setCurrentPage(pagination.totalPages)}
+                        disabled={currentPage === pagination.totalPages}
+                        className="flex items-center px-2 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Last
                       </button>
                     </div>
                   )}

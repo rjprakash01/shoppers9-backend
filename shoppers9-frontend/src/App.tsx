@@ -17,6 +17,7 @@ import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/orderdetail';
+import OrderConfirmation from './pages/OrderConfirmation';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
@@ -66,6 +67,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <OrderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/order-confirmation"
+                  element={
+                    <ProtectedRoute>
+                      <OrderConfirmation />
                     </ProtectedRoute>
                   }
                 />

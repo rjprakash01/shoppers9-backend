@@ -3,14 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Heart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useWishlist } from '../contexts/WishlistContext';
 import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import type { CartItem } from '../services/cart';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart } = useCart();
+  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, addToCart } = useCart();
   const { isAuthenticated } = useAuth();
+  const { wishlist, localWishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
   // Refresh cart data when component mounts
@@ -106,6 +108,65 @@ const Cart: React.FC = () => {
     }
   };
 
+  const handleMoveToWishlist = async (item: CartItem) => {
+    const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+    setIsUpdating(itemKey);
+    try {
+      // First add to wishlist
+      const product = item.productData || {
+        _id: item.product || item.productId,
+        name: 'Product',
+        price: item.price,
+        images: item.variant?.images || []
+      };
+      
+      await addToWishlist(product, item.variantId);
+      
+      // Then remove from cart
+      if (isAuthenticated) {
+        await removeFromCart(item._id!, item.variantId, item.size);
+      } else {
+        const productId = item.product || item.productId;
+        await removeFromCart(productId!, item.variantId, item.size);
+      }
+      
+      // Item saved for later successfully
+    } catch (error) {
+      console.error('Failed to save item for later:', error);
+      alert('Failed to save item for later. Please try again.');
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleMoveToCart = async (wishlistItem: any, product: any) => {
+    try {
+      // Add to cart with default variant and size
+      const defaultVariantId = product?.variants?.[0]?._id || 'default';
+      const defaultSize = product?.variants?.[0]?.sizes?.[0]?.size || 'M';
+      
+      await addToCart(product, defaultVariantId, defaultSize, 1);
+      
+      // Remove from wishlist
+      await removeFromWishlist(product._id || product.id);
+      
+      // Item moved to cart successfully
+    } catch (error) {
+      console.error('Failed to move item to cart:', error);
+      alert('Failed to move item to cart. Please try again.');
+    }
+  };
+
+  const handleRemoveFromWishlist = async (productId: string) => {
+    try {
+      await removeFromWishlist(productId);
+      // Item removed from saved items successfully
+    } catch (error) {
+      console.error('Failed to remove from wishlist:', error);
+      alert('Failed to remove item. Please try again.');
+    }
+  };
+
   const handleCheckout = () => {
     navigate('/checkout');
   };
@@ -115,16 +176,66 @@ const Cart: React.FC = () => {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-16">
-            <ShoppingBag className="mx-auto h-24 w-24 text-gray-300 mb-6" />
+            {/* Monochrome Empty Cart SVG */}
+            <div className="mx-auto mb-8">
+              <svg
+                width="200"
+                height="200"
+                viewBox="0 0 200 200"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="mx-auto"
+              >
+                <g opacity="0.3">
+                  {/* Cart Body */}
+                  <path
+                    d="M40 60h120l-8 80H48l-8-80z"
+                    stroke="#9CA3AF"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Cart Handle */}
+                  <path
+                    d="M40 60V40a20 20 0 0 1 20-20h60a20 20 0 0 1 20 20v20"
+                    stroke="#9CA3AF"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Cart Wheels */}
+                  <circle cx="70" cy="160" r="8" fill="#9CA3AF" />
+                  <circle cx="130" cy="160" r="8" fill="#9CA3AF" />
+                  {/* Empty Lines */}
+                  <line x1="60" y1="80" x2="140" y2="80" stroke="#D1D5DB" strokeWidth="2" strokeDasharray="5,5" />
+                  <line x1="60" y1="100" x2="140" y2="100" stroke="#D1D5DB" strokeWidth="2" strokeDasharray="5,5" />
+                  <line x1="60" y1="120" x2="140" y2="120" stroke="#D1D5DB" strokeWidth="2" strokeDasharray="5,5" />
+                </g>
+              </svg>
+            </div>
+            
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
-            <p className="text-gray-600 mb-8">Looks like you haven't added any items to your cart yet.</p>
-            <Link
-              to="/products"
-              className="inline-flex items-center bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Continue Shopping
-            </Link>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              Looks like you haven't added any items to your cart yet. Start shopping to fill it up!
+            </p>
+            
+            <div className="space-y-4">
+              <Link
+                to="/products"
+                className="inline-flex items-center bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <ShoppingBag className="mr-2 h-5 w-5" />
+                Continue Shopping
+              </Link>
+              
+              <div className="text-sm text-gray-500">
+                <Link to="/" className="text-pink-600 hover:text-pink-700 font-medium">
+                  ← Back to Home
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -178,11 +289,13 @@ const Cart: React.FC = () => {
                  <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
                    {/* Product Image */}
                    <div className="flex-shrink-0 w-full sm:w-auto">
-                     <img
-                       src={getImageUrl(item.variant?.images?.[0] || item.productData?.images?.[0])}
-                       alt={productName}
-                       className="w-full h-48 sm:w-24 sm:h-24 md:w-28 md:h-28 object-cover rounded-lg border border-gray-200"
-                     />
+                     <Link to={`/products/${productId}`}>
+                       <img
+                         src={getImageUrl(item.variant?.images?.[0] || item.productData?.images?.[0])}
+                         alt={productName}
+                         className="w-full h-48 sm:w-24 sm:h-24 md:w-28 md:h-28 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                       />
+                     </Link>
                    </div>
 
                    {/* Product Details */}
@@ -239,50 +352,59 @@ const Cart: React.FC = () => {
                   </div>
 
                   {/* Quantity Controls and Actions */}
-                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 space-y-3 sm:space-y-0">
-                     <div className="flex items-center space-x-3">
-                       <span className="text-sm font-medium text-gray-700">Qty:</span>
-                       <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                   <div className="mt-4 space-y-3">
+                     {/* Quantity and Remove */}
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+                       <div className="flex items-center space-x-3">
+                         <span className="text-sm font-medium text-gray-700">Qty:</span>
+                         <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                           <button
+                             onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                             disabled={item.quantity <= 1 || isUpdatingThis}
+                             className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                           >
+                             <Minus className="w-4 h-4" />
+                           </button>
+                           <span className="px-4 py-2 min-w-[3rem] text-center font-medium bg-gray-50">
+                             {isUpdatingThis ? '...' : item.quantity}
+                           </span>
+                           <button
+                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                             disabled={isUpdatingThis}
+                             className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                           >
+                             <Plus className="w-4 h-4" />
+                           </button>
+                         </div>
+                       </div>
+
+                       <div className="flex items-center">
                          <button
-                           onClick={() => handleQuantityChange(item, item.quantity - 1)}
-                           disabled={item.quantity <= 1 || isUpdatingThis}
-                           className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                         >
-                           <Minus className="w-4 h-4" />
-                         </button>
-                         <span className="px-4 py-2 min-w-[3rem] text-center font-medium bg-gray-50">
-                           {isUpdatingThis ? '...' : item.quantity}
-                         </span>
-                         <button
-                           onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                           onClick={() => handleRemoveItem(item)}
                            disabled={isUpdatingThis}
-                           className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                           className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                           title="Remove item"
                          >
-                           <Plus className="w-4 h-4" />
+                           {isUpdatingThis ? (
+                             <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                           ) : (
+                             <Trash2 className="h-4 w-4" />
+                           )}
+                           <span className="text-sm">Remove</span>
                          </button>
                        </div>
                      </div>
-
-                     <div className="flex items-center space-x-3">
+                     
+                     {/* Save for Later */}
+                     <div className="flex items-center">
                        <button
-                         className="flex items-center space-x-1 text-gray-600 hover:text-primary-600 transition-colors"
-                         title="Add to wishlist"
+                         onClick={() => handleMoveToWishlist(item)}
+                         disabled={isUpdatingThis}
+                         className="flex items-center space-x-1 text-gray-600 hover:text-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                         title="Save for later"
                        >
                          <Heart className="w-4 h-4" />
-                         <span className="text-sm">Save</span>
-                       </button>
-                       <button
-                         onClick={() => handleRemoveItem(item)}
-                         disabled={isUpdatingThis}
-                         className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                         title="Remove item"
-                       >
-                         {isUpdatingThis ? (
-                           <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                         ) : (
-                           <Trash2 className="h-4 w-4" />
-                         )}
-                         <span className="text-sm">Remove</span>
+                         <span className="text-sm">Save for later</span>
                        </button>
                      </div>
                    </div>
@@ -291,6 +413,75 @@ const Cart: React.FC = () => {
               );
              })}
           </div>
+          
+          {/* Saved for Later / Wishlist Section */}
+          {((isAuthenticated && wishlist?.items.length > 0) || (!isAuthenticated && localWishlist.length > 0)) && (
+            <div className="lg:col-span-2 mt-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Saved for Later ({isAuthenticated ? wishlist?.items.length || 0 : localWishlist.length})
+                </h3>
+                
+                <div className="space-y-4">
+                  {(isAuthenticated ? wishlist?.items || [] : localWishlist).map((item: any, index: number) => {
+                    const product = isAuthenticated ? item.product : item.product;
+                    const productId = product?._id || product?.id;
+                    const productName = product?.name || 'Product';
+                    const wishlistItemKey = `wishlist-${productId}-${index}`;
+                    
+                    return (
+                      <div key={wishlistItemKey} className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-lg">
+                        {/* Product Image */}
+                        <div className="flex-shrink-0 w-full sm:w-auto">
+                          <Link to={`/products/${productId}`}>
+                            <img
+                              src={getImageUrl(product?.images?.[0])}
+                              alt={productName}
+                              className="w-full h-32 sm:w-20 sm:h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                          </Link>
+                        </div>
+
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0 w-full">
+                          <Link
+                            to={`/products/${productId}`}
+                            className="text-base font-medium text-gray-900 hover:text-pink-600 transition-colors line-clamp-2"
+                          >
+                            {productName}
+                          </Link>
+                          
+                          <div className="mt-1">
+                            <span className="text-sm text-gray-600">
+                              Price: <span className="font-medium text-gray-900">{formatPrice(product?.price || 0)}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                          <button
+                            onClick={() => handleMoveToCart(item, product)}
+                            className="flex items-center space-x-1 text-pink-600 hover:text-pink-700 hover:bg-pink-50 px-3 py-2 rounded-md transition-colors text-sm font-medium"
+                          >
+                            <ShoppingBag className="w-4 h-4" />
+                            <span>Move to Cart</span>
+                          </button>
+                          <button
+                            onClick={() => handleRemoveFromWishlist(productId)}
+                            className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-md transition-colors text-sm font-medium"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Order Summary */}
           <div className="lg:col-span-1">

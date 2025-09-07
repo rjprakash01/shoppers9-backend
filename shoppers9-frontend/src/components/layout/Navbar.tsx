@@ -78,7 +78,7 @@ const Navbar: React.FC = () => {
               {/* Cart */}
               <Link to="/cart" className="flex flex-col items-center text-gray-700 hover:text-pink-600 transition-colors duration-200 group relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="text-xs mt-1 font-medium">Bag</span>
+                <span className="text-xs mt-1 font-medium">Cart</span>
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                     {cartCount > 99 ? '99+' : cartCount}

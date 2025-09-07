@@ -664,6 +664,42 @@ const FilterManagement: React.FC = () => {
                   Categories
                 </label>
                 <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                  {/* Select All checkbox */}
+                  {categories.filter(cat => formData.categoryLevels.includes(cat.level)).length > 0 && (
+                    <label className="flex items-center mb-3 pb-2 border-b border-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={(() => {
+                          const filteredCategories = categories.filter(cat => formData.categoryLevels.includes(cat.level));
+                          return filteredCategories.length > 0 && filteredCategories.every(cat => formData.categories.includes(cat._id));
+                        })()}
+                        onChange={(e) => {
+                          const filteredCategories = categories.filter(cat => formData.categoryLevels.includes(cat.level));
+                          if (e.target.checked) {
+                            // Select all categories
+                            const allCategoryIds = filteredCategories.map(cat => cat._id);
+                            setFormData({
+                              ...formData,
+                              categories: [...new Set([...formData.categories, ...allCategoryIds])]
+                            });
+                          } else {
+                            // Deselect all categories
+                            const categoryIdsToRemove = filteredCategories.map(cat => cat._id);
+                            setFormData({
+                              ...formData,
+                              categories: formData.categories.filter(id => !categoryIdsToRemove.includes(id))
+                            });
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-sm font-semibold text-blue-600">
+                        Select All
+                      </span>
+                    </label>
+                  )}
+                  
+                  {/* Individual category checkboxes */}
                   {categories
                     .filter(cat => formData.categoryLevels.includes(cat.level))
                     .map((category) => (
