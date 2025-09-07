@@ -1,0 +1,55 @@
+{
+  "name": "shoppers9-monorepo",
+  "version": "1.0.0",
+  "description": "Shoppers9 E-commerce Platform - Monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:admin-backend\" \"npm run dev:admin-frontend\"",
+    "dev:backend": "cd backend-shoppers9 && npm run dev",
+    "dev:frontend": "cd shoppers9-frontend && npm run dev",
+    "dev:admin-backend": "cd shoppers9-admin-backend && npm run dev",
+    "dev:admin-frontend": "cd shoppers9-admin-frontend && npm run dev",
+    "build": "npm run build:all",
+    "build:backend": "cd backend-shoppers9 && npm run build",
+    "build:frontend": "cd shoppers9-frontend && npm run build",
+    "build:admin-backend": "cd shoppers9-admin-backend && npm run build",
+    "build:admin-frontend": "cd shoppers9-admin-frontend && npm run build",
+    "build:all": "npm run build:backend && npm run build:frontend && npm run build:admin-backend && npm run build:admin-frontend",
+    "install:all": "npm install && cd backend-shoppers9 && npm install && cd ../shoppers9-frontend && npm install && cd ../shoppers9-admin-backend && npm install && cd ../shoppers9-admin-frontend && npm install",
+    "clean": "npm run clean:all",
+    "clean:all": "rm -rf node_modules */node_modules */dist */build",
+    "clean:install": "npm run clean:all && npm run install:all",
+    "start": "npm run start:backend",
+    "start:backend": "cd backend-shoppers9 && npm start",
+    "lint": "npm run lint:all",
+    "lint:all": "cd backend-shoppers9 && npm run lint; cd ../shoppers9-frontend && npm run lint; cd ../shoppers9-admin-backend && npm run lint; cd ../shoppers9-admin-frontend && npm run lint",
+    "test": "npm run test:all",
+    "test:all": "cd backend-shoppers9 && npm test; cd ../shoppers9-frontend && npm test; cd ../shoppers9-admin-backend && npm test; cd ../shoppers9-admin-frontend && npm test",
+    "deploy": "./aws-deployment/scripts/deploy.sh",
+    "deploy:production": "./scripts/deploy-production.sh",
+    "docker:build": "cd aws-deployment && docker-compose build",
+    "docker:up": "cd aws-deployment && docker-compose up -d",
+    "docker:down": "cd aws-deployment && docker-compose down",
+    "docker:logs": "cd aws-deployment && docker-compose logs -f",
+    "docker:restart": "npm run docker:down && npm run docker:up"
+  },
+  "workspaces": [
+    "backend-shoppers9",
+    "shoppers9-frontend",
+    "shoppers9-admin-backend",
+    "shoppers9-admin-frontend"
+  ],
+  "keywords": [
+    "ecommerce",
+    "monorepo",
+    "nodejs",
+    "react",
+    "typescript",
+    "mongodb"
+  ],
+  "author": "Shoppers9 Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

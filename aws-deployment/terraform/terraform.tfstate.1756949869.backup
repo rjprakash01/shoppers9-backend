@@ -1,0 +1,3538 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 124,
+  "lineage": "dfc9691b-eee0-2590-5aa3-44badbb98173",
+  "outputs": {
+    "admin_service_name": {
+      "value": "shoppers9-admin",
+      "type": "string"
+    },
+    "admin_target_group_arn": {
+      "value": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-admin-tg/0c362e3e51e8d996",
+      "type": "string"
+    },
+    "application_urls": {
+      "value": {
+        "admin": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com:3001",
+        "api": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com:3000",
+        "frontend": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com"
+      },
+      "type": [
+        "object",
+        {
+          "admin": "string",
+          "api": "string",
+          "frontend": "string"
+        }
+      ]
+    },
+    "backend_service_name": {
+      "value": "shoppers9-backend",
+      "type": "string"
+    },
+    "backend_target_group_arn": {
+      "value": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1",
+      "type": "string"
+    },
+    "deployment_commands": {
+      "value": {
+        "build_and_push_admin": "docker build -f aws-deployment/docker/Dockerfile.admin -t 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest . \u0026\u0026 docker push 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest",
+        "build_and_push_backend": "docker build -f aws-deployment/docker/Dockerfile.backend -t 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest . \u0026\u0026 docker push 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest",
+        "build_and_push_frontend": "docker build -f aws-deployment/docker/Dockerfile.frontend -t 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend:latest . \u0026\u0026 docker push 414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend:latest",
+        "ecr_login": "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 414691912398.dkr.ecr.us-east-1.amazonaws.com"
+      },
+      "type": [
+        "object",
+        {
+          "build_and_push_admin": "string",
+          "build_and_push_backend": "string",
+          "build_and_push_frontend": "string",
+          "ecr_login": "string"
+        }
+      ]
+    },
+    "documentdb_cluster_endpoint": {
+      "value": "shoppers9-docdb-cluster.cluster-ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+      "type": "string",
+      "sensitive": true
+    },
+    "documentdb_cluster_port": {
+      "value": 27017,
+      "type": "number"
+    },
+    "documentdb_cluster_reader_endpoint": {
+      "value": "shoppers9-docdb-cluster.cluster-ro-ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+      "type": "string",
+      "sensitive": true
+    },
+    "ecr_admin_repository_url": {
+      "value": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin",
+      "type": "string"
+    },
+    "ecr_backend_repository_url": {
+      "value": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend",
+      "type": "string"
+    },
+    "ecr_frontend_repository_url": {
+      "value": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend",
+      "type": "string"
+    },
+    "ecs_cluster_arn": {
+      "value": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+      "type": "string"
+    },
+    "ecs_cluster_name": {
+      "value": "shoppers9-cluster",
+      "type": "string"
+    },
+    "frontend_service_name": {
+      "value": "shoppers9-frontend",
+      "type": "string"
+    },
+    "frontend_target_group_arn": {
+      "value": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc",
+      "type": "string"
+    },
+    "load_balancer_dns_name": {
+      "value": "shoppers9-alb-268030346.us-east-1.elb.amazonaws.com",
+      "type": "string"
+    },
+    "load_balancer_zone_id": {
+      "value": "Z35SXDOTRQ7X7K",
+      "type": "string"
+    },
+    "private_subnet_ids": {
+      "value": [
+        "subnet-08c485f68b6ada233",
+        "subnet-06c6fd012bcfc1e34"
+      ],
+      "type": [
+        "tuple",
+        [
+          "string",
+          "string"
+        ]
+      ]
+    },
+    "public_subnet_ids": {
+      "value": [
+        "subnet-00a7bb3cd26cf8d93",
+        "subnet-00ceb00055997c87e"
+      ],
+      "type": [
+        "tuple",
+        [
+          "string",
+          "string"
+        ]
+      ]
+    },
+    "secrets_manager_jwt_secret_arn": {
+      "value": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO",
+      "type": "string",
+      "sensitive": true
+    },
+    "secrets_manager_mongodb_uri_arn": {
+      "value": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC",
+      "type": "string",
+      "sensitive": true
+    },
+    "vpc_id": {
+      "value": "vpc-0d24c4eb337fd433a",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "data",
+      "type": "aws_availability_zones",
+      "name": "available",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "all_availability_zones": null,
+            "exclude_names": null,
+            "exclude_zone_ids": null,
+            "filter": null,
+            "group_names": [
+              "us-east-1-zg-1"
+            ],
+            "id": "us-east-1",
+            "names": [
+              "us-east-1a",
+              "us-east-1b",
+              "us-east-1c",
+              "us-east-1d",
+              "us-east-1e",
+              "us-east-1f"
+            ],
+            "state": "available",
+            "timeouts": null,
+            "zone_ids": [
+              "use1-az1",
+              "use1-az2",
+              "use1-az4",
+              "use1-az6",
+              "use1-az3",
+              "use1-az5"
+            ]
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_caller_identity",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "account_id": "414691912398",
+            "arn": "arn:aws:iam::414691912398:user/Prakash",
+            "id": "414691912398",
+            "user_id": "AIDAWBDMQNLHKQ7LOIIUT"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_docdb_cluster",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allow_major_version_upgrade": null,
+            "apply_immediately": null,
+            "arn": "arn:aws:rds:us-east-1:414691912398:cluster:shoppers9-docdb-cluster",
+            "availability_zones": [
+              "us-east-1a",
+              "us-east-1b",
+              "us-east-1c"
+            ],
+            "backup_retention_period": 1,
+            "cluster_identifier": "shoppers9-docdb-cluster",
+            "cluster_identifier_prefix": "",
+            "cluster_members": [
+              "shoppers9-docdb-0",
+              "shoppers9-docdb-1"
+            ],
+            "cluster_resource_id": "cluster-UZON4UFAW6Y5FJRNJP72NRB35A",
+            "db_cluster_parameter_group_name": "shoppers9-docdb-params",
+            "db_subnet_group_name": "shoppers9-docdb-subnet-group",
+            "deletion_protection": false,
+            "enabled_cloudwatch_logs_exports": [],
+            "endpoint": "shoppers9-docdb-cluster.cluster-ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+            "engine": "docdb",
+            "engine_version": "4.0.0",
+            "final_snapshot_identifier": null,
+            "global_cluster_identifier": "",
+            "hosted_zone_id": "ZNKXH85TT8WVW",
+            "id": "shoppers9-docdb-cluster",
+            "kms_key_id": "",
+            "manage_master_user_password": null,
+            "master_password": "Shoppers9SecurePass123!",
+            "master_password_wo": null,
+            "master_password_wo_version": null,
+            "master_user_secret": [],
+            "master_username": "shoppers9_admin",
+            "port": 27017,
+            "preferred_backup_window": "07:00-09:00",
+            "preferred_maintenance_window": "sun:09:00-sun:11:00",
+            "reader_endpoint": "shoppers9-docdb-cluster.cluster-ro-ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+            "restore_to_point_in_time": [],
+            "skip_final_snapshot": true,
+            "snapshot_identifier": null,
+            "storage_encrypted": false,
+            "storage_type": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_security_group_ids": [
+              "sg-046ff9192e21f4430"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "master_password"
+              }
+            ]
+          ],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo3MjAwMDAwMDAwMDAwLCJkZWxldGUiOjcyMDAwMDAwMDAwMDAsInVwZGF0ZSI6NzIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_docdb_cluster_parameter_group.main",
+            "aws_docdb_subnet_group.main",
+            "aws_security_group.alb",
+            "aws_security_group.docdb",
+            "aws_security_group.ecs_backend",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_docdb_cluster_instance",
+      "name": "cluster_instances",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "apply_immediately": null,
+            "arn": "arn:aws:rds:us-east-1:414691912398:db:shoppers9-docdb-0",
+            "auto_minor_version_upgrade": true,
+            "availability_zone": "us-east-1a",
+            "ca_cert_identifier": "rds-ca-rsa2048-g1",
+            "cluster_identifier": "shoppers9-docdb-cluster",
+            "copy_tags_to_snapshot": false,
+            "db_subnet_group_name": "shoppers9-docdb-subnet-group",
+            "dbi_resource_id": "db-VYSEXXEB452BNVYMS6FCYM25WQ",
+            "enable_performance_insights": null,
+            "endpoint": "shoppers9-docdb-0.ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+            "engine": "docdb",
+            "engine_version": "4.0.0",
+            "id": "shoppers9-docdb-0",
+            "identifier": "shoppers9-docdb-0",
+            "identifier_prefix": "",
+            "instance_class": "db.t3.medium",
+            "kms_key_id": "",
+            "performance_insights_kms_key_id": null,
+            "port": 27017,
+            "preferred_backup_window": "07:00-09:00",
+            "preferred_maintenance_window": "wed:03:45-wed:04:15",
+            "promotion_tier": 0,
+            "publicly_accessible": false,
+            "storage_encrypted": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "writer": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInVwZGF0ZSI6NTQwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_docdb_cluster.main",
+            "aws_docdb_cluster_parameter_group.main",
+            "aws_docdb_subnet_group.main",
+            "aws_security_group.alb",
+            "aws_security_group.docdb",
+            "aws_security_group.ecs_backend",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "apply_immediately": null,
+            "arn": "arn:aws:rds:us-east-1:414691912398:db:shoppers9-docdb-1",
+            "auto_minor_version_upgrade": true,
+            "availability_zone": "us-east-1b",
+            "ca_cert_identifier": "rds-ca-rsa2048-g1",
+            "cluster_identifier": "shoppers9-docdb-cluster",
+            "copy_tags_to_snapshot": false,
+            "db_subnet_group_name": "shoppers9-docdb-subnet-group",
+            "dbi_resource_id": "db-RHRDENINUDHUEQBK7MEP5IUY7Y",
+            "enable_performance_insights": null,
+            "endpoint": "shoppers9-docdb-1.ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com",
+            "engine": "docdb",
+            "engine_version": "4.0.0",
+            "id": "shoppers9-docdb-1",
+            "identifier": "shoppers9-docdb-1",
+            "identifier_prefix": "",
+            "instance_class": "db.t3.medium",
+            "kms_key_id": "",
+            "performance_insights_kms_key_id": null,
+            "port": 27017,
+            "preferred_backup_window": "07:00-09:00",
+            "preferred_maintenance_window": "tue:08:30-tue:09:00",
+            "promotion_tier": 0,
+            "publicly_accessible": false,
+            "storage_encrypted": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "writer": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo1NDAwMDAwMDAwMDAwLCJkZWxldGUiOjU0MDAwMDAwMDAwMDAsInVwZGF0ZSI6NTQwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_docdb_cluster.main",
+            "aws_docdb_cluster_parameter_group.main",
+            "aws_docdb_subnet_group.main",
+            "aws_security_group.alb",
+            "aws_security_group.docdb",
+            "aws_security_group.ecs_backend",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_docdb_cluster_parameter_group",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:rds:us-east-1:414691912398:cluster-pg:shoppers9-docdb-params",
+            "description": "Managed by Terraform",
+            "family": "docdb4.0",
+            "id": "shoppers9-docdb-params",
+            "name": "shoppers9-docdb-params",
+            "name_prefix": "",
+            "parameter": [
+              {
+                "apply_method": "pending-reboot",
+                "name": "tls",
+                "value": "enabled"
+              },
+              {
+                "apply_method": "pending-reboot",
+                "name": "ttl_monitor",
+                "value": "enabled"
+              }
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_docdb_subnet_group",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:rds:us-east-1:414691912398:subgrp:shoppers9-docdb-subnet-group",
+            "description": "Managed by Terraform",
+            "id": "shoppers9-docdb-subnet-group",
+            "name": "shoppers9-docdb-subnet-group",
+            "name_prefix": "",
+            "subnet_ids": [
+              "subnet-06c6fd012bcfc1e34",
+              "subnet-08c485f68b6ada233"
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb-subnet-group",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb-subnet-group",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:us-east-1:414691912398:repository/shoppers9-admin",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": null,
+            "id": "shoppers9-admin",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "name": "shoppers9-admin",
+            "registry_id": "414691912398",
+            "repository_url": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:us-east-1:414691912398:repository/shoppers9-backend",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": null,
+            "id": "shoppers9-backend",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "name": "shoppers9-backend",
+            "registry_id": "414691912398",
+            "repository_url": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:us-east-1:414691912398:repository/shoppers9-frontend",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": null,
+            "id": "shoppers9-frontend",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "name": "shoppers9-frontend",
+            "registry_id": "414691912398",
+            "repository_url": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository_policy",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "shoppers9-admin",
+            "policy": "{\"Statement\":[{\"Action\":[\"ecr:GetDownloadUrlForLayer\",\"ecr:BatchGetImage\",\"ecr:BatchCheckLayerAvailability\",\"ecr:PutImage\",\"ecr:InitiateLayerUpload\",\"ecr:UploadLayerPart\",\"ecr:CompleteLayerUpload\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam::414691912398:root\"]},\"Sid\":\"AllowPushPull\"}],\"Version\":\"2012-10-17\"}",
+            "registry_id": "414691912398",
+            "repository": "shoppers9-admin"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.admin",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository_policy",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "shoppers9-backend",
+            "policy": "{\"Statement\":[{\"Action\":[\"ecr:GetDownloadUrlForLayer\",\"ecr:BatchGetImage\",\"ecr:BatchCheckLayerAvailability\",\"ecr:PutImage\",\"ecr:InitiateLayerUpload\",\"ecr:UploadLayerPart\",\"ecr:CompleteLayerUpload\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam::414691912398:root\"]},\"Sid\":\"AllowPushPull\"}],\"Version\":\"2012-10-17\"}",
+            "registry_id": "414691912398",
+            "repository": "shoppers9-backend"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.backend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository_policy",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "shoppers9-frontend",
+            "policy": "{\"Statement\":[{\"Action\":[\"ecr:GetDownloadUrlForLayer\",\"ecr:BatchGetImage\",\"ecr:BatchCheckLayerAvailability\",\"ecr:PutImage\",\"ecr:InitiateLayerUpload\",\"ecr:UploadLayerPart\",\"ecr:CompleteLayerUpload\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam::414691912398:root\"]},\"Sid\":\"AllowPushPull\"}],\"Version\":\"2012-10-17\"}",
+            "registry_id": "414691912398",
+            "repository": "shoppers9-frontend"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_ecr_repository.frontend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_cluster",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+            "configuration": [],
+            "id": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+            "name": "shoppers9-cluster",
+            "service_connect_defaults": [],
+            "setting": [
+              {
+                "name": "containerInsights",
+                "value": "enabled"
+              }
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "alarms": [],
+            "availability_zone_rebalancing": "DISABLED",
+            "capacity_provider_strategy": [],
+            "cluster": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+            "deployment_circuit_breaker": [
+              {
+                "enable": false,
+                "rollback": false
+              }
+            ],
+            "deployment_controller": [
+              {
+                "type": "ECS"
+              }
+            ],
+            "deployment_maximum_percent": 200,
+            "deployment_minimum_healthy_percent": 100,
+            "desired_count": 2,
+            "enable_ecs_managed_tags": false,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": null,
+            "health_check_grace_period_seconds": 0,
+            "iam_role": "/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+            "id": "arn:aws:ecs:us-east-1:414691912398:service/shoppers9-cluster/shoppers9-admin",
+            "launch_type": "FARGATE",
+            "load_balancer": [
+              {
+                "container_name": "shoppers9-admin",
+                "container_port": 80,
+                "elb_name": "",
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-admin-tg/0c362e3e51e8d996"
+              }
+            ],
+            "name": "shoppers9-admin",
+            "network_configuration": [
+              {
+                "assign_public_ip": false,
+                "security_groups": [
+                  "sg-0f622016a1d05f15a"
+                ],
+                "subnets": [
+                  "subnet-06c6fd012bcfc1e34",
+                  "subnet-08c485f68b6ada233"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "platform_version": "LATEST",
+            "propagate_tags": "NONE",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_definition": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-admin:1",
+            "timeouts": null,
+            "triggers": {},
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_ecs_cluster.main",
+            "aws_ecs_task_definition.admin",
+            "aws_lb.main",
+            "aws_lb_listener.admin",
+            "aws_lb_target_group.admin",
+            "aws_security_group.alb",
+            "aws_security_group.ecs_frontend",
+            "aws_subnet.private",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "alarms": [],
+            "availability_zone_rebalancing": "DISABLED",
+            "capacity_provider_strategy": [],
+            "cluster": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+            "deployment_circuit_breaker": [
+              {
+                "enable": false,
+                "rollback": false
+              }
+            ],
+            "deployment_controller": [
+              {
+                "type": "ECS"
+              }
+            ],
+            "deployment_maximum_percent": 200,
+            "deployment_minimum_healthy_percent": 100,
+            "desired_count": 2,
+            "enable_ecs_managed_tags": false,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": null,
+            "health_check_grace_period_seconds": 0,
+            "iam_role": "/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+            "id": "arn:aws:ecs:us-east-1:414691912398:service/shoppers9-cluster/shoppers9-backend",
+            "launch_type": "FARGATE",
+            "load_balancer": [
+              {
+                "container_name": "shoppers9-backend",
+                "container_port": 3000,
+                "elb_name": "",
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1"
+              }
+            ],
+            "name": "shoppers9-backend",
+            "network_configuration": [
+              {
+                "assign_public_ip": false,
+                "security_groups": [
+                  "sg-0885b3a207fb28074"
+                ],
+                "subnets": [
+                  "subnet-06c6fd012bcfc1e34",
+                  "subnet-08c485f68b6ada233"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "platform_version": "LATEST",
+            "propagate_tags": "NONE",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_definition": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-backend:1",
+            "timeouts": null,
+            "triggers": {},
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_ecs_cluster.main",
+            "aws_ecs_task_definition.backend",
+            "aws_lb_listener.backend",
+            "aws_lb_target_group.backend",
+            "aws_security_group.ecs_backend",
+            "aws_subnet.private"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_service",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "alarms": [],
+            "availability_zone_rebalancing": "DISABLED",
+            "capacity_provider_strategy": [],
+            "cluster": "arn:aws:ecs:us-east-1:414691912398:cluster/shoppers9-cluster",
+            "deployment_circuit_breaker": [
+              {
+                "enable": false,
+                "rollback": false
+              }
+            ],
+            "deployment_controller": [
+              {
+                "type": "ECS"
+              }
+            ],
+            "deployment_maximum_percent": 200,
+            "deployment_minimum_healthy_percent": 100,
+            "desired_count": 2,
+            "enable_ecs_managed_tags": false,
+            "enable_execute_command": false,
+            "force_delete": null,
+            "force_new_deployment": null,
+            "health_check_grace_period_seconds": 0,
+            "iam_role": "/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+            "id": "arn:aws:ecs:us-east-1:414691912398:service/shoppers9-cluster/shoppers9-frontend",
+            "launch_type": "FARGATE",
+            "load_balancer": [
+              {
+                "container_name": "shoppers9-frontend",
+                "container_port": 80,
+                "elb_name": "",
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc"
+              }
+            ],
+            "name": "shoppers9-frontend",
+            "network_configuration": [
+              {
+                "assign_public_ip": false,
+                "security_groups": [
+                  "sg-0f622016a1d05f15a"
+                ],
+                "subnets": [
+                  "subnet-06c6fd012bcfc1e34",
+                  "subnet-08c485f68b6ada233"
+                ]
+              }
+            ],
+            "ordered_placement_strategy": [],
+            "placement_constraints": [],
+            "platform_version": "LATEST",
+            "propagate_tags": "NONE",
+            "scheduling_strategy": "REPLICA",
+            "service_connect_configuration": [],
+            "service_registries": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_definition": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-frontend:1",
+            "timeouts": null,
+            "triggers": {},
+            "volume_configuration": [],
+            "vpc_lattice_configurations": [],
+            "wait_for_steady_state": false
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_ecs_cluster.main",
+            "aws_ecs_task_definition.frontend",
+            "aws_lb.main",
+            "aws_lb_listener.frontend",
+            "aws_lb_target_group.frontend",
+            "aws_security_group.alb",
+            "aws_security_group.ecs_frontend",
+            "aws_subnet.private",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-admin:1",
+            "arn_without_revision": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-admin",
+            "container_definitions": "[{\"environment\":[],\"essential\":true,\"healthCheck\":{\"command\":[\"CMD-SHELL\",\"curl -f http://localhost:80/health || exit 1\"],\"interval\":30,\"retries\":3,\"startPeriod\":30,\"timeout\":5},\"image\":\"414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-region\":\"us-east-1\",\"awslogs-stream-prefix\":\"ecs\",\"awslogs-group\":\"/ecs/shoppers9-admin\"}},\"mountPoints\":[],\"name\":\"shoppers9-admin\",\"portMappings\":[{\"containerPort\":80,\"hostPort\":80,\"protocol\":\"tcp\"}],\"systemControls\":[],\"volumesFrom\":[]}]",
+            "cpu": "256",
+            "enable_fault_injection": false,
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
+            "family": "shoppers9-admin",
+            "id": "shoppers9-admin",
+            "inference_accelerator": [],
+            "ipc_mode": "",
+            "memory": "512",
+            "network_mode": "awsvpc",
+            "pid_mode": "",
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              "FARGATE"
+            ],
+            "revision": 1,
+            "runtime_platform": [],
+            "skip_destroy": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_ecr_repository.admin",
+            "aws_iam_role.ecs_task_execution_role",
+            "aws_iam_role.ecs_task_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-backend:1",
+            "arn_without_revision": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-backend",
+            "container_definitions": "[{\"environment\":[{\"name\":\"NODE_ENV\",\"value\":\"production\"},{\"name\":\"PORT\",\"value\":\"3000\"}],\"essential\":true,\"healthCheck\":{\"command\":[\"CMD-SHELL\",\"curl -f http://localhost:3000/health || exit 1\"],\"interval\":30,\"retries\":3,\"startPeriod\":60,\"timeout\":5},\"image\":\"414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-region\":\"us-east-1\",\"awslogs-stream-prefix\":\"ecs\",\"awslogs-group\":\"/ecs/shoppers9-backend\"}},\"mountPoints\":[],\"name\":\"shoppers9-backend\",\"portMappings\":[{\"containerPort\":3000,\"hostPort\":3000,\"protocol\":\"tcp\"}],\"secrets\":[{\"name\":\"JWT_SECRET\",\"valueFrom\":\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO\"},{\"name\":\"MONGODB_URI\",\"valueFrom\":\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC\"}],\"systemControls\":[],\"volumesFrom\":[]}]",
+            "cpu": "256",
+            "enable_fault_injection": false,
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
+            "family": "shoppers9-backend",
+            "id": "shoppers9-backend",
+            "inference_accelerator": [],
+            "ipc_mode": "",
+            "memory": "512",
+            "network_mode": "awsvpc",
+            "pid_mode": "",
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              "FARGATE"
+            ],
+            "revision": 1,
+            "runtime_platform": [],
+            "skip_destroy": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_ecr_repository.backend",
+            "aws_iam_role.ecs_task_execution_role",
+            "aws_iam_role.ecs_task_role",
+            "aws_secretsmanager_secret.jwt_secret",
+            "aws_secretsmanager_secret.mongodb_uri"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecs_task_definition",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-frontend:1",
+            "arn_without_revision": "arn:aws:ecs:us-east-1:414691912398:task-definition/shoppers9-frontend",
+            "container_definitions": "[{\"environment\":[],\"essential\":true,\"healthCheck\":{\"command\":[\"CMD-SHELL\",\"curl -f http://localhost:80/health || exit 1\"],\"interval\":30,\"retries\":3,\"startPeriod\":30,\"timeout\":5},\"image\":\"414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend:latest\",\"logConfiguration\":{\"logDriver\":\"awslogs\",\"options\":{\"awslogs-group\":\"/ecs/shoppers9-frontend\",\"awslogs-region\":\"us-east-1\",\"awslogs-stream-prefix\":\"ecs\"}},\"mountPoints\":[],\"name\":\"shoppers9-frontend\",\"portMappings\":[{\"containerPort\":80,\"hostPort\":80,\"protocol\":\"tcp\"}],\"systemControls\":[],\"volumesFrom\":[]}]",
+            "cpu": "256",
+            "enable_fault_injection": false,
+            "ephemeral_storage": [],
+            "execution_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
+            "family": "shoppers9-frontend",
+            "id": "shoppers9-frontend",
+            "inference_accelerator": [],
+            "ipc_mode": "",
+            "memory": "512",
+            "network_mode": "awsvpc",
+            "pid_mode": "",
+            "placement_constraints": [],
+            "proxy_configuration": [],
+            "requires_compatibilities": [
+              "FARGATE"
+            ],
+            "revision": 1,
+            "runtime_platform": [],
+            "skip_destroy": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "task_role_arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+            "track_latest": false,
+            "volume": []
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_ecr_repository.frontend",
+            "aws_iam_role.ecs_task_execution_role",
+            "aws_iam_role.ecs_task_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eip",
+      "name": "nat",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-0e3298eb031d8d963",
+            "arn": "arn:aws:ec2:us-east-1:414691912398:elastic-ip/eipalloc-0e3298eb031d8d963",
+            "associate_with_private_ip": null,
+            "association_id": "eipassoc-04c573e88654d8c5a",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-0e3298eb031d8d963",
+            "instance": "",
+            "ipam_pool_id": null,
+            "network_border_group": "us-east-1",
+            "network_interface": "eni-0b0154bf55512dcf5",
+            "private_dns": "ip-10-0-1-171.ec2.internal",
+            "private_ip": "10.0.1.171",
+            "ptr_record": "",
+            "public_dns": "ec2-98-87-54-219.compute-1.amazonaws.com",
+            "public_ip": "98.87.54.219",
+            "public_ipv4_pool": "amazon",
+            "tags": {
+              "Name": "shoppers9-nat-eip-1"
+            },
+            "tags_all": {
+              "Name": "shoppers9-nat-eip-1"
+            },
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ=="
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "address": null,
+            "allocation_id": "eipalloc-028fb04d039922ee4",
+            "arn": "arn:aws:ec2:us-east-1:414691912398:elastic-ip/eipalloc-028fb04d039922ee4",
+            "associate_with_private_ip": null,
+            "association_id": "eipassoc-003fa023ae0f7fdba",
+            "carrier_ip": "",
+            "customer_owned_ip": "",
+            "customer_owned_ipv4_pool": "",
+            "domain": "vpc",
+            "id": "eipalloc-028fb04d039922ee4",
+            "instance": "",
+            "ipam_pool_id": null,
+            "network_border_group": "us-east-1",
+            "network_interface": "eni-021a0b92002c92401",
+            "private_dns": "ip-10-0-2-148.ec2.internal",
+            "private_ip": "10.0.2.148",
+            "ptr_record": "",
+            "public_dns": "ec2-35-169-200-163.compute-1.amazonaws.com",
+            "public_ip": "35.169.200.163",
+            "public_ipv4_pool": "amazon",
+            "tags": {
+              "Name": "shoppers9-nat-eip-2"
+            },
+            "tags_all": {
+              "Name": "shoppers9-nat-eip-2"
+            },
+            "timeouts": null,
+            "vpc": true
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxODAwMDAwMDAwMDAsInJlYWQiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozMDAwMDAwMDAwMDB9fQ=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_policy",
+      "name": "secrets_access",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::414691912398:policy/shoppers9-secrets-access",
+            "attachment_count": 1,
+            "description": "Policy to allow ECS tasks to access Secrets Manager",
+            "id": "arn:aws:iam::414691912398:policy/shoppers9-secrets-access",
+            "name": "shoppers9-secrets-access",
+            "name_prefix": "",
+            "path": "/",
+            "policy": "{\"Statement\":[{\"Action\":[\"secretsmanager:GetSecretValue\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC\",\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO\",\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K\",\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X\",\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J\",\"arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d\"]}],\"Version\":\"2012-10-17\"}",
+            "policy_id": "ANPAWBDMQNLHCRESLV7VH",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.db_password",
+            "aws_secretsmanager_secret.jwt_secret",
+            "aws_secretsmanager_secret.mongodb_uri",
+            "aws_secretsmanager_secret.razorpay_key_id",
+            "aws_secretsmanager_secret.razorpay_key_secret",
+            "aws_secretsmanager_secret.sms_api_key"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "ecs_task_execution_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2025-08-29T17:31:45Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "shoppers9-ecs-task-execution-role",
+            "inline_policy": [],
+            "managed_policy_arns": [
+              "arn:aws:iam::414691912398:policy/shoppers9-secrets-access",
+              "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+            ],
+            "max_session_duration": 3600,
+            "name": "shoppers9-ecs-task-execution-role",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "unique_id": "AROAWBDMQNLHPYFICYU53"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "ecs_task_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2025-08-29T17:31:46Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "shoppers9-ecs-task-role",
+            "inline_policy": [],
+            "managed_policy_arns": [],
+            "max_session_duration": 3600,
+            "name": "shoppers9-ecs-task-role",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "unique_id": "AROAWBDMQNLHAZHGOXQHK"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "ecs_secrets_access",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "shoppers9-ecs-task-execution-role-2025082917315162190000000d",
+            "policy_arn": "arn:aws:iam::414691912398:policy/shoppers9-secrets-access",
+            "role": "shoppers9-ecs-task-execution-role"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_policy.secrets_access",
+            "aws_iam_role.ecs_task_execution_role",
+            "aws_secretsmanager_secret.db_password",
+            "aws_secretsmanager_secret.jwt_secret",
+            "aws_secretsmanager_secret.mongodb_uri",
+            "aws_secretsmanager_secret.razorpay_key_id",
+            "aws_secretsmanager_secret.razorpay_key_secret",
+            "aws_secretsmanager_secret.sms_api_key"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "ecs_task_execution_role_policy",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "shoppers9-ecs-task-execution-role-2025082917314933920000000a",
+            "policy_arn": "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+            "role": "shoppers9-ecs-task-execution-role"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.ecs_task_execution_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:internet-gateway/igw-06409dc59c5fd9e7a",
+            "id": "igw-06409dc59c5fd9e7a",
+            "owner_id": "414691912398",
+            "tags": {
+              "Name": "shoppers9-igw"
+            },
+            "tags_all": {
+              "Name": "shoppers9-igw"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_kms_alias",
+      "name": "docdb",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:kms:us-east-1:414691912398:alias/shoppers9-docdb",
+            "id": "alias/shoppers9-docdb",
+            "name": "alias/shoppers9-docdb",
+            "name_prefix": "",
+            "target_key_arn": "arn:aws:kms:us-east-1:414691912398:key/e691bc6f-53ed-461b-95fc-28abf00b7096",
+            "target_key_id": "e691bc6f-53ed-461b-95fc-28abf00b7096"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_kms_key.docdb"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_kms_key",
+      "name": "docdb",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:kms:us-east-1:414691912398:key/e691bc6f-53ed-461b-95fc-28abf00b7096",
+            "bypass_policy_lockout_safety_check": false,
+            "custom_key_store_id": "",
+            "customer_master_key_spec": "SYMMETRIC_DEFAULT",
+            "deletion_window_in_days": 7,
+            "description": "KMS key for DocumentDB encryption",
+            "enable_key_rotation": false,
+            "id": "e691bc6f-53ed-461b-95fc-28abf00b7096",
+            "is_enabled": true,
+            "key_id": "e691bc6f-53ed-461b-95fc-28abf00b7096",
+            "key_usage": "ENCRYPT_DECRYPT",
+            "multi_region": false,
+            "policy": "{\"Id\":\"key-default-1\",\"Statement\":[{\"Action\":\"kms:*\",\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::414691912398:root\"},\"Resource\":\"*\",\"Sid\":\"Enable IAM User Permissions\"}],\"Version\":\"2012-10-17\"}",
+            "rotation_period_in_days": 0,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb-kms",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb-kms",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "xks_key_id": ""
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDB9fQ=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "arn_suffix": "app/shoppers9-alb/6dad10c11178015a",
+            "client_keep_alive": 3600,
+            "connection_logs": [
+              {
+                "bucket": "",
+                "enabled": false,
+                "prefix": ""
+              }
+            ],
+            "customer_owned_ipv4_pool": "",
+            "desync_mitigation_mode": "defensive",
+            "dns_name": "shoppers9-alb-268030346.us-east-1.elb.amazonaws.com",
+            "dns_record_client_routing_policy": null,
+            "drop_invalid_header_fields": false,
+            "enable_cross_zone_load_balancing": true,
+            "enable_deletion_protection": false,
+            "enable_http2": true,
+            "enable_tls_version_and_cipher_suite_headers": false,
+            "enable_waf_fail_open": false,
+            "enable_xff_client_port": false,
+            "enable_zonal_shift": false,
+            "enforce_security_group_inbound_rules_on_private_link_traffic": "",
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "idle_timeout": 60,
+            "internal": false,
+            "ip_address_type": "ipv4",
+            "ipam_pools": [],
+            "load_balancer_type": "application",
+            "minimum_load_balancer_capacity": [],
+            "name": "shoppers9-alb",
+            "name_prefix": "",
+            "preserve_host_header": false,
+            "security_groups": [
+              "sg-0c6010346065d35b6"
+            ],
+            "subnet_mapping": [
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-00a7bb3cd26cf8d93"
+              },
+              {
+                "allocation_id": "",
+                "ipv6_address": "",
+                "outpost_id": "",
+                "private_ipv4_address": "",
+                "subnet_id": "subnet-00ceb00055997c87e"
+              }
+            ],
+            "subnets": [
+              "subnet-00a7bb3cd26cf8d93",
+              "subnet-00ceb00055997c87e"
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a",
+            "xff_header_processing_mode": "append",
+            "zone_id": "Z35SXDOTRQ7X7K"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_security_group.alb",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/64621a11b0d217ba",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-admin-tg/0c362e3e51e8d996",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/64621a11b0d217ba",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "mutual_authentication": [],
+            "port": 3001,
+            "protocol": "HTTP",
+            "routing_http_request_x_amzn_mtls_clientcert_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": null,
+            "routing_http_request_x_amzn_tls_cipher_suite_header_name": null,
+            "routing_http_request_x_amzn_tls_version_header_name": null,
+            "routing_http_response_access_control_allow_credentials_header_value": "",
+            "routing_http_response_access_control_allow_headers_header_value": "",
+            "routing_http_response_access_control_allow_methods_header_value": "",
+            "routing_http_response_access_control_allow_origin_header_value": "",
+            "routing_http_response_access_control_expose_headers_header_value": "",
+            "routing_http_response_access_control_max_age_header_value": "",
+            "routing_http_response_content_security_policy_header_value": "",
+            "routing_http_response_server_enabled": true,
+            "routing_http_response_strict_transport_security_header_value": "",
+            "routing_http_response_x_content_type_options_header_value": "",
+            "routing_http_response_x_frame_options_header_value": "",
+            "ssl_policy": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tcp_idle_timeout_seconds": null,
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_lb.main",
+            "aws_lb_target_group.admin",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/3bfb488e5270feb9",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/3bfb488e5270feb9",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "mutual_authentication": [],
+            "port": 3000,
+            "protocol": "HTTP",
+            "routing_http_request_x_amzn_mtls_clientcert_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": null,
+            "routing_http_request_x_amzn_tls_cipher_suite_header_name": null,
+            "routing_http_request_x_amzn_tls_version_header_name": null,
+            "routing_http_response_access_control_allow_credentials_header_value": "",
+            "routing_http_response_access_control_allow_headers_header_value": "",
+            "routing_http_response_access_control_allow_methods_header_value": "",
+            "routing_http_response_access_control_allow_origin_header_value": "",
+            "routing_http_response_access_control_expose_headers_header_value": "",
+            "routing_http_response_access_control_max_age_header_value": "",
+            "routing_http_response_content_security_policy_header_value": "",
+            "routing_http_response_server_enabled": true,
+            "routing_http_response_strict_transport_security_header_value": "",
+            "routing_http_response_x_content_type_options_header_value": "",
+            "routing_http_response_x_frame_options_header_value": "",
+            "ssl_policy": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tcp_idle_timeout_seconds": null,
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_lb.main",
+            "aws_lb_target_group.backend",
+            "aws_security_group.alb",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/906826267d55a505",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [
+                  {
+                    "host": "#{host}",
+                    "path": "/#{path}",
+                    "port": "443",
+                    "protocol": "HTTPS",
+                    "query": "#{query}",
+                    "status_code": "HTTP_301"
+                  }
+                ],
+                "target_group_arn": "",
+                "type": "redirect"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/906826267d55a505",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "mutual_authentication": [],
+            "port": 80,
+            "protocol": "HTTP",
+            "routing_http_request_x_amzn_mtls_clientcert_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": null,
+            "routing_http_request_x_amzn_tls_cipher_suite_header_name": null,
+            "routing_http_request_x_amzn_tls_version_header_name": null,
+            "routing_http_response_access_control_allow_credentials_header_value": "",
+            "routing_http_response_access_control_allow_headers_header_value": "",
+            "routing_http_response_access_control_allow_methods_header_value": "",
+            "routing_http_response_access_control_allow_origin_header_value": "",
+            "routing_http_response_access_control_expose_headers_header_value": "",
+            "routing_http_response_access_control_max_age_header_value": "",
+            "routing_http_response_content_security_policy_header_value": "",
+            "routing_http_response_server_enabled": true,
+            "routing_http_response_strict_transport_security_header_value": "",
+            "routing_http_response_x_content_type_options_header_value": "",
+            "routing_http_response_x_frame_options_header_value": "",
+            "ssl_policy": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tcp_idle_timeout_seconds": null,
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_lb.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener",
+      "name": "frontend_http",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "alpn_policy": null,
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/06059a3749d8f9b9",
+            "certificate_arn": null,
+            "default_action": [
+              {
+                "authenticate_cognito": [],
+                "authenticate_oidc": [],
+                "fixed_response": [],
+                "forward": [],
+                "order": 1,
+                "redirect": [],
+                "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc",
+                "type": "forward"
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:listener/app/shoppers9-alb/6dad10c11178015a/06059a3749d8f9b9",
+            "load_balancer_arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a",
+            "mutual_authentication": [],
+            "port": 8080,
+            "protocol": "HTTP",
+            "routing_http_request_x_amzn_mtls_clientcert_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_issuer_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_leaf_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_subject_header_name": null,
+            "routing_http_request_x_amzn_mtls_clientcert_validity_header_name": null,
+            "routing_http_request_x_amzn_tls_cipher_suite_header_name": null,
+            "routing_http_request_x_amzn_tls_version_header_name": null,
+            "routing_http_response_access_control_allow_credentials_header_value": "",
+            "routing_http_response_access_control_allow_headers_header_value": "",
+            "routing_http_response_access_control_allow_methods_header_value": "",
+            "routing_http_response_access_control_allow_origin_header_value": "",
+            "routing_http_response_access_control_expose_headers_header_value": "",
+            "routing_http_response_access_control_max_age_header_value": "",
+            "routing_http_response_content_security_policy_header_value": "",
+            "routing_http_response_server_enabled": true,
+            "routing_http_response_strict_transport_security_header_value": "",
+            "routing_http_response_x_content_type_options_header_value": "",
+            "routing_http_response_x_frame_options_header_value": "",
+            "ssl_policy": "",
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tcp_idle_timeout_seconds": null,
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsInVwZGF0ZSI6MzAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_lb.main",
+            "aws_lb_target_group.frontend",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "admin_path",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_listener_rule",
+      "name": "backend_path",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": []
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-admin-tg/0c362e3e51e8d996",
+            "arn_suffix": "targetgroup/shoppers9-admin-tg/0c362e3e51e8d996",
+            "connection_termination": null,
+            "deregistration_delay": "300",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 2,
+                "interval": 30,
+                "matcher": "200",
+                "path": "/health",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 2
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-admin-tg/0c362e3e51e8d996",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": "off",
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "shoppers9-admin-tg",
+            "name_prefix": "",
+            "port": 80,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 86400,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {
+                    "minimum_healthy_targets_count": "1",
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ],
+                "unhealthy_state_routing": [
+                  {
+                    "minimum_healthy_targets_count": 1,
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ]
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null,
+                "unhealthy_draining_interval": null
+              }
+            ],
+            "target_type": "ip",
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1",
+            "arn_suffix": "targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1",
+            "connection_termination": null,
+            "deregistration_delay": "300",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 2,
+                "interval": 30,
+                "matcher": "200",
+                "path": "/health",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 2
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-backend-tg/7fc6bdd51a14b3f1",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [
+              "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a"
+            ],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": "off",
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "shoppers9-backend-tg",
+            "name_prefix": "",
+            "port": 3000,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 86400,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {
+                    "minimum_healthy_targets_count": "1",
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ],
+                "unhealthy_state_routing": [
+                  {
+                    "minimum_healthy_targets_count": 1,
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ]
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null,
+                "unhealthy_draining_interval": null
+              }
+            ],
+            "target_type": "ip",
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lb_target_group",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc",
+            "arn_suffix": "targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc",
+            "connection_termination": null,
+            "deregistration_delay": "300",
+            "health_check": [
+              {
+                "enabled": true,
+                "healthy_threshold": 2,
+                "interval": 30,
+                "matcher": "200",
+                "path": "/health",
+                "port": "traffic-port",
+                "protocol": "HTTP",
+                "timeout": 5,
+                "unhealthy_threshold": 2
+              }
+            ],
+            "id": "arn:aws:elasticloadbalancing:us-east-1:414691912398:targetgroup/shoppers9-frontend-tg/1080b54110a5e1cc",
+            "ip_address_type": "ipv4",
+            "lambda_multi_value_headers_enabled": false,
+            "load_balancer_arns": [
+              "arn:aws:elasticloadbalancing:us-east-1:414691912398:loadbalancer/app/shoppers9-alb/6dad10c11178015a"
+            ],
+            "load_balancing_algorithm_type": "round_robin",
+            "load_balancing_anomaly_mitigation": "off",
+            "load_balancing_cross_zone_enabled": "use_load_balancer_configuration",
+            "name": "shoppers9-frontend-tg",
+            "name_prefix": "",
+            "port": 80,
+            "preserve_client_ip": null,
+            "protocol": "HTTP",
+            "protocol_version": "HTTP1",
+            "proxy_protocol_v2": false,
+            "slow_start": 0,
+            "stickiness": [
+              {
+                "cookie_duration": 86400,
+                "cookie_name": "",
+                "enabled": false,
+                "type": "lb_cookie"
+              }
+            ],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "target_failover": [
+              {
+                "on_deregistration": null,
+                "on_unhealthy": null
+              }
+            ],
+            "target_group_health": [
+              {
+                "dns_failover": [
+                  {
+                    "minimum_healthy_targets_count": "1",
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ],
+                "unhealthy_state_routing": [
+                  {
+                    "minimum_healthy_targets_count": 1,
+                    "minimum_healthy_targets_percentage": "off"
+                  }
+                ]
+              }
+            ],
+            "target_health_state": [
+              {
+                "enable_unhealthy_connection_termination": null,
+                "unhealthy_draining_interval": null
+              }
+            ],
+            "target_type": "ip",
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_nat_gateway",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "allocation_id": "eipalloc-0e3298eb031d8d963",
+            "association_id": "eipassoc-04c573e88654d8c5a",
+            "connectivity_type": "public",
+            "id": "nat-05877556dd0d669fd",
+            "network_interface_id": "eni-0b0154bf55512dcf5",
+            "private_ip": "10.0.1.171",
+            "public_ip": "98.87.54.219",
+            "secondary_allocation_ids": [],
+            "secondary_private_ip_address_count": 0,
+            "secondary_private_ip_addresses": [],
+            "subnet_id": "subnet-00a7bb3cd26cf8d93",
+            "tags": {
+              "Name": "shoppers9-nat-gateway-1"
+            },
+            "tags_all": {
+              "Name": "shoppers9-nat-gateway-1"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTgwMDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "allocation_id": "eipalloc-028fb04d039922ee4",
+            "association_id": "eipassoc-003fa023ae0f7fdba",
+            "connectivity_type": "public",
+            "id": "nat-0754dfc298227c90c",
+            "network_interface_id": "eni-021a0b92002c92401",
+            "private_ip": "10.0.2.148",
+            "public_ip": "35.169.200.163",
+            "secondary_allocation_ids": [],
+            "secondary_private_ip_address_count": 0,
+            "secondary_private_ip_addresses": [],
+            "subnet_id": "subnet-00ceb00055997c87e",
+            "tags": {
+              "Name": "shoppers9-nat-gateway-2"
+            },
+            "tags_all": {
+              "Name": "shoppers9-nat-gateway-2"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTgwMDAwMDAwMDAwMCwidXBkYXRlIjo2MDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:route-table/rtb-08c8025d6aa14d63e",
+            "id": "rtb-08c8025d6aa14d63e",
+            "owner_id": "414691912398",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "nat-05877556dd0d669fd",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "shoppers9-private-rt-1"
+            },
+            "tags_all": {
+              "Name": "shoppers9-private-rt-1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:route-table/rtb-06217c544fee5bef2",
+            "id": "rtb-06217c544fee5bef2",
+            "owner_id": "414691912398",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "nat-0754dfc298227c90c",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "shoppers9-private-rt-2"
+            },
+            "tags_all": {
+              "Name": "shoppers9-private-rt-2"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:route-table/rtb-027a618a0798db598",
+            "id": "rtb-027a618a0798db598",
+            "owner_id": "414691912398",
+            "propagating_vgws": [],
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "igw-06409dc59c5fd9e7a",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "shoppers9-public-rt"
+            },
+            "tags_all": {
+              "Name": "shoppers9-public-rt"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0205a8339f3cf1339",
+            "route_table_id": "rtb-08c8025d6aa14d63e",
+            "subnet_id": "subnet-08c485f68b6ada233",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_route_table.private",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0c52a6317c77adf18",
+            "route_table_id": "rtb-06217c544fee5bef2",
+            "subnet_id": "subnet-06c6fd012bcfc1e34",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eip.nat",
+            "aws_internet_gateway.main",
+            "aws_nat_gateway.main",
+            "aws_route_table.private",
+            "aws_subnet.private",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-08bcf3c7281d55d7e",
+            "route_table_id": "rtb-027a618a0798db598",
+            "subnet_id": "subnet-00a7bb3cd26cf8d93",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-01901b595204490e5",
+            "route_table_id": "rtb-027a618a0798db598",
+            "subnet_id": "subnet-00ceb00055997c87e",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.main",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "db_password",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d",
+            "description": "Database password for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d",
+            "kms_key_id": "",
+            "name": "shoppers9/db-password",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "jwt_secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO",
+            "description": "JWT secret key for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO",
+            "kms_key_id": "",
+            "name": "shoppers9/jwt-secret",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "mongodb_uri",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC",
+            "description": "MongoDB connection URI for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC",
+            "kms_key_id": "",
+            "name": "shoppers9/mongodb-uri",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "razorpay_key_id",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X",
+            "description": "Razorpay Key ID for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X",
+            "kms_key_id": "",
+            "name": "shoppers9/razorpay-key-id",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "razorpay_key_secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J",
+            "description": "Razorpay Key Secret for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J",
+            "kms_key_id": "",
+            "name": "shoppers9/razorpay-key-secret",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret",
+      "name": "sms_api_key",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K",
+            "description": "SMS API key for Shoppers9 application",
+            "force_overwrite_replica_secret": false,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K",
+            "kms_key_id": "",
+            "name": "shoppers9/sms-api-key",
+            "name_prefix": "",
+            "policy": "",
+            "recovery_window_in_days": 30,
+            "replica": [],
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Project": "Shoppers9"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "db_password",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d|terraform-2025082917314982840000000c",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/db-password-31Lw2d",
+            "secret_string": "{\"password\":\"Shoppers9SecurePass123!\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-2025082917314982840000000c",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "secret_string"
+              }
+            ]
+          ],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.db_password"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "jwt_secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO|terraform-20250829173149226200000009",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO",
+            "secret_string": "{\"secret\":\"w#\\u003ct?utF)E_*PerxV6cWcB\\u003e[vddfz\\u003eR3Pe=Obdxl52\\u003c-KAl+]aka\\u003e#r0kj*Qyv?-\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-20250829173149226200000009",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "secret_string"
+              }
+            ]
+          ],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.jwt_secret",
+            "random_password.jwt_secret"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "mongodb_uri",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC|terraform-20250829184730570200000002",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC",
+            "secret_string": "{\"uri\":\"mongodb+srv://shoppers9_admin:Shoppers9SecurePass123!@shoppers9-docdb-cluster.cluster-ca9e4ucyq1fd.us-east-1.docdb.amazonaws.com:27017/shoppers9?ssl=true\\u0026replicaSet=rs0\\u0026readPreference=secondaryPreferred\\u0026retryWrites=false\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-20250829184730570200000002",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "secret_string"
+              }
+            ]
+          ],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_docdb_cluster.main",
+            "aws_docdb_cluster_parameter_group.main",
+            "aws_docdb_subnet_group.main",
+            "aws_secretsmanager_secret.mongodb_uri",
+            "aws_security_group.alb",
+            "aws_security_group.docdb",
+            "aws_security_group.ecs_backend",
+            "aws_subnet.private",
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "razorpay_key_id",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X|terraform-2025082917314972840000000b",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X",
+            "secret_string": "{\"key_id\":\"YOUR_RAZORPAY_KEY_ID_HERE\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-2025082917314972840000000b",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.razorpay_key_id"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "razorpay_key_secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J|terraform-20250829173148637000000007",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J",
+            "secret_string": "{\"key_secret\":\"YOUR_RAZORPAY_KEY_SECRET_HERE\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-20250829173148637000000007",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.razorpay_key_secret"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_secretsmanager_secret_version",
+      "name": "sms_api_key",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K",
+            "has_secret_string_wo": null,
+            "id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K|terraform-20250829173149072900000008",
+            "secret_binary": "",
+            "secret_id": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K",
+            "secret_string": "{\"api_key\":\"YOUR_SMS_API_KEY_HERE\"}",
+            "secret_string_wo": null,
+            "secret_string_wo_version": null,
+            "version_id": "terraform-20250829173149072900000008",
+            "version_stages": [
+              "AWSCURRENT"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_secretsmanager_secret.sms_api_key"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "alb",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:security-group/sg-0c6010346065d35b6",
+            "description": "Security group for Application Load Balancer",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0c6010346065d35b6",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": null,
+                "from_port": 443,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 443
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": null,
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              }
+            ],
+            "name": "shoppers9-alb",
+            "name_prefix": "",
+            "owner_id": "414691912398",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-alb",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-alb",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "docdb",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:security-group/sg-046ff9192e21f4430",
+            "description": "Security group for DocumentDB cluster",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-046ff9192e21f4430",
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": "",
+                "from_port": 27017,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-0885b3a207fb28074"
+                ],
+                "self": false,
+                "to_port": 27017
+              }
+            ],
+            "name": "shoppers9-docdb",
+            "name_prefix": "",
+            "owner_id": "414691912398",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-docdb",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_security_group.alb",
+            "aws_security_group.ecs_backend",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "ecs_backend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:security-group/sg-0885b3a207fb28074",
+            "description": "Security group for ECS backend tasks",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0885b3a207fb28074",
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": "",
+                "from_port": 3000,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-0c6010346065d35b6"
+                ],
+                "self": false,
+                "to_port": 3000
+              }
+            ],
+            "name": "shoppers9-ecs-backend",
+            "name_prefix": "",
+            "owner_id": "414691912398",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-ecs-backend",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-ecs-backend",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_security_group.alb",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "ecs_frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:security-group/sg-0f622016a1d05f15a",
+            "description": "Security group for ECS frontend tasks",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0f622016a1d05f15a",
+            "ingress": [
+              {
+                "cidr_blocks": [],
+                "description": null,
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [
+                  "sg-0c6010346065d35b6"
+                ],
+                "self": false,
+                "to_port": 80
+              }
+            ],
+            "name": "shoppers9-ecs-frontend",
+            "name_prefix": "",
+            "owner_id": "414691912398",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-ecs-frontend",
+              "Project": "Shoppers9"
+            },
+            "tags_all": {
+              "Environment": "Production",
+              "ManagedBy": "Terraform",
+              "Name": "shoppers9-ecs-frontend",
+              "Project": "Shoppers9"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_security_group.alb",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "private",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:subnet/subnet-08c485f68b6ada233",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1a",
+            "availability_zone_id": "use1-az1",
+            "cidr_block": "10.0.10.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-08c485f68b6ada233",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "414691912398",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "shoppers9-private-subnet-1"
+            },
+            "tags_all": {
+              "Name": "shoppers9-private-subnet-1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:subnet/subnet-06c6fd012bcfc1e34",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1b",
+            "availability_zone_id": "use1-az2",
+            "cidr_block": "10.0.20.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-06c6fd012bcfc1e34",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": false,
+            "outpost_arn": "",
+            "owner_id": "414691912398",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "shoppers9-private-subnet-2"
+            },
+            "tags_all": {
+              "Name": "shoppers9-private-subnet-2"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:subnet/subnet-00a7bb3cd26cf8d93",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1a",
+            "availability_zone_id": "use1-az1",
+            "cidr_block": "10.0.1.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-00a7bb3cd26cf8d93",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "414691912398",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "shoppers9-public-subnet-1"
+            },
+            "tags_all": {
+              "Name": "shoppers9-public-subnet-1"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:subnet/subnet-00ceb00055997c87e",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1b",
+            "availability_zone_id": "use1-az2",
+            "cidr_block": "10.0.2.0/24",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-00ceb00055997c87e",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "414691912398",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "tags": {
+              "Name": "shoppers9-public-subnet-2"
+            },
+            "tags_all": {
+              "Name": "shoppers9-public-subnet-2"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0d24c4eb337fd433a"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main",
+            "data.aws_availability_zones.available"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:414691912398:vpc/vpc-0d24c4eb337fd433a",
+            "assign_generated_ipv6_cidr_block": false,
+            "cidr_block": "10.0.0.0/16",
+            "default_network_acl_id": "acl-02946abc4e7d18727",
+            "default_route_table_id": "rtb-0180729098dd10003",
+            "default_security_group_id": "sg-0de088c3650464c83",
+            "dhcp_options_id": "dopt-085193e1bfc4a6dbd",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "enable_network_address_usage_metrics": false,
+            "id": "vpc-0d24c4eb337fd433a",
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_network_border_group": "",
+            "ipv6_ipam_pool_id": "",
+            "ipv6_netmask_length": 0,
+            "main_route_table_id": "rtb-0180729098dd10003",
+            "owner_id": "414691912398",
+            "tags": {
+              "Name": "shoppers9-vpc"
+            },
+            "tags_all": {
+              "Name": "shoppers9-vpc"
+            }
+          },
+          "sensitive_attributes": [],
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "random_password",
+      "name": "jwt_secret",
+      "provider": "provider[\"registry.terraform.io/hashicorp/random\"]",
+      "instances": [
+        {
+          "schema_version": 3,
+          "attributes": {
+            "bcrypt_hash": "$2a$10$z8j/L06yICycsR0E6Z6AIuo88U86RpY8u789ATdUWsyY0NcO9aABW",
+            "id": "none",
+            "keepers": null,
+            "length": 64,
+            "lower": true,
+            "min_lower": 0,
+            "min_numeric": 0,
+            "min_special": 0,
+            "min_upper": 0,
+            "number": true,
+            "numeric": true,
+            "override_special": null,
+            "result": "w#\u003ct?utF)E_*PerxV6cWcB\u003e[vddfz\u003eR3Pe=Obdxl52\u003c-KAl+]aka\u003e#r0kj*Qyv?-",
+            "special": true,
+            "upper": true
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

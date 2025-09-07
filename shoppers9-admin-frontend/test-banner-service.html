@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Banner Service</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .log {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #fee;
+            border: 1px solid #fcc;
+        }
+        .success {
+            background-color: #efe;
+            border: 1px solid #cfc;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007cba;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Banner Service Test</h1>
+    
+    <button onclick="testBannerService()">Test Banner Service</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:4000/api';
+        
+        function addLog(message, isError = false) {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${isError ? 'error' : 'success'}`;
+            logDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.appendChild(logDiv);
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        // Simulate the exact AdminBannerService class
+        class AdminBannerService {
+            constructor() {
+                this.baseURL = `${API_BASE_URL}/admin/banners`;
+            }
+            
+            getAuthHeaders() {
+                const token = localStorage.getItem('adminToken');
+                return {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+            }
+            
+            async getAllBanners(page = 1, limit = 20) {
+                try {
+                    addLog(`Making request to: ${this.baseURL}?page=${page}&limit=${limit}`);
+                    
+                    const headers = this.getAuthHeaders();
+                    addLog(`Headers: ${JSON.stringify(headers, null, 2)}`);
+                    
+                    const response = await axios.get(
+                        `${this.baseURL}?page=${page}&limit=${limit}`,
+                        { headers }
+                    );
+                    
+                    addLog(`Response status: ${response.status}`);
+                    addLog(`Response data: ${JSON.stringify(response.data, null, 2)}`);
+                    
+                    return response.data;
+                } catch (error) {
+                    addLog(`Error in getAllBanners: ${error.message}`, true);
+                    addLog(`Error details: ${JSON.stringify({
+                        message: error.message,
+                        status: error.response?.status,
+                        statusText: error.response?.statusText,
+                        data: error.response?.data,
+                        config: {
+                            url: error.config?.url,
+                            method: error.config?.method,
+                            headers: error.config?.headers
+                        }
+                    }, null, 2)}`, true);
+                    throw error;
+                }
+            }
+        }
+        
+        const adminBannerService = new AdminBannerService();
+        
+        async function testBannerService() {
+            clearLogs();
+            
+            // Check if token exists
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                addLog('No admin token found in localStorage', true);
+                return;
+            }
+            
+            addLog(`Admin token found: ${token.substring(0, 20)}...`);
+            
+            try {
+                addLog('Testing banner service getAllBanners method...');
+                const result = await adminBannerService.getAllBanners(1, 10);
+                addLog('✅ Banner service test successful!');
+                addLog(`Result: ${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                addLog('❌ Banner service test failed!', true);
+                addLog(`Error: ${error.message}`, true);
+            }
+        }
+        
+        // Auto-run test on page load
+        window.onload = function() {
+            setTimeout(testBannerService, 1000);
+        };
+    </script>
+</body>
+</html>

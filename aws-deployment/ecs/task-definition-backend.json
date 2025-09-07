@@ -1,0 +1,76 @@
+{
+  "family": "shoppers9-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::414691912398:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::414691912398:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "shoppers9-backend",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGODB_URI",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/mongodb-uri-KcqJGC"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-secret-lurhYO"
+        },
+        {
+          "name": "SMS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/sms-api-key-Kh074K"
+        },
+        {
+          "name": "RAZORPAY_KEY_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-id-WyAG5X"
+        },
+        {
+          "name": "RAZORPAY_KEY_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/razorpay-key-secret-Myie8J"
+        },
+        {
+          "name": "JWT_REFRESH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:414691912398:secret:shoppers9/jwt-refresh-secret-EQ1rLJ"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/shoppers9-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:3000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

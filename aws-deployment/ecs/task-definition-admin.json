@@ -1,0 +1,54 @@
+{
+  "family": "shoppers9-admin",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "taskRoleArn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-role",
+    "executionRoleArn": "arn:aws:iam::414691912398:role/shoppers9-ecs-task-execution-role",
+  "containerDefinitions": [
+    {
+      "name": "shoppers9-admin",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "NGINX_HOST",
+          "value": "localhost"
+        },
+        {
+          "name": "NGINX_PORT",
+          "value": "8080"
+        },
+        {
+          "name": "VITE_API_URL",
+          "value": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com/api"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/shoppers9-admin",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8080/ || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      }
+    }
+  ]
+}

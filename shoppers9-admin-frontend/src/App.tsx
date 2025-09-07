@@ -1,0 +1,106 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Users from './pages/Users';
+import ProductManagement from './pages/ProductManagement';
+import Orders from './pages/Orders';
+import CategoryManagement from './components/CategoryManagement';
+import FilterManagement from './components/filtermanagement';
+import BannerManagement from './components/BannerManagement';
+import FilterOptionManagement from './components/FilterOptionManagement';
+
+import Analytics from './pages/Analytics';
+import ProtectedRoute from './components/ProtectedRoute';
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/users" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Users />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/products" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProductManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/orders" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Orders />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/categories" element={
+              <ProtectedRoute>
+                <Layout>
+                  <CategoryManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/filters" element={
+              <ProtectedRoute>
+                <Layout>
+                  <FilterManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/banners" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/filter-options/:filterId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <FilterOptionManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Analytics />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
