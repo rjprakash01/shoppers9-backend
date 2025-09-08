@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, X, Heart, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { categoriesService, type Category } from '../../services/categories';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -12,14 +13,73 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCategoriesMenu, setShowCategoriesMenu] = useState('');
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const categories = [
-    { name: 'Men', subcategories: ['Topwear', 'Bottomwear', 'Footwear', 'Accessories'] },
-    { name: 'Women', subcategories: ['Western Wear', 'Ethnic Wear', 'Footwear', 'Accessories'] },
-    { name: 'Kids', subcategories: ['Boys Clothing', 'Girls Clothing', 'Footwear', 'Toys'] },
-    { name: 'Home & Living', subcategories: ['Bedsheets', 'Curtains', 'Cushions', 'Decor'] },
-    { name: 'Beauty', subcategories: ['Makeup', 'Skincare', 'Haircare', 'Fragrances'] }
-  ];
+  // Handle click outside to close user menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const categoryTree = await categoriesService.getCategoryTree();
+      // Use the actual category tree structure from backend
+      setCategories(categoryTree.filter(cat => cat.isActive));
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Load categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Debounced hover handlers
+  const handleCategoryHover = (categoryId: string) => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+    setShowCategoriesMenu(categoryId);
+  };
+
+  const handleCategoryLeave = () => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+    const timeout = setTimeout(() => {
+      setShowCategoriesMenu('');
+    }, 150); // Small delay to prevent flickering
+    setHoverTimeout(timeout);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +97,30 @@ const Navbar: React.FC = () => {
 
   return (
     <>
+      {/* Delivery Information Bar */}
+      <div className="bg-gray-100 border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center space-x-8 py-2 text-sm">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Fast Delivery</span>
+              <span className="text-gray-500">1-3 Days Island Wide</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Secure Shopping</span>
+              <span className="text-gray-500">100% Protected</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Easy Returns</span>
+              <span className="text-gray-500">7-Day Return Policy</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">24/7 Support</span>
+              <span className="text-gray-500">Local Customer Care</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Main Navbar */}
       <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -88,7 +172,7 @@ const Navbar: React.FC = () => {
 
               {/* User Menu */}
               {isAuthenticated ? (
-                <div className="relative">
+                <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex flex-col items-center text-gray-700 hover:text-pink-600 transition-colors duration-200"
@@ -158,35 +242,46 @@ const Navbar: React.FC = () => {
         <div className="hidden lg:block border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center space-x-8 py-3">
-              {categories.map((category) => (
-                <div key={category.name} className="relative group">
-                  <button
-                    className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 py-2"
-                    onMouseEnter={() => setShowCategoriesMenu(category.name)}
-                    onMouseLeave={() => setShowCategoriesMenu('')}
-                  >
-                    <span>{category.name}</span>
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                  {showCategoriesMenu === category.name && (
-                    <div 
-                      className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-                      onMouseEnter={() => setShowCategoriesMenu(category.name)}
-                      onMouseLeave={() => setShowCategoriesMenu('')}
-                    >
-                      {category.subcategories.map((subcategory) => (
-                        <Link
-                          key={subcategory}
-                          to={`/products?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(subcategory)}`}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-pink-600 transition-colors duration-200"
-                        >
-                          {subcategory}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+              {categoriesLoading ? (
+                <div className="flex items-center space-x-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-600"></div>
+                  <span className="text-sm">Loading categories...</span>
                 </div>
-              ))}
+              ) : (
+                categories.filter(cat => cat.level === 1).map((category) => (
+                  <div 
+                    key={category._id} 
+                    className="relative group"
+                    onMouseEnter={() => handleCategoryHover(category._id)}
+                    onMouseLeave={handleCategoryLeave}
+                  >
+                    <div className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 py-2 cursor-pointer">
+                      <Link
+                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
+                        className="hover:text-pink-600 transition-colors duration-200"
+                      >
+                        <span>{category.name}</span>
+                      </Link>
+                      {category.children && category.children.length > 0 && (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </div>
+                    {showCategoriesMenu === category._id && category.children && category.children.length > 0 && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        {category.children.filter(child => child.isActive).map((subcategory) => (
+                          <Link
+                            key={subcategory._id}
+                            to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}`}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-pink-600 transition-colors duration-200"
+                          >
+                            {subcategory.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

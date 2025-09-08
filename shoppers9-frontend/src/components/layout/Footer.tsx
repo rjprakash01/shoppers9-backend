@@ -97,7 +97,7 @@ const Footer: React.FC = () => {
             <div className="space-y-3 text-sm">
               <div className="flex items-center space-x-3">
                 <Phone className="h-4 w-4 text-primary-400" />
-                <span className="text-gray-300">+1 (555) 123-4567</span>
+                <span className="text-gray-300">+91 9266765833</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-primary-400" />
@@ -106,9 +106,9 @@ const Footer: React.FC = () => {
               <div className="flex items-start space-x-3">
                 <MapPin className="h-4 w-4 text-primary-400 mt-0.5" />
                 <span className="text-gray-300">
-                  123 Commerce Street<br />
-                  Business District<br />
-                  City, State 12345
+                  Sri Sai Prakash Auto Works<br />
+                  Lamba Line<br />
+                  Port Blair-744103
                 </span>
               </div>
             </div>

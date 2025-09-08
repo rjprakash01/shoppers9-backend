@@ -101,11 +101,13 @@ const Home: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true);
-      // Fetch categories from API
-      const response = await api.get('/categories');
+      // Fetch categories from tree API to get proper hierarchy
+      const response = await api.get('/categories/tree');
       const data = response.data;
       if (data.success && data.data.categories) {
-        setCategories(data.data.categories);
+        // Filter only level 1 categories for display
+        const level1Categories = data.data.categories.filter(cat => cat.level === 1 && cat.isActive);
+        setCategories(level1Categories);
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -155,38 +157,49 @@ const Home: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Banner Carousel */}
-      <section className="w-full">
+      <section className="w-full relative">
         <BannerCarousel className="w-full" />
+        {/* Enhanced Mobile CTA overlay */}
+        <div className="absolute bottom-2 left-2 right-2 md:bottom-4 md:left-4 md:right-4 lg:hidden">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3 md:p-4 shadow-xl border border-white/20">
+            <p className="text-xs md:text-sm font-semibold text-gray-900 mb-2 text-center">🔥 Trending in Andaman Islands</p>
+            <Link to="/products" className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-2.5 md:py-3 rounded-xl font-semibold text-sm md:text-base shadow-lg hover:shadow-xl transition-all duration-300 transform active:scale-95">
+              Shop Now
+            </Link>
+          </div>
+        </div>
       </section>
 
-
-      {/* Category Banners - Meesho Style */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+      {/* Category Banners - Mobile Optimized */}
+      <section className="py-6 md:py-12 lg:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-6 md:mb-8 lg:mb-12">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
               Shop by Category
             </h2>
-            <p className="text-gray-600 text-lg">Discover amazing deals across all categories</p>
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 px-2">Discover amazing deals across all categories</p>
           </div>
           
           {categoriesLoading ? (
-            <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-600 border-t-transparent"></div>
+            <div className="flex justify-center py-12">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-12 w-12 md:h-16 md:w-16 border-4 border-purple-200"></div>
+                <div className="animate-spin rounded-full h-12 w-12 md:h-16 md:w-16 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-              {categories.slice(0, 3).map((category) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+              {categories.map((category) => {
                 const banner = getBannerForCategory(category);
                 return (
                   <Link
                      key={category._id}
                      to={`/categories/${category.slug}`}
-                     className="group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                     className="group relative overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01] md:hover:scale-[1.02] lg:hover:scale-105 bg-white active:scale-95"
                    >
-                    <div className="relative h-64 md:h-80 flex flex-col justify-end p-6 md:p-8 text-white overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500">
+                    <div className="relative h-40 sm:h-48 md:h-56 lg:h-64 xl:h-80 flex flex-col justify-end p-3 sm:p-4 md:p-6 lg:p-8 text-white overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500">
                       {/* Overlay for better text readability */}
                       <div className="absolute inset-0 bg-black bg-opacity-30"></div>
                       
@@ -224,109 +237,108 @@ const Home: React.FC = () => {
       </section>
 
       {/* Trending Products Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                <TrendingUp className="h-8 w-8 text-purple-600" />
-                🔥 Trending Now
-              </h2>
-              <p className="text-lg text-gray-600">Most popular products this week</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <select 
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category._id} value={category.slug}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+      <section className="py-6 md:py-12 lg:py-16 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="mb-5 md:mb-6 lg:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 md:mb-4 gap-2 sm:gap-4">
+              <div className="flex-1">
+                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 leading-tight">🔥 Trending Now</h2>
+                <p className="text-gray-600 text-xs sm:text-sm md:text-base">Most popular among Andaman shoppers</p>
+              </div>
               <Link
                 to="/products"
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 text-xs sm:text-sm md:text-base font-medium group self-start sm:self-center bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-all duration-200"
               >
-                <Grid className="h-4 w-4" />
-                View All
+                View All Trending
+                <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
           </div>
 
           {trendingLoading ? (
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200"></div>
-                <div className="animate-spin rounded-full h-32 w-32 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+            <div className="flex justify-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 md:h-20 md:w-20 border-4 border-purple-200"></div>
+                  <div className="animate-spin rounded-full h-16 w-16 md:h-20 md:w-20 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+                </div>
+                <p className="text-gray-500 text-sm animate-pulse">Loading trending products...</p>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 md:gap-6">
-              {(trendingProducts || []).map((product) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+              {(trendingProducts || []).slice(0, 10).map((product) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="group bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+                  className="group bg-white rounded-lg md:rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-purple-200 transform hover:scale-[1.01] md:hover:scale-[1.02] lg:hover:scale-105 active:scale-95"
                 >
                   <div className="relative overflow-hidden">
-                    <div className="bg-gray-50 aspect-[3/4] flex items-center justify-center relative">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 aspect-[3/4] flex items-center justify-center relative">
                       {product.images && product.images.length > 0 ? (
                         <img
                           src={getImageUrl(product.images[0])}
                           alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/placeholder-image.svg';
                           }}
                         />
                       ) : (
-                        <span className="text-gray-400 text-sm">No Image</span>
+                        <span className="text-gray-400 text-xs md:text-sm">No Image</span>
                       )}
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                      <div className="absolute top-1.5 md:top-2 left-1.5 md:left-2">
+                        <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg">
                           50% OFF
                         </span>
                       </div>
+                      {/* Quick view overlay for desktop */}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center justify-center">
+                        <span className="bg-white text-gray-900 px-4 py-2 rounded-full text-sm font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                          Quick View
+                        </span>
+                      </div>
                     </div>
-                    <button className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-white">
-                      <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition-colors" />
+                    <button className="absolute top-1.5 md:top-2 right-1.5 md:right-2 p-1.5 md:p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110">
+                      <Heart className="h-3 w-3 md:h-4 md:w-4 text-gray-600 hover:text-red-500 transition-colors" />
                     </button>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 text-gray-900 line-clamp-2 leading-tight">
+                  <div className="p-2 sm:p-3 md:p-4">
+                    <h3 className="font-semibold text-xs sm:text-sm md:text-base mb-1.5 sm:mb-2 text-gray-900 line-clamp-2 leading-tight group-hover:text-purple-600 transition-colors">
                       {product.name}
                     </h3>
                     
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex flex-col">
+                    <div className="flex items-start justify-between mb-1.5 sm:mb-2 md:mb-3">
+                      <div className="flex flex-col flex-1 min-w-0">
                         {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? (
-                           <span key={`price-range-${product._id}`} className="text-lg font-bold text-gray-900">
+                           <span key={`price-range-${product._id}`} className="text-xs sm:text-sm md:text-lg font-bold text-gray-900 truncate">
                              {formatPriceRange(product.minPrice, product.maxPrice)}
                            </span>
                          ) : (
-                           <div key={`price-single-${product._id}`} className="flex items-center gap-2">
-                             <span className="text-lg font-bold text-gray-900">
+                           <div key={`price-single-${product._id}`} className="flex items-center gap-1 md:gap-2">
+                             <span className="text-xs sm:text-sm md:text-lg font-bold text-gray-900">
                                {formatPrice(product.minPrice || 0)}
                              </span>
-                             <span className="text-sm text-gray-400 line-through">
+                             <span className="text-xs md:text-sm text-gray-400 line-through">
                                {formatPrice((product.minPrice || 0) * 2)}
                              </span>
                            </div>
                          )}
                       </div>
-                      <div className="flex items-center bg-green-100 px-2 py-1 rounded-full">
-                        <Star className="h-3 w-3 text-green-600 fill-current" />
-                        <span className="text-xs text-green-700 ml-1 font-medium">4.5</span>
+                      <div className="flex items-center bg-gradient-to-r from-green-100 to-emerald-100 px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1 rounded-full ml-1 sm:ml-2 flex-shrink-0">
+                        <Star className="h-2 w-2 sm:h-2.5 sm:w-2.5 md:h-3 md:w-3 text-green-600 fill-current" />
+                        <span className="text-xs text-green-700 ml-0.5 font-medium">4.5</span>
                       </div>
                     </div>
                     
-                    <div className="text-xs text-gray-500 mb-2">
-                      Free Delivery
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="text-green-600 font-medium">
+                        ✓ Free Delivery
+                      </div>
+                      <div className="text-gray-500">
+                        Island Wide
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -334,38 +346,41 @@ const Home: React.FC = () => {
             </div>
           )}
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-4 sm:mt-6 md:mt-8">
             <Link
               to="/products"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-10 py-4 rounded-full hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base"
             >
+              <Grid className="h-3 w-3 sm:h-4 sm:w-4" />
               View All Products
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
-              <Sparkles className="h-8 w-8 text-yellow-500" />
-              ✨ Featured Products
+      {/* Featured Collections Section */}
+      <section className="py-6 md:py-12 lg:py-16 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-6 md:mb-8 lg:mb-12">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-2 md:mb-3 lg:mb-4 leading-tight">
+              ✨ Featured Collections
             </h2>
-            <p className="text-lg text-gray-600">Handpicked bestsellers at unbeatable prices</p>
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 px-2">Curated selections for island lifestyle</p>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200"></div>
-                <div className="animate-spin rounded-full h-32 w-32 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+            <div className="flex justify-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 md:h-20 md:w-20 border-4 border-purple-200"></div>
+                  <div className="animate-spin rounded-full h-16 w-16 md:h-20 md:w-20 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+                </div>
+                <p className="text-gray-500 text-sm animate-pulse">Loading featured collections...</p>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
               {(featuredProducts || []).map((product) => (
                 <Link
                   key={product._id}
@@ -438,63 +453,7 @@ const Home: React.FC = () => {
 
 
 
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Shoppers9?</h2>
-            <p className="text-lg text-gray-600">Experience the best online shopping</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                id: 'shipping',
-                icon: Truck,
-                title: 'Free Shipping',
-                description: 'Free delivery on orders above ₹499',
-                colors: 'from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300',
-                iconColor: 'text-blue-600'
-              },
-              {
-                id: 'payment',
-                icon: Shield,
-                title: 'Secure Payment',
-                description: '100% secure and encrypted payments',
-                colors: 'from-green-100 to-green-200 group-hover:from-green-200 group-hover:to-green-300',
-                iconColor: 'text-green-600'
-              },
-              {
-                id: 'support',
-                icon: Headphones,
-                title: '24/7 Support',
-                description: 'Round the clock customer support',
-                colors: 'from-purple-100 to-purple-200 group-hover:from-purple-200 group-hover:to-purple-300',
-                iconColor: 'text-purple-600'
-              },
-              {
-                id: 'returns',
-                icon: Gift,
-                title: 'Easy Returns',
-                description: 'Hassle-free returns within 30 days',
-                colors: 'from-yellow-100 to-yellow-200 group-hover:from-yellow-200 group-hover:to-yellow-300',
-                iconColor: 'text-yellow-600'
-              }
-            ].map((feature) => {
-              const IconComponent = feature.icon;
-              return (
-                <div key={feature.id} className="text-center group">
-                  <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${feature.colors} rounded-full flex items-center justify-center transition-colors`}>
-                    <IconComponent className={`h-8 w-8 ${feature.iconColor}`} />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+
 
     </div>
   );
