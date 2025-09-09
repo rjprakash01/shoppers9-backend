@@ -50,6 +50,15 @@ const addressSchema = new Schema<IAddress>({
     type: Boolean,
     default: false
   }
+}, {
+  toJSON: {
+    transform: function(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
 });
 
 const userSchema = new Schema<IUser>({

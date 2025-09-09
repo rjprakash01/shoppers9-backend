@@ -5,7 +5,9 @@ import {
   updateCategoryFilter,
   removeCategoryFilter,
   bulkAssignFiltersToCategory,
-  getAvailableFiltersForCategory
+  getAvailableFiltersForCategory,
+  autoAssignCategoryFilters,
+  getCategoryFilterRecommendations
 } from '../controllers/categoryFilterController';
 import { auth } from '../middleware/auth';
 
@@ -15,6 +17,8 @@ const router = express.Router();
 router.get('/categories/:categoryId/filters', auth, getCategoryFilters);
 router.post('/categories/:categoryId/filters', auth, assignFilterToCategory);
 router.post('/categories/:categoryId/filters/bulk', auth, bulkAssignFiltersToCategory);
+router.post('/categories/:categoryId/filters/auto-assign', auth, autoAssignCategoryFilters);
+router.get('/categories/:categoryId/filters/recommendations', auth, getCategoryFilterRecommendations);
 router.get('/categories/:categoryId/available-filters', auth, getAvailableFiltersForCategory);
 
 // Individual category filter routes

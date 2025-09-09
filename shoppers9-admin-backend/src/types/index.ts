@@ -39,22 +39,36 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// Product Size interface
+// Available Color interface (from admin panel)
+export interface IAvailableColor {
+  name: string;
+  code: string;
+  images: string[];
+}
+
+// Available Size interface (from admin panel)
+export interface IAvailableSize {
+  name: string;
+}
+
+// Product Variant interface (color-size combination)
+export interface IProductVariant extends Document {
+  color: string;
+  colorCode?: string;
+  size: string;
+  price: number;
+  originalPrice: number;
+  stock: number;
+  images: string[];
+}
+
+// Legacy Product Size interface (for backward compatibility)
 export interface IProductSize extends Document {
   size: string;
   price: number;
   originalPrice: number;
   discount: number;
   stock: number;
-  // sku: string; // Removed to fix duplicate key error
-}
-
-// Product Variant interface
-export interface IProductVariant extends Document {
-  color: string;
-  colorCode?: string;
-  sizes: IProductSize[];
-  images: string[];
 }
 
 // Product Specification interface
@@ -78,11 +92,18 @@ export interface IProduct extends Document {
   subCategory: mongoose.Types.ObjectId | ICategory;
   subSubCategory?: mongoose.Types.ObjectId | ICategory;
   brand: string;
+  price?: number; // Base price
+  originalPrice?: number; // Base original price
   images: string[];
-  variants: IProductVariant[];
+  availableColors: IAvailableColor[]; // Colors from admin panel
+  availableSizes: IAvailableSize[]; // Sizes from admin panel
+  variants: IProductVariant[]; // Color-size combinations
+  displayFilters: string[]; // ['color', 'size'] to control frontend display
   specifications: IProductSpecification;
   tags: string[];
   isActive: boolean;
+  isFeatured: boolean;
+  isTrending: boolean;
   createdAt: Date;
   updatedAt: Date;
   

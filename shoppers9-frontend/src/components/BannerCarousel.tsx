@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { bannerService } from '../services/banners';
 import type { Banner } from '../services/banners';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface BannerCarouselProps {
   className?: string;
@@ -21,23 +22,30 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    loadBanners();
+    // Load banners (use cache if available)
+    loadBanners(false);
     
-    // Set up periodic refresh to catch banner updates
+    // Set up periodic refresh to catch banner updates (reduced frequency)
     const refreshInterval = setInterval(() => {
-      loadBanners(true); // Force refresh every 2 minutes
-    }, 120000);
+      loadBanners(true); // Force refresh every 5 minutes to reduce server load
+    }, 300000);
     
     return () => clearInterval(refreshInterval);
   }, []);
 
-  // Preload banner images for better performance
+  // Preload banner images for better performance (with error handling)
   useEffect(() => {
     if (banners.length > 0) {
       banners.forEach((banner) => {
         if (banner.image && !banner.image.startsWith('data:')) {
           const img = new Image();
-          img.src = banner.image;
+          img.onload = () => {
+            // Image loaded successfully
+          };
+          img.onerror = () => {
+            console.warn('Failed to preload banner image:', banner.image);
+          };
+          img.src = getImageUrl(banner.image);
         }
       });
     }
@@ -62,12 +70,24 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
 
   const loadBanners = async (forceRefresh = false) => {
     try {
+      // Clear cache on force refresh
+      if (forceRefresh) {
+        bannerService.clearCache();
+      }
+      
       const activeBanners = await bannerService.getActiveBanners(forceRefresh);
+      console.log('Carousel banners received:', activeBanners.length, activeBanners);
+      
       // Filter only carousel banners
       const carouselBanners = activeBanners.filter(banner => 
         !banner.displayType || banner.displayType === 'carousel' || banner.displayType === 'both'
       );
-      setBanners(carouselBanners);
+      
+      // Sort banners by order field
+      const sortedCarouselBanners = carouselBanners.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      console.log('Filtered and sorted carousel banners:', sortedCarouselBanners.length, sortedCarouselBanners.map(b => ({ title: b.title, order: b.order })));
+      setBanners(sortedCarouselBanners);
     } catch (error) {
       console.error('Failed to load banners:', error);
       // Service handles fallback, so this should rarely happen
@@ -131,41 +151,42 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   }
 
   return (
-    <div className={`relative w-full h-64 md:h-80 lg:h-96 overflow-hidden shadow-lg ${className}`}>
+    <div className={`relative w-full h-full overflow-hidden shadow-2xl ${className}`}>
       {/* Banner Image and Content */}
       <div className="relative w-full h-full">
         <img
-          src={currentBanner.image}
+          src={getImageUrl(currentBanner.image)}
           alt={currentBanner.title}
-          className="w-full h-full object-cover transition-opacity duration-300"
+          className="w-full h-full object-cover transition-all duration-500"
           loading="eager"
           decoding="async"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            // Fallback to a simple gradient if image fails
+            // Fallback to a modern gradient if image fails
             target.style.display = 'none';
             target.parentElement!.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
           }}
         />
         
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-30" />
+        {/* Enhanced Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         
-        {/* Content */}
-        <div className="absolute inset-0 flex items-center justify-center text-center text-white p-6">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4">
+        {/* Content - Mobile Optimized */}
+        <div className="absolute inset-0 flex items-center justify-center text-center text-white p-4 sm:p-6 md:p-8">
+          <div className="max-w-4xl w-full">
+            {/* Enhanced Title */}
+            <h2 className="text-xl sm:text-2xl md:text-4xl lg:text-6xl font-bold mb-2 sm:mb-3 md:mb-4 leading-tight drop-shadow-lg">
               {currentBanner.title}
             </h2>
             
             {currentBanner.subtitle && (
-              <p key={`banner-subtitle-${currentBanner._id}`} className="text-lg md:text-xl lg:text-2xl mb-2 md:mb-4 opacity-90">
+              <p key={`banner-subtitle-${currentBanner._id}`} className="text-base sm:text-lg md:text-xl lg:text-3xl mb-2 sm:mb-3 md:mb-4 opacity-95 drop-shadow-md font-medium">
                 {currentBanner.subtitle}
               </p>
             )}
             
             {currentBanner.description && (
-              <p key={`banner-description-${currentBanner._id}`} className="text-sm md:text-base lg:text-lg mb-4 md:mb-6 opacity-80">
+              <p key={`banner-description-${currentBanner._id}`} className="text-sm sm:text-base md:text-lg lg:text-xl mb-4 sm:mb-6 md:mb-8 opacity-90 drop-shadow-md max-w-2xl mx-auto leading-relaxed">
                 {currentBanner.description}
               </p>
             )}
@@ -174,7 +195,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
               <Link
                 key={`banner-link-${currentBanner._id}`}
                 to={currentBanner.link}
-                className="inline-block bg-white text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors duration-200 transform hover:scale-105"
+                className="inline-flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 rounded-2xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
               >
                 {currentBanner.buttonText}
               </Link>
@@ -183,41 +204,41 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
         </div>
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Enhanced Navigation Arrows */}
       {banners.length > 1 && (
         <React.Fragment key="navigation-arrows">
           <button
             onClick={prevSlide}
             disabled={isTransitioning}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
+            className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 sm:p-3 rounded-full transition-all duration-300 disabled:opacity-50 hover:scale-110 shadow-lg"
             aria-label="Previous banner"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           
           <button
             onClick={nextSlide}
             disabled={isTransitioning}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
+            className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 sm:p-3 rounded-full transition-all duration-300 disabled:opacity-50 hover:scale-110 shadow-lg"
             aria-label="Next banner"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </React.Fragment>
       )}
 
-      {/* Dots Indicator */}
+      {/* Enhanced Dots Indicator */}
       {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+        <div className="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 sm:space-x-3">
           {banners.map((banner, index) => (
             <button
               key={banner._id || `banner-${index}`}
               onClick={() => goToSlide(index)}
               disabled={isTransitioning}
-              className={`w-3 h-3 rounded-full transition-all duration-200 ${
+              className={`transition-all duration-300 rounded-full ${
                 index === safeCurrentIndex
-                  ? 'bg-white'
-                  : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                  ? 'w-8 h-3 bg-white shadow-lg'
+                  : 'w-3 h-3 bg-white/50 hover:bg-white/75 hover:scale-110'
               }`}
               aria-label={`Go to banner ${index + 1}`}
             />

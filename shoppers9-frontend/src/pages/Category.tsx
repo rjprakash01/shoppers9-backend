@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { productService, type Product, type ProductFilters } from '../services/products';
 import { formatPrice, formatPriceRange } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
-import { Heart, Grid, List } from 'lucide-react';
+import { Heart, Grid, List, Filter } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
+import FilterSidebar from '../components/FilterSidebar';
 
 const Category: React.FC = () => {
   const { categorySlug } = useParams<{ categorySlug: string }>();
@@ -15,6 +16,7 @@ const Category: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [categoryName, setCategoryName] = useState('');
+  const [showFilters, setShowFilters] = useState(true); // Show filters by default on desktop
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
     limit: 12,
@@ -58,6 +60,10 @@ const Category: React.FC = () => {
     setCurrentPage(updatedFilters.page || 1);
   };
 
+  const handleFiltersChange = (newFilters: Partial<ProductFilters>) => {
+    updateFilters({ ...newFilters, page: 1 });
+  };
+
   const renderProductCard = (product: Product) => {
     const firstVariant = product.variants?.[0];
     const priceRange = product.minPrice !== product.maxPrice;
@@ -90,15 +96,21 @@ const Category: React.FC = () => {
               
               <div className="flex items-center justify-between">
                 <div>
-                  {priceRange ? (
+                  <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold text-gray-900">
-                      {formatPriceRange(product.minPrice || 0, product.maxPrice || 0)}
+                      {formatPrice(product.price || 0)}
                     </span>
-                  ) : (
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.minPrice || 0)}
-                    </span>
-                  )}
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <>
+                        <span className="text-sm text-gray-500 line-through">
+                          {formatPrice(product.originalPrice)}
+                        </span>
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
+                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -146,22 +158,21 @@ const Category: React.FC = () => {
           </Link>
           
           <div className="mb-2">
-            {firstVariant?.sizes?.[0] ? (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-bold text-gray-900">
-                  {formatPrice(firstVariant.sizes[0].price)}
-                </span>
-                {firstVariant.sizes[0].originalPrice > firstVariant.sizes[0].price && (
-                  <span className="text-xs text-gray-500 line-through">
-                    {formatPrice(firstVariant.sizes[0].originalPrice)}
-                  </span>
-                )}
-              </div>
-            ) : (
+            <div className="flex items-center space-x-2">
               <span className="text-sm font-bold text-gray-900">
-                {formatPrice(product.minPrice || 0)}
+                {formatPrice(product.price || 0)}
               </span>
-            )}
+              {product.originalPrice && product.originalPrice > product.price && (
+                <>
+                  <span className="text-xs text-gray-500 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded text-xs font-medium">
+                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -233,60 +244,91 @@ const Category: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
-            <p className="text-gray-600 mt-2">
-              {products && products.length > 0 ? `${products.length} products found` : 'No products found'}
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Sort Options */}
-            <select
-              value={`${filters.sortBy}-${filters.sortOrder}`}
-              onChange={(e) => {
-                const [sortBy, sortOrder] = e.target.value.split('-') as [string, 'asc' | 'desc'];
-                updateFilters({ sortBy: sortBy as any, sortOrder, page: 1 });
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-            >
-              <option value="createdAt-desc">Newest First</option>
-              <option value="createdAt-asc">Oldest First</option>
-              <option value="name-asc">Name A-Z</option>
-              <option value="name-desc">Name Z-A</option>
-              <option value="price-asc">Price Low to High</option>
-              <option value="price-desc">Price High to Low</option>
-            </select>
-            
-            {/* View Mode Toggle */}
-            <div className="flex border border-gray-300 rounded-md">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 ${
-                  viewMode === 'grid'
-                    ? 'bg-pink-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                } transition-colors`}
-              >
-                <Grid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 ${
-                  viewMode === 'list'
-                    ? 'bg-pink-500 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                } transition-colors`}
-              >
-                <List className="h-4 w-4" />
-              </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex">
+        {/* Filter Sidebar */}
+        <FilterSidebar
+          isOpen={showFilters}
+          onClose={() => setShowFilters(false)}
+          onFiltersChange={handleFiltersChange}
+          currentFilters={filters}
+          category={categorySlug}
+        />
+        
+        {/* Main Content */}
+        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-0' : ''}`}>
+          <div className="py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
+                <p className="text-gray-600 mt-2">
+                  {products && products.length > 0 ? `${products.length} products found` : 'No products found'}
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                {/* Filter Toggle Button */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="lg:hidden flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filters</span>
+                </button>
+                
+                {/* Desktop Filter Toggle */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="hidden lg:flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+                </button>
+                
+                {/* Sort Options */}
+                <select
+                  value={`${filters.sortBy}-${filters.sortOrder}`}
+                  onChange={(e) => {
+                    const [sortBy, sortOrder] = e.target.value.split('-') as [string, 'asc' | 'desc'];
+                    updateFilters({ sortBy: sortBy as any, sortOrder, page: 1 });
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                >
+                  <option value="createdAt-desc">Newest First</option>
+                  <option value="createdAt-asc">Oldest First</option>
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                  <option value="price-asc">Price Low to High</option>
+                  <option value="price-desc">Price High to Low</option>
+                </select>
+                
+                {/* View Mode Toggle */}
+                <div className="flex border border-gray-300 rounded-md">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 ${
+                      viewMode === 'grid'
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    } transition-colors`}
+                  >
+                    <Grid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 ${
+                      viewMode === 'list'
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    } transition-colors`}
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         {/* Products Grid/List */}
         {!products || products.length === 0 ? (
@@ -314,6 +356,9 @@ const Category: React.FC = () => {
             {renderPagination()}
           </>
         )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

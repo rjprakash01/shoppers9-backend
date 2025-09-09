@@ -15,11 +15,11 @@ import {
 
 interface Category {
   id: string;
-  _id?: string; // Keep for backward compatibility
+  _id?: string;
   name: string;
   slug: string;
   level: number;
-  parentCategory?: string | { id?: string; _id?: string; name?: string };
+  parentCategory?: string | { id?: string; _id?: string; name?: string } | null;
   isActive: boolean;
   children: Category[];
 }
@@ -38,7 +38,7 @@ interface Filter {
 
 interface FilterOption {
   _id: string;
-  id?: string; // Add optional id property for compatibility
+  id?: string;
   filter: string;
   value: string;
   displayValue: string;
@@ -62,6 +62,36 @@ interface ProductFilterValue {
   customValue?: string;
 }
 
+interface ProductVariant {
+  id?: string;
+  color: string;
+  colorCode?: string;
+  size: string;
+  price: number;
+  originalPrice: number;
+  stock: number;
+  images: string[];
+}
+
+// Keep the old interfaces for backward compatibility
+interface ProductSize {
+  size: string;
+  price: number;
+  originalPrice: number;
+  stock: number;
+}
+
+// Available colors and sizes for the product
+interface ProductColor {
+  name: string;
+  code: string;
+  images: string[];  // Color-specific images
+}
+
+interface ProductSizeOption {
+  name: string;
+}
+
 interface ProductFormData {
   name: string;
   description: string;
@@ -69,7 +99,7 @@ interface ProductFormData {
   originalPrice: number;
   category: string;
   subCategory: string;
-  subSubCategory?: string; // Add subSubCategory field
+  subSubCategory?: string;
   brand: string;
   stock: number;
   images: string[];
@@ -77,12 +107,12 @@ interface ProductFormData {
   tags: string[];
   isActive: boolean;
   isFeatured: boolean;
+  isTrending: boolean;
   filterValues: ProductFilterValue[];
-}
-
-interface ProductFormState extends ProductFormData {
-  imageFiles: File[];
-  imagePreviews: string[];
+  displayFilters: string[];
+  variants: ProductVariant[];
+  availableColors: ProductColor[];
+  availableSizes: ProductSizeOption[];
 }
 
 interface ProductFormProps {
@@ -100,14 +130,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
   initialData,
   isEditing = false
 }) => {
-  const [formData, setFormData] = useState<ProductFormState>({
+  const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
     price: 0,
     originalPrice: 0,
     category: '',
     subCategory: '',
-    subSubCategory: '', // Add subSubCategory field
+    subSubCategory: '',
     brand: '',
     stock: 0,
     images: [],
@@ -115,9 +145,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
     tags: [''],
     isActive: true,
     isFeatured: false,
+    isTrending: false,
     filterValues: [],
-    imageFiles: [],
-    imagePreviews: []
+    displayFilters: [],
+    variants: [],
+    availableColors: [],
+    availableSizes: []
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -125,23 +158,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [subCategories, setSubCategories] = useState<Category[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<Category[]>([]);
   const [availableFilters, setAvailableFilters] = useState<CategoryFilter[]>([]);
-  const [availableFilterOptions, setAvailableFilterOptions] = useState<Record<string, FilterOption[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedMainCategory, setSelectedMainCategory] = useState<string>('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
+  const [imageUploadError, setImageUploadError] = useState<string>('');
 
   // Initialize form data
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
       if (initialData) {
-        // Reset category selection states first
-        setSelectedMainCategory('');
-        setSelectedSubCategory('');
-        setSubCategories([]);
-        setSubSubCategories([]);
-        
         setFormData({
           name: initialData.name || '',
           description: initialData.description || '',
@@ -149,19 +174,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
           originalPrice: initialData.originalPrice || 0,
           category: initialData.category || '',
           subCategory: initialData.subCategory || '',
-          subSubCategory: initialData.subSubCategory || '', // Add subSubCategory field
+          subSubCategory: initialData.subSubCategory || '',
           brand: initialData.brand || '',
           stock: initialData.stock || 0,
           images: initialData.images || [],
           features: initialData.features || [''],
           tags: initialData.tags || [''],
-          isActive: initialData.isActive ?? true,
-          isFeatured: initialData.isFeatured ?? false,
+          isActive: initialData.isActive !== undefined ? initialData.isActive : true,
+          isFeatured: initialData.isFeatured || false,
+          isTrending: initialData.isTrending || false,
           filterValues: initialData.filterValues || [],
-          imageFiles: [],
-          imagePreviews: (initialData.images || []).map(img => 
-            img.startsWith('http') ? img : `http://localhost:4000${img}`
-          )
+          displayFilters: initialData.displayFilters || [],
+          variants: initialData.variants || [],
+          availableColors: initialData.availableColors || [],
+          availableSizes: initialData.availableSizes || []
         });
       }
     } else {
@@ -171,254 +197,107 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   // Fetch available filters when category selection changes
   useEffect(() => {
-    // Only fetch filters if categories are loaded
+    console.log('🔍 ProductForm: Filter useEffect triggered');
+    console.log('🔍 ProductForm: Categories loaded:', categories.length);
+    console.log('🔍 ProductForm: Form data categories:', {
+      category: formData.category,
+      subCategory: formData.subCategory,
+      subSubCategory: formData.subSubCategory
+    });
+    
     if (categories.length === 0) {
-      console.log('🔍 ProductForm: Categories not loaded yet, skipping filter fetch');
+      console.log('🔍 ProductForm: No categories loaded yet, skipping filter fetch');
       return;
     }
+
+    const categoryToCheck = formData.subSubCategory || formData.subCategory || formData.category;
+    console.log('🔍 ProductForm: Category to check for filters:', categoryToCheck);
     
-    // Fetch filters for the most specific category selected
-    const categoryForFilters = formData.subSubCategory || formData.subCategory || formData.category;
-    if (categoryForFilters) {
-      console.log('🔍 ProductForm: Fetching filters for category:', categoryForFilters);
-      fetchAvailableFilters(categoryForFilters);
+    if (categoryToCheck) {
+      console.log('🔍 ProductForm: Fetching filters for category:', categoryToCheck);
+      fetchAvailableFilters(categoryToCheck);
     } else {
       console.log('🔍 ProductForm: No category selected, clearing filters');
       setAvailableFilters([]);
     }
   }, [formData.category, formData.subCategory, formData.subSubCategory, categories]);
 
-  // Helper function to get parent category ID
-  const getParentCategoryId = (parentCategory: string | { id?: string; _id?: string; name?: string } | undefined): string | undefined => {
-    if (!parentCategory) return undefined;
-    if (typeof parentCategory === 'string') return parentCategory;
-    return parentCategory.id || parentCategory._id;
-  };
-
-  // Helper function to filter categories by parent
-  const filterCategoriesByParent = (level: number, parentId: string) => {
-    return categories.filter(cat => {
-      if (cat.level !== level) return false;
-      const catParentId = getParentCategoryId(cat.parentCategory);
-      return catParentId === parentId;
-    });
-  };
-
-  // Auto-populate subcategories when a category is pre-selected
+  // Update category hierarchy when categories change
   useEffect(() => {
-    if (categories.length > 0 && (formData.category || formData.subCategory || formData.subSubCategory) && !selectedMainCategory) {
-      // Handle different category levels based on what's populated
-      let mainCatId = '';
-      let subCatId = '';
-      let subSubCatId = '';
-      
-      // If subSubCategory is set, work backwards to find the hierarchy
-      if (formData.subSubCategory) {
-        const subSubCat = categories.find(cat => (cat.id || cat._id) === formData.subSubCategory);
-        if (subSubCat && subSubCat.level === 3) {
-          subSubCatId = formData.subSubCategory;
-          const parentSubId = getParentCategoryId(subSubCat.parentCategory);
-          const parentSubCat = categories.find(cat => (cat.id || cat._id) === parentSubId);
-          if (parentSubCat) {
-            subCatId = parentSubCat.id || parentSubCat._id || '';
-            const grandParentId = getParentCategoryId(parentSubCat.parentCategory);
-            const grandParentCat = categories.find(cat => (cat.id || cat._id) === grandParentId);
-            if (grandParentCat) {
-              mainCatId = grandParentCat.id || grandParentCat._id || '';
-            }
-          }
-        }
-      }
-      // If subCategory is set but no subSubCategory
-      else if (formData.subCategory) {
-        const subCat = categories.find(cat => (cat.id || cat._id) === formData.subCategory);
-        if (subCat && subCat.level === 2) {
-          subCatId = formData.subCategory;
-          const parentId = getParentCategoryId(subCat.parentCategory);
-          const parentCat = categories.find(cat => (cat.id || cat._id) === parentId);
-          if (parentCat) {
-            mainCatId = parentCat.id || parentCat._id || '';
-          }
-        }
-      }
-      // If only main category is set
-      else if (formData.category) {
-        const mainCat = categories.find(cat => (cat.id || cat._id) === formData.category);
-        if (mainCat && mainCat.level === 1) {
-          mainCatId = formData.category;
-        }
-      }
-      
-      // Set the hierarchy
-      if (mainCatId) {
-        setSelectedMainCategory(mainCatId);
-        const subs = filterCategoriesByParent(2, mainCatId);
-        setSubCategories(subs);
-        
-        if (subCatId) {
-          setSelectedSubCategory(subCatId);
-          const subSubs = filterCategoriesByParent(3, subCatId);
-          setSubSubCategories(subSubs);
-        }
-      }
+    if (categories.length > 0) {
+      const mainCats = categories.filter(cat => cat.level === 1);
+      setMainCategories(mainCats);
+      console.log('🔍 ProductForm: Main categories set:', mainCats.length);
     }
-  }, [categories, formData.category, formData.subCategory, formData.subSubCategory, selectedMainCategory]);
+  }, [categories]);
 
   const fetchCategories = async () => {
     try {
-      console.log('🔍 ProductForm: Fetching category tree...');
-      const response = await authService.getCategoryTree();
-      console.log('🔍 ProductForm: Category tree response:', response);
+      console.log('🔍 ProductForm: Fetching categories...');
+      const response = await authService.get('/api/admin/categories/tree');
+      console.log('🔍 ProductForm: Categories response:', response);
       
-      // Flatten the hierarchical category tree into a flat array
-      let allCategories: Category[] = [];
-      
-      const flattenCategories = (categories: Category[], level: number = 1) => {
+      const flattenCategories = (categories: any[]): Category[] => {
+        let flattened: Category[] = [];
+        
         categories.forEach(category => {
-          // Ensure the category has the correct structure
           const flatCategory: Category = {
-            id: category.id || category._id || '',
-            _id: category._id || category.id,
+            id: category.id,
+            _id: category.id,
             name: category.name,
             slug: category.slug,
-            level: level,
-            parentCategory: category.parentCategory,
+            level: category.level,
+            parentCategory: category.parentCategory?.id || null,
             isActive: category.isActive,
-            children: category.children || []
+            children: []
           };
           
-          allCategories.push(flatCategory);
+          flattened.push(flatCategory);
           
-          // Recursively flatten children
           if (category.children && category.children.length > 0) {
-            flattenCategories(category.children, level + 1);
+            const childrenFlattened = flattenCategories(category.children);
+            flattened = flattened.concat(childrenFlattened);
           }
         });
+        
+        return flattened;
       };
       
-      // Handle the response format from getCategoryTree
-      if (response && response.success && Array.isArray(response.data)) {
-        flattenCategories(response.data);
-      } else if (response && Array.isArray(response.data)) {
-        flattenCategories(response.data);
-      } else if (response && Array.isArray(response)) {
-        flattenCategories(response);
-      } else {
-        console.warn('❌ ProductForm: Unexpected categories response format:', response);
-        allCategories = [];
-      }
-      
-      console.log('🔍 ProductForm: Flattened categories:', allCategories);
-      console.log('🔍 ProductForm: Categories by level:', {
-        level1: allCategories.filter(cat => cat.level === 1).length,
-        level2: allCategories.filter(cat => cat.level === 2).length,
-        level3: allCategories.filter(cat => cat.level === 3).length
-      });
-      
-      setCategories(allCategories);
-      
-      const mains = allCategories.filter((cat: Category) => cat.level === 1);
-      setMainCategories(mains);
+      const flatCategories = flattenCategories(response.data || []);
+      console.log('🔍 ProductForm: Flattened categories:', flatCategories.length);
+      setCategories(flatCategories);
     } catch (error) {
-      console.error('❌ ProductForm: Error fetching categories:', error);
+      console.error('🔍 ProductForm: Error fetching categories:', error);
       setCategories([]);
-      setMainCategories([]);
     }
   };
 
   const fetchAvailableFilters = async (categoryId: string) => {
     try {
-      console.log('🔍 ProductForm: Fetching filters for categoryId:', categoryId);
-      
-      // First check if the category exists and get its level
-      const selectedCategory = categories.find(cat => (cat.id || cat._id) === categoryId);
-      if (!selectedCategory) {
-        console.warn('❌ ProductForm: Category not found:', categoryId);
-        setAvailableFilters([]);
-        setAvailableFilterOptions({});
-        return;
-      }
-      
-      console.log('🔍 ProductForm: Selected category:', selectedCategory.name, 'Level:', selectedCategory.level);
-      
-      // Allow filters for any category level that has been tagged with filters
-      console.log('🔍 ProductForm: Fetching filters for category level:', selectedCategory.level);
-      
+      console.log('🔍 ProductForm: Fetching available filters for category:', categoryId);
       const response = await authService.get(`/api/admin/categories/${categoryId}/filters`);
-      console.log('🔍 ProductForm: Raw filters response:', response);
+      console.log('🔍 ProductForm: Available filters response:', response);
       
-      // Handle the correct response format from backend
-      // Backend returns: {success: true, data: {category, filters: [...], pagination}}
-      // authService.get() returns response.data, so we access response.data.filters
-      let filters = [];
-      if (response && response.success && response.data && Array.isArray(response.data.filters)) {
-        filters = response.data.filters;
-        console.log('✅ ProductForm: Using response.data.filters format');
-      } else if (response && response.data && Array.isArray(response.data)) {
-        filters = response.data;
-        console.log('✅ ProductForm: Using response.data format (direct array)');
-      } else if (response && Array.isArray(response)) {
-        filters = response;
-        console.log('✅ ProductForm: Using direct response format');
+      if (response.success && response.data && response.data.categoryFilters) {
+        console.log('🔍 ProductForm: Setting available filters:', response.data.categoryFilters.length);
+        setAvailableFilters(response.data.categoryFilters);
+        
+        response.data.categoryFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
+          console.log(`🔍 ProductForm: Filter ${index + 1}:`, {
+            id: categoryFilter._id,
+            filterName: categoryFilter.filter?.name,
+            filterDisplayName: categoryFilter.filter?.displayName,
+            filterType: categoryFilter.filter?.type,
+            optionsCount: categoryFilter.filter?.options?.length || 0
+          });
+        });
       } else {
-        console.warn('❌ ProductForm: Unexpected filters response format:', response);
-        console.warn('❌ ProductForm: Response structure:', JSON.stringify(response, null, 2));
-        filters = [];
+        console.log('🔍 ProductForm: No filters found or invalid response structure');
+        setAvailableFilters([]);
       }
-      
-      console.log('🔍 ProductForm: Processed filters:', filters);
-      console.log('🔍 ProductForm: Number of filters found:', filters.length);
-      setAvailableFilters(filters);
-      
-      // Fetch available filter options based on existing products
-      await fetchAvailableFilterOptions(categoryId);
-    } catch (error: any) {
-      console.error('❌ ProductForm: Error fetching category filters:', error);
-      
-      // Handle any errors gracefully
-      console.error('❌ ProductForm: Error details:', error.response?.data || error.message);
+    } catch (error) {
+      console.error('🔍 ProductForm: Error fetching available filters:', error);
       setAvailableFilters([]);
-      setAvailableFilterOptions({});
-    }
-  };
-
-  const fetchAvailableFilterOptions = async (categoryId: string) => {
-    try {
-      console.log('🔍 ProductForm: Fetching available filter options for categoryId:', categoryId);
-      const response = await authService.get(`/api/admin/products/category/${categoryId}/available-filter-options`);
-      console.log('🔍 ProductForm: Available filter options response:', response);
-      
-      let filterOptions = {};
-      if (response && response.success && response.data) {
-        filterOptions = response.data;
-        console.log('✅ ProductForm: Using response.data format for filter options');
-      } else if (response && response.data && response.data.success) {
-        filterOptions = response.data.data;
-        console.log('✅ ProductForm: Using response.data.data format for filter options');
-      } else if (response && typeof response === 'object') {
-        filterOptions = response;
-        console.log('✅ ProductForm: Using direct response format for filter options');
-      } else {
-        console.warn('❌ ProductForm: Unexpected available filter options response format:', response);
-        filterOptions = {};
-      }
-      
-      console.log('🔍 ProductForm: Processed filter options:', filterOptions);
-      setAvailableFilterOptions(filterOptions);
-    } catch (error: any) {
-      console.error('❌ ProductForm: Error fetching available filter options:', error);
-      
-      // Fallback: use the filter options from the available filters
-      console.log('🔍 ProductForm: Using fallback filter options from available filters');
-      const fallbackOptions: any = {};
-      availableFilters.forEach(categoryFilter => {
-        if (categoryFilter.filter && categoryFilter.filter.options) {
-          fallbackOptions[categoryFilter.filter._id] = categoryFilter.filter.options;
-          console.log(`🔍 ProductForm: Added fallback options for filter ${categoryFilter.filter.name}:`, categoryFilter.filter.options.length);
-        }
-      });
-      console.log('🔍 ProductForm: Final fallback options:', fallbackOptions);
-      setAvailableFilterOptions(fallbackOptions);
     }
   };
 
@@ -430,7 +309,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       originalPrice: 0,
       category: '',
       subCategory: '',
-      subSubCategory: '', // Add subSubCategory field
+      subSubCategory: '',
       brand: '',
       stock: 0,
       images: [],
@@ -438,70 +317,78 @@ const ProductForm: React.FC<ProductFormProps> = ({
       tags: [''],
       isActive: true,
       isFeatured: false,
+      isTrending: false,
       filterValues: [],
-      imageFiles: [],
-      imagePreviews: []
+      displayFilters: [],
+      variants: [],
+      availableColors: [],
+      availableSizes: []
     });
-    setSelectedMainCategory('');
-    setSelectedSubCategory('');
+    setErrors({});
     setSubCategories([]);
     setSubSubCategories([]);
     setAvailableFilters([]);
-    setAvailableFilterOptions({});
-    setErrors({});
+  };
+
+  const getParentCategoryId = (parentCategory: string | { id?: string; _id?: string; name?: string } | undefined): string | undefined => {
+    if (typeof parentCategory === 'string') return parentCategory;
+    return parentCategory?.id || parentCategory?._id;
+  };
+
+  const filterCategoriesByParent = (level: number, parentId: string) => {
+    return categories.filter(cat => {
+      const catParentId = getParentCategoryId(cat.parentCategory);
+      return cat.level === level && catParentId === parentId;
+    });
   };
 
   const handleMainCategoryChange = (categoryId: string) => {
     console.log('🔍 ProductForm: Main category changed to:', categoryId);
-    setSelectedMainCategory(categoryId);
-    setSelectedSubCategory('');
-    // Clear both subCategory and subSubCategory when main category changes
-    setFormData(prev => ({ ...prev, category: categoryId, subCategory: '', subSubCategory: '' }));
     
-    const selectedMain = categories.find(cat => (cat.id || cat._id) === categoryId);
-    console.log('🔍 ProductForm: Selected main category:', selectedMain);
-    if (selectedMain) {
-      const subs = filterCategoriesByParent(2, categoryId);
-      setSubCategories(subs);
-      setSubSubCategories([]);
-      
-      // Fetch filters for the selected main category
-      console.log('🔍 ProductForm: Fetching filters for main category level:', selectedMain.level);
-      fetchAvailableFilters(categoryId);
+    if (categoryId) {
+      const subCats = filterCategoriesByParent(2, categoryId);
+      setSubCategories(subCats);
+      console.log('🔍 ProductForm: Sub categories found:', subCats.length);
+    } else {
+      setSubCategories([]);
     }
+    
+    setSubSubCategories([]);
+    setFormData(prev => ({
+      ...prev,
+      category: categoryId,
+      subCategory: '',
+      subSubCategory: ''
+    }));
   };
 
   const handleSubCategoryChange = (categoryId: string) => {
     console.log('🔍 ProductForm: Sub category changed to:', categoryId);
-    setSelectedSubCategory(categoryId);
-    // Clear subSubCategory when subcategory changes
-    setFormData(prev => ({ ...prev, subCategory: categoryId, subSubCategory: '' }));
     
-    const subSubs = filterCategoriesByParent(3, categoryId);
-    setSubSubCategories(subSubs);
+    if (categoryId) {
+      const subSubCats = filterCategoriesByParent(3, categoryId);
+      setSubSubCategories(subSubCats);
+      console.log('🔍 ProductForm: Sub-sub categories found:', subSubCats.length);
+    } else {
+      setSubSubCategories([]);
+    }
     
-    const selectedSub = categories.find(cat => (cat.id || cat._id) === categoryId);
-    console.log('🔍 ProductForm: Selected sub category:', selectedSub);
-    console.log('🔍 ProductForm: Fetching filters for sub category level:', selectedSub?.level);
-    
-    // Fetch filters for the selected sub category
-    fetchAvailableFilters(categoryId);
+    setFormData(prev => ({
+      ...prev,
+      subCategory: categoryId,
+      subSubCategory: ''
+    }));
   };
 
   const handleSubSubCategoryChange = (categoryId: string) => {
     console.log('🔍 ProductForm: Sub-sub category changed to:', categoryId);
-    // FIX: Set subSubCategory instead of subCategory
-    setFormData(prev => ({ ...prev, subSubCategory: categoryId }));
-    
-    const selectedSubSub = categories.find(cat => (cat.id || cat._id) === categoryId);
-    console.log('🔍 ProductForm: Selected sub-sub category:', selectedSubSub);
-    console.log('🔍 ProductForm: Fetching filters for sub-sub category level:', selectedSubSub?.level);
-    
-    // Fetch filters for the selected sub-sub category
-    fetchAvailableFilters(categoryId);
+    setFormData(prev => ({
+      ...prev,
+      subSubCategory: categoryId
+    }));
   };
 
-  const handleInputChange = (field: keyof ProductFormData, value: string | number | boolean | string[] | ProductFilterValue[]) => {
+  const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -509,31 +396,43 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleFilterValueChange = (filterId: string, filterOptionId?: string, customValue?: string) => {
-    const newFilterValues = formData.filterValues.filter(fv => fv.filterId !== filterId);
+    const filter = availableFilters.find(cf => cf.filter._id === filterId);
     
-    if (filterOptionId || customValue) {
-      newFilterValues.push({
-        filterId,
-        filterOptionId,
-        customValue
-      });
+    if (filter?.filter.type === 'single') {
+      const newFilterValues = formData.filterValues.filter(fv => fv.filterId !== filterId);
+      
+      if (filterOptionId || customValue) {
+        newFilterValues.push({
+          filterId,
+          filterOptionId,
+          customValue
+        });
+      }
+      
+      setFormData(prev => ({ ...prev, filterValues: newFilterValues }));
+    } else {
+      const existingValues = formData.filterValues.filter(fv => fv.filterId === filterId);
+      const alreadyExists = existingValues.some(fv => fv.filterOptionId === filterOptionId);
+      
+      if (!alreadyExists && (filterOptionId || customValue)) {
+        const newFilterValue = {
+          filterId,
+          filterOptionId,
+          customValue
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          filterValues: [...prev.filterValues, newFilterValue]
+        }));
+      }
     }
-    
-    setFormData(prev => ({ ...prev, filterValues: newFilterValues }));
   };
 
-  const handleMultipleFilterValueChange = (filterId: string, filterOptionId: string, isChecked: boolean) => {
-    let newFilterValues = [...formData.filterValues];
-    
-    if (isChecked) {
-      // Check if this combination already exists to prevent duplicates
-      const exists = newFilterValues.some(fv => fv.filterId === filterId && fv.filterOptionId === filterOptionId);
-      if (!exists) {
-        newFilterValues.push({ filterId, filterOptionId });
-      }
-    } else {
-      newFilterValues = newFilterValues.filter(fv => !(fv.filterId === filterId && fv.filterOptionId === filterOptionId));
-    }
+  const handleFilterValueRemove = (filterId: string, filterOptionId?: string) => {
+    const newFilterValues = formData.filterValues.filter(fv => 
+      !(fv.filterId === filterId && fv.filterOptionId === filterOptionId)
+    );
     
     setFormData(prev => ({ ...prev, filterValues: newFilterValues }));
   };
@@ -546,140 +445,238 @@ const ProductForm: React.FC<ProductFormProps> = ({
     return formData.filterValues.filter(fv => fv.filterId === filterId);
   };
 
-  const handleArrayChange = (field: 'images' | 'features' | 'tags', index: number, value: string) => {
+  const handleDisplayFilterToggle = (filterId: string) => {
+    const isCurrentlyDisplayed = formData.displayFilters.includes(filterId);
+    if (isCurrentlyDisplayed) {
+      setFormData(prev => ({
+        ...prev,
+        displayFilters: prev.displayFilters.filter(id => id !== filterId)
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        displayFilters: [...prev.displayFilters, filterId]
+      }));
+    }
+  };
+
+  // Old image upload functions removed - now using color-specific images
+
+  // Color and Size management functions
+  const addColor = () => {
     setFormData(prev => ({
       ...prev,
-      [field]: prev[field].map((item, i) => i === index ? value : item)
+      availableColors: [...prev.availableColors, {
+        name: '',
+        code: '#000000',
+        images: []
+      }]
     }));
   };
 
-  const addArrayItem = (field: 'images' | 'features' | 'tags') => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: [...prev[field], '']
-    }));
-  };
-
-  const removeArrayItem = (field: 'images' | 'features' | 'tags', index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // Log file details for debugging
-    console.log('Selected files:', files.map(file => ({
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified
-    })));
-
-    // Validate file types on frontend
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml', 'image/webp', 'image/gif', 'image/bmp', 'image/tiff'];
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg', '.webp', '.gif', '.bmp', '.tiff', '.tif'];
-    
-    const invalidFiles = files.filter(file => {
-      const hasValidType = allowedTypes.includes(file.type);
-      const hasValidExtension = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-      return !hasValidType && !hasValidExtension;
+  // Color image management with compression
+  const handleColorImageUpload = (colorIndex: number, files: FileList) => {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const validFiles = Array.from(files).filter(file => {
+      if (file.size > maxSize) {
+        setImageUploadError(`File ${file.name} is too large. Maximum size is 5MB.`);
+        return false;
+      }
+      if (!file.type.startsWith('image/')) {
+        setImageUploadError(`File ${file.name} is not an image.`);
+        return false;
+      }
+      return true;
     });
 
-    if (invalidFiles.length > 0) {
-      alert(`Invalid file types detected: ${invalidFiles.map(f => f.name).join(', ')}. Only image files (JPG, JPEG, PNG, SVG, WebP, GIF, BMP, TIFF) are allowed!`);
-      return;
-    }
+    if (validFiles.length === 0) return;
 
-    const newImageFiles = [...formData.imageFiles, ...files].slice(0, 6);
-    const newPreviews = [...formData.imagePreviews];
-    
-    let loadedCount = 0;
-    const totalFiles = files.length;
-    
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (result) {
-          newPreviews.push(result);
-          loadedCount++;
-          
-          // Only update state when all files are loaded
-          if (loadedCount === totalFiles) {
-            setFormData(prev => ({ 
-              ...prev, 
-              imageFiles: newImageFiles,
-              imagePreviews: newPreviews
-            }));
+    validFiles.forEach(file => {
+      // Create canvas for image compression
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions (max 800px width/height)
+        const maxDimension = 800;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxDimension) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
           }
         }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); // 70% quality
+        
+        setFormData(prev => ({
+          ...prev,
+          availableColors: prev.availableColors.map((color, i) => 
+            i === colorIndex 
+              ? { ...color, images: [...color.images, compressedBase64] }
+              : color
+          )
+        }));
       };
-      reader.onerror = () => {
-        console.error('Error reading file:', file.name);
-        loadedCount++;
-        if (loadedCount === totalFiles) {
-          setFormData(prev => ({ 
-            ...prev, 
-            imageFiles: newImageFiles,
-            imagePreviews: newPreviews
-          }));
-        }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
       };
       reader.readAsDataURL(file);
     });
+
+    setImageUploadError('');
   };
 
-  const removeImage = (index: number) => {
-    const newImageFiles = formData.imageFiles.filter((_, i) => i !== index);
-    const newPreviews = formData.imagePreviews.filter((_, i) => i !== index);
-    const newImages = formData.images.filter((_, i) => i !== index);
-    
+  const removeColorImage = (colorIndex: number, imageIndex: number) => {
     setFormData(prev => ({
       ...prev,
-      imageFiles: newImageFiles,
-      imagePreviews: newPreviews,
-      images: newImages
+      availableColors: prev.availableColors.map((color, i) => 
+        i === colorIndex 
+          ? { ...color, images: color.images.filter((_, j) => j !== imageIndex) }
+          : color
+      )
     }));
   };
 
+  const addSize = () => {
+    setFormData(prev => ({
+      ...prev,
+      availableSizes: [...prev.availableSizes, {
+        name: ''
+      }]
+    }));
+  };
+
+  const removeColor = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      availableColors: prev.availableColors.filter((_, i) => i !== index),
+      variants: prev.variants.filter(variant => variant.color !== prev.availableColors[index]?.name)
+    }));
+  };
+
+  const removeSizeOption = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      availableSizes: prev.availableSizes.filter((_, i) => i !== index),
+      variants: prev.variants.filter(variant => variant.size !== prev.availableSizes[index]?.name)
+    }));
+  };
+
+  const updateColor = (index: number, field: keyof ProductColor, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      availableColors: prev.availableColors.map((color, i) => 
+        i === index ? { ...color, [field]: value } : color
+      )
+    }));
+  };
+
+  const updateSizeOption = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      availableSizes: prev.availableSizes.map((size, i) => 
+        i === index ? { ...size, name: value } : size
+      )
+    }));
+  };
+
+  // Variant management functions
+  const addVariant = () => {
+    const newVariant: ProductVariant = {
+      color: '',
+      colorCode: '#000000',
+      size: '',
+      price: 0,
+      originalPrice: 0,
+      stock: 0,
+      images: []
+    };
+    setFormData(prev => ({
+      ...prev,
+      variants: [...prev.variants, newVariant]
+    }));
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariant, value: any) => {
+    setFormData(prev => {
+      const updatedVariants = prev.variants.map((variant, i) => {
+        if (i === index) {
+          const updatedVariant = { ...variant, [field]: value };
+          
+          // If color is being updated, automatically assign images from that color
+          if (field === 'color') {
+            const selectedColor = prev.availableColors.find(color => color.name === value);
+            if (selectedColor) {
+              updatedVariant.images = selectedColor.images;
+              updatedVariant.colorCode = selectedColor.code;
+            }
+          }
+          
+          return updatedVariant;
+        }
+        return variant;
+      });
+      
+      return {
+        ...prev,
+        variants: updatedVariants
+      };
+    });
+  };
+
+  const removeVariant = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Old size management functions removed - now using individual color-size combinations
+
+  // Form validation
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Product name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (formData.price <= 0) newErrors.price = 'Price must be greater than 0';
-    if (formData.originalPrice < formData.price) newErrors.originalPrice = 'Original price must be greater than or equal to discounted price';
     if (!formData.category) newErrors.category = 'Category is required';
-    if (!formData.subCategory) newErrors.subCategory = 'Sub-category is required';
-    
-    // Validate subSubCategory if subSubCategories are available
-    if (subSubCategories.length > 0 && !formData.subSubCategory) {
-      newErrors.subSubCategory = 'Sub-sub category is required when available';
-    }
-    
+    if (!formData.subCategory) newErrors.subCategory = 'Sub category is required';
     if (!formData.brand.trim()) newErrors.brand = 'Brand is required';
+    if (formData.price <= 0) newErrors.price = 'Price must be greater than 0';
+    if (formData.originalPrice <= 0) newErrors.originalPrice = 'Original price must be greater than 0';
     if (formData.stock < 0) newErrors.stock = 'Stock cannot be negative';
-    
-    // Validate images
-    const hasImageFiles = formData.imageFiles.length > 0;
-    const hasImageUrls = formData.images.filter(img => img.trim()).length > 0;
-    const hasImagePreviews = formData.imagePreviews.length > 0;
-    
-    if (!hasImageFiles && !hasImageUrls && !hasImagePreviews) {
-      newErrors.images = 'At least one product image is required';
-    }
 
-    // Validate required filters
-    availableFilters.forEach(categoryFilter => {
-      if (categoryFilter.isRequired) {
-        const hasValue = formData.filterValues.some(fv => fv.filterId === categoryFilter.filter._id);
-        if (!hasValue) {
-          newErrors[`filter_${categoryFilter.filter._id}`] = `${categoryFilter.filter.displayName} is required`;
-        }
+    // Validate variants if they exist
+    formData.variants.forEach((variant, vIndex) => {
+      if (!variant.color.trim()) {
+        newErrors[`variant_${vIndex}_color`] = 'Color is required';
+      }
+      if (!variant.size.trim()) {
+        newErrors[`variant_${vIndex}_size`] = 'Size is required';
+      }
+      if (variant.price <= 0) {
+        newErrors[`variant_${vIndex}_price`] = 'Price must be greater than 0';
+      }
+      if (variant.originalPrice <= 0) {
+        newErrors[`variant_${vIndex}_originalPrice`] = 'Original price must be greater than 0';
+      }
+      if (variant.stock < 0) {
+        newErrors[`variant_${vIndex}_stock`] = 'Stock cannot be negative';
       }
     });
 
@@ -687,76 +684,45 @@ const ProductForm: React.FC<ProductFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    
+    if (!validateForm()) {
+      console.log('Form validation failed');
+      return;
+    }
 
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      
+      // Create FormData object for submission
       const submitData = new FormData();
       
-      // Add all form fields
-      submitData.append('name', formData.name);
-      submitData.append('description', formData.description);
-      submitData.append('price', formData.price.toString());
-      submitData.append('originalPrice', formData.originalPrice.toString());
-      submitData.append('category', formData.category);
-      submitData.append('subCategory', formData.subCategory);
-      if (formData.subSubCategory) {
-        submitData.append('subSubCategory', formData.subSubCategory);
-      }
-      submitData.append('brand', formData.brand);
-      submitData.append('stock', formData.stock.toString());
-      submitData.append('isActive', formData.isActive.toString());
-      submitData.append('isFeatured', formData.isFeatured.toString());
-      
-      // Add filter values
-      submitData.append('filterValues', JSON.stringify(formData.filterValues));
-      
-      // Add arrays
-      formData.features.forEach(feature => {
-        if (feature.trim()) submitData.append('features', feature);
-      });
-      formData.tags.forEach(tag => {
-        if (tag.trim()) submitData.append('tags', tag);
-      });
-      
-      // Add image files
-      if (formData.imageFiles.length > 0) {
-        console.log('Adding image files to FormData:', formData.imageFiles.map(file => ({
-          name: file.name,
-          type: file.type,
-          size: file.size
-        })));
-        formData.imageFiles.forEach(file => {
-          submitData.append('images', file);
-        });
-      } else if (formData.images.length > 0) {
-        console.log('Adding image URLs to FormData:', formData.images);
-        formData.images.forEach(image => {
-          if (image.trim()) submitData.append('images', image);
-        });
-      }
-      
-      // Log FormData contents for debugging
-      console.log('FormData contents:');
-      for (let [key, value] of submitData.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}:`, {
-            name: value.name,
-            type: value.type,
-            size: value.size
-          });
+      // Add basic product data (exclude availableColors and availableSizes as they're frontend-only)
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'availableColors' || key === 'availableSizes') {
+          // Skip these fields - they're only for frontend management
+          return;
+        } else if (key === 'variants' || key === 'filterValues' || key === 'displayFilters' || key === 'features' || key === 'tags') {
+          submitData.append(key, JSON.stringify(value));
+        } else if (key === 'images') {
+          // Handle images separately - they're already base64 strings from FileReader
+          submitData.append(key, JSON.stringify(value));
         } else {
-          console.log(`${key}:`, value);
+          submitData.append(key, value.toString());
         }
-      }
-      
+      });
+
       await onSubmit(submitData);
+      
+      if (!isEditing) {
+        resetForm();
+      }
       onClose();
-      resetForm();
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Form submission error:', error);
+      setErrors({ submit: 'Failed to save product. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -766,7 +732,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gray-50">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -783,10 +749,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
         {/* Form Content */}
         <div className="flex-1 overflow-y-auto">
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="p-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               
-              {/* Left Column - Category Selection First */}
+              {/* Left Column - Main Form Fields */}
               <div className="lg:col-span-2 space-y-6">
                 
                 {/* Category Selection */}
@@ -802,7 +768,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         Main Category *
                       </label>
                       <select
-                        value={selectedMainCategory}
+                        value={formData.category}
                         onChange={(e) => handleMainCategoryChange(e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.category ? 'border-red-500' : 'border-gray-300'
@@ -823,14 +789,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         Sub Category *
                       </label>
                       <select
-                        value={selectedSubCategory}
+                        value={formData.subCategory}
                         onChange={(e) => handleSubCategoryChange(e.target.value)}
-                        disabled={!selectedMainCategory}
+                        disabled={!formData.category}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.subCategory ? 'border-red-500' : 'border-gray-300'
-                        } ${!selectedMainCategory ? 'bg-gray-100' : ''}`}
+                        } ${!formData.category ? 'bg-gray-100' : ''}`}
                       >
-                        <option value="">Please select a main category first</option>
+                        <option value="">{!formData.category ? 'Please select a main category first' : 'Select Sub Category'}</option>
                         {subCategories.map((category) => (
                           <option key={category.id || category._id} value={category.id || category._id}>
                             {category.name}
@@ -847,24 +813,24 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       <select
                         value={formData.subSubCategory || ''}
                         onChange={(e) => handleSubSubCategoryChange(e.target.value)}
-                        disabled={!selectedSubCategory || subSubCategories.length === 0}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 ${
-                          (!selectedSubCategory || subSubCategories.length === 0) ? 'bg-gray-100' : ''
-                        }`}
+                        disabled={!formData.subCategory}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.subSubCategory ? 'border-red-500' : 'border-gray-300'
+                        } ${!formData.subCategory ? 'bg-gray-100' : ''}`}
                       >
-                        <option value="">Use {categories.find(cat => (cat.id || cat._id) === selectedSubCategory)?.name || 'Sub Category'}</option>
+                        <option value="">{!formData.subCategory ? 'Select sub category first' : 'Select Sub-Sub Category (Optional)'}</option>
                         {subSubCategories.map((category) => (
                           <option key={category.id || category._id} value={category.id || category._id}>
                             {category.name}
                           </option>
                         ))}
                       </select>
-                      <p className="text-xs text-gray-500 mt-1">Optional: Choose for more specific categorization</p>
+                      {errors.subSubCategory && <p className="text-red-500 text-sm mt-1">{errors.subSubCategory}</p>}
                     </div>
                   </div>
                 </div>
 
-                {/* Basic Product Info */}
+                {/* Basic Product Information */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                     <Package className="w-5 h-5" />
@@ -878,7 +844,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData?.name || ''}
+                        value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.name ? 'border-red-500' : 'border-gray-300'
@@ -894,7 +860,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={formData?.brand || ''}
+                        value={formData.brand}
                         onChange={(e) => handleInputChange('brand', e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.brand ? 'border-red-500' : 'border-gray-300'
@@ -910,7 +876,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       Description *
                     </label>
                     <textarea
-                      value={formData?.description || ''}
+                      value={formData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       rows={4}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
@@ -921,6 +887,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
                   </div>
                 </div>
+
+
 
                 {/* Pricing & Inventory */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -936,7 +904,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData?.originalPrice || 0}
+                        value={formData.originalPrice}
                         onChange={(e) => handleInputChange('originalPrice', parseFloat(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.originalPrice ? 'border-red-500' : 'border-gray-300'
@@ -954,7 +922,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData?.price || 0}
+                        value={formData.price}
                         onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.price ? 'border-red-500' : 'border-gray-300'
@@ -972,7 +940,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       </label>
                       <input
                         type="number"
-                        value={formData?.stock || 0}
+                        value={formData.stock}
                         onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.stock ? 'border-red-500' : 'border-gray-300'
@@ -985,132 +953,338 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   </div>
                 </div>
 
-
-
-                {/* Product Images */}
+                {/* Available Colors Section */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5" />
-                    Product Images *
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      Available Colors
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addColor}
+                      className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Color
+                    </button>
+                  </div>
                   
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-center w-full">
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-8 h-8 mb-2 text-gray-500" />
-                          <p className="mb-2 text-sm text-gray-500">
-                            <span className="font-semibold">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500">JPG, JPEG, PNG, SVG, WebP (MAX. 10MB each, up to 6 images)</p>
-                        </div>
-                        <input
-                          type="file"
-                          className="hidden"
-                          multiple
-                          accept=".jpg,.jpeg,.png,.svg,.webp,image/*"
-                          onChange={handleImageUpload}
-                        />
-                      </label>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Define the available colors for this product.
+                  </p>
+
+                  {formData.availableColors.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No colors added yet. Click "Add Color" to define available colors.</p>
                     </div>
-                    
-                    {errors.images && <p className="text-red-500 text-sm">{errors.images}</p>}
-                    
-                    {/* Image Previews */}
-                    {formData.imagePreviews.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {formData.imagePreviews.map((preview, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                            />
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.availableColors.map((color, cIndex) => (
+                        <div key={cIndex} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="grid grid-cols-3 gap-3 items-end mb-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Color Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={color.name}
+                                onChange={(e) => updateColor(cIndex, 'name', e.target.value)}
+                                className="w-full px-2 py-1 border rounded text-sm border-gray-300"
+                                placeholder="e.g., Red, Blue, Black"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Color Code
+                              </label>
+                              <input
+                                type="color"
+                                value={color.code}
+                                onChange={(e) => updateColor(cIndex, 'code', e.target.value)}
+                                className="w-full h-8 border rounded"
+                              />
+                            </div>
+                            
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => removeColor(cIndex)}
+                                className="w-full px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                              >
+                                <Minus className="w-3 h-3 mx-auto" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Color Images Section */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-2">
+                              Color Images (up to 6 images)
+                            </label>
+                            
+                            {/* Image Upload */}
+                            <div className="mb-3">
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => e.target.files && handleColorImageUpload(cIndex, e.target.files)}
+                                className="hidden"
+                                id={`color-images-${cIndex}`}
+                              />
+                              <label
+                                htmlFor={`color-images-${cIndex}`}
+                                className="flex items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+                              >
+                                <div className="text-center">
+                                  <Upload className="w-6 h-6 mx-auto mb-1 text-gray-400" />
+                                  <p className="text-xs text-gray-500">Click to upload images (Max 5MB each)</p>
+                                </div>
+                              </label>
+                              {imageUploadError && (
+                                <p className="text-red-500 text-xs mt-1">{imageUploadError}</p>
+                              )}
+                            </div>
+                            
+                            {/* Display uploaded images */}
+                            {color.images.length > 0 && (
+                              <div className="grid grid-cols-3 gap-2">
+                                {color.images.map((image, imgIndex) => (
+                                  <div key={imgIndex} className="relative group">
+                                    <img
+                                      src={image}
+                                      alt={`${color.name} ${imgIndex + 1}`}
+                                      className="w-full h-16 object-cover rounded border"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeColorImage(cIndex, imgIndex)}
+                                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Available Sizes Section */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      Available Sizes
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addSize}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Size
+                    </button>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Define the available sizes for this product.
+                  </p>
+
+                  {formData.availableSizes.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No sizes added yet. Click "Add Size" to define available sizes.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {formData.availableSizes.map((size, sIndex) => (
+                        <div key={sIndex} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                          <input
+                            type="text"
+                            value={size.name}
+                            onChange={(e) => updateSizeOption(sIndex, e.target.value)}
+                            className="flex-1 px-2 py-1 border rounded text-sm border-gray-300"
+                            placeholder="e.g., S, M, L"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSizeOption(sIndex)}
+                            className="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Variants Section */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <Package className="w-5 h-5" />
+                      Color-Size Combinations
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addVariant}
+                      className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Combination
+                    </button>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Create specific color-size combinations with individual pricing and stock levels.
+                  </p>
+
+                  {formData.variants.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No combinations added yet. Click "Add Combination" to create color-size combinations.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.variants.map((variant, vIndex) => (
+                        <div key={vIndex} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-gray-900">Combination {vIndex + 1}</h4>
                             <button
                               type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeVariant(vIndex)}
+                              className="text-red-600 hover:text-red-700 p-1"
                             >
-                              <X className="w-3 h-3" />
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Color *
+                              </label>
+                              <select
+                                value={variant.color}
+                                onChange={(e) => updateVariant(vIndex, 'color', e.target.value)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_color`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              >
+                                <option value="">Select Color</option>
+                                {formData.availableColors.map((color, cIndex) => (
+                                  <option key={cIndex} value={color.name}>{color.name}</option>
+                                ))}
+                              </select>
+                              {errors[`variant_${vIndex}_color`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_color`]}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Size *
+                              </label>
+                              <select
+                                value={variant.size}
+                                onChange={(e) => updateVariant(vIndex, 'size', e.target.value)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_size`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              >
+                                <option value="">Select Size</option>
+                                {formData.availableSizes.map((size, sIndex) => (
+                                  <option key={sIndex} value={size.name}>{size.name}</option>
+                                ))}
+                              </select>
+                              {errors[`variant_${vIndex}_size`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_size`]}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Price *
+                              </label>
+                              <input
+                                type="number"
+                                value={variant.price}
+                                onChange={(e) => updateVariant(vIndex, 'price', parseFloat(e.target.value) || 0)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_price`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                              />
+                              {errors[`variant_${vIndex}_price`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_price`]}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Original Price *
+                              </label>
+                              <input
+                                type="number"
+                                value={variant.originalPrice}
+                                onChange={(e) => updateVariant(vIndex, 'originalPrice', parseFloat(e.target.value) || 0)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_originalPrice`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                              />
+                              {errors[`variant_${vIndex}_originalPrice`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_originalPrice`]}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Stock *
+                              </label>
+                              <input
+                                type="number"
+                                value={variant.stock}
+                                onChange={(e) => updateVariant(vIndex, 'stock', parseInt(e.target.value) || 0)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_stock`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="0"
+                                min="0"
+                              />
+                              {errors[`variant_${vIndex}_stock`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_stock`]}</p>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-end">
+                              <div
+                                className="w-8 h-8 rounded border-2 border-gray-300"
+                                style={{ backgroundColor: variant.colorCode || '#000000' }}
+                                title={`${variant.color} (${variant.colorCode})`}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Features */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Product Features</h3>
-                  
-                  <div className="space-y-3">
-                    {formData.features.map((feature, index) => (
-                      <div key={`feature-${index}`} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={feature}
-                          onChange={(e) => handleArrayChange('features', index, e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter product feature"
-                        />
-                        {formData.features.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeArrayItem('features', index)}
-                            className="text-red-500 hover:text-red-700 p-1"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => addArrayItem('features')}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Feature
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Product Tags</h3>
-                  
-                  <div className="space-y-3">
-                    {formData.tags.map((tag, index) => (
-                      <div key={`tag-${index}`} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={tag}
-                          onChange={(e) => handleArrayChange('tags', index, e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter product tag"
-                        />
-                        {formData.tags.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeArrayItem('tags', index)}
-                            className="text-red-500 hover:text-red-700 p-1"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => addArrayItem('tags')}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Tag
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column - Filters & Settings */}
@@ -1126,11 +1300,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   {availableFilters.length > 0 ? (
                     <div className="space-y-4">
                       {availableFilters.filter(categoryFilter => categoryFilter && categoryFilter.filter && categoryFilter._id).map((categoryFilter) => (
-                        <div key={categoryFilter._id} className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {categoryFilter.filter.displayName}
-                            {categoryFilter.isRequired && <span className="text-red-500 ml-1">*</span>}
-                          </label>
+                        <div key={categoryFilter._id} className="space-y-3 p-4 border border-gray-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {categoryFilter.filter.displayName}
+                              {categoryFilter.isRequired && <span className="text-red-500 ml-1">*</span>}
+                            </label>
+                            <label className="flex items-center space-x-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={formData.displayFilters.includes(categoryFilter.filter._id)}
+                                onChange={() => handleDisplayFilterToggle(categoryFilter.filter._id)}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <span className="text-gray-600">Show on product page</span>
+                            </label>
+                          </div>
                           
                           {categoryFilter.filter.type === 'single' ? (
                             categoryFilter.filter.dataType === 'string' && categoryFilter.filter.options && categoryFilter.filter.options.length > 0 ? (
@@ -1152,7 +1337,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                     );
                                   })}
                                 </select>
-
                               </div>
                             ) : (
                               <input
@@ -1167,33 +1351,97 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             )
                           ) : (
                             <div>
-                              <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
-                                  const filterValues = getMultipleFilterValues(categoryFilter.filter._id);
-                                  const optionId = option._id || option.id;
-                                  const isChecked = filterValues.some(fv => fv.filterOptionId === optionId);
-                                  const uniqueKey = `${categoryFilter.filter._id}-${optionId}-${optionIndex}`;
+                              {/* Enhanced Color Filter Display */}
+                              {categoryFilter.filter.name.toLowerCase().includes('color') ? (
+                                <div className="space-y-3">
+                                  <p className="text-xs text-gray-600 mb-2">💡 Select multiple colors for this product</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+                                    {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
+                                      const filterValues = getMultipleFilterValues(categoryFilter.filter._id);
+                                      const optionId = option._id || option.id;
+                                      const isChecked = filterValues.some(fv => fv.filterOptionId === optionId);
+                                      const uniqueKey = `${categoryFilter.filter._id}-${optionId}-${optionIndex}`;
+                                      
+                                      return (
+                                        <label key={uniqueKey} className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                                          isChecked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                        }`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                handleFilterValueChange(categoryFilter.filter._id, optionId);
+                                              } else {
+                                                handleFilterValueRemove(categoryFilter.filter._id, optionId);
+                                              }
+                                            }}
+                                            className="sr-only"
+                                          />
+                                          <div className="flex items-center gap-3 w-full">
+                                            {/* Color Swatch */}
+                                            <div 
+                                              className="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"
+                                              style={{ 
+                                                backgroundColor: option.colorCode || option.value.toLowerCase(),
+                                                borderColor: isChecked ? '#3B82F6' : '#D1D5DB'
+                                              }}
+                                            >
+                                              {isChecked && (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <span className={`text-sm font-medium ${
+                                                isChecked ? 'text-blue-900' : 'text-gray-700'
+                                              }`}>
+                                                {option.displayValue}
+                                              </span>
+                                              {isChecked && (
+                                                <div className="text-xs text-blue-600 mt-1">✓ Selected</div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Regular Multiple Selection for Non-Color Filters */
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                  {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
+                                    const filterValues = getMultipleFilterValues(categoryFilter.filter._id);
+                                    const optionId = option._id || option.id;
+                                    const isChecked = filterValues.some(fv => fv.filterOptionId === optionId);
+                                    const uniqueKey = `${categoryFilter.filter._id}-${optionId}-${optionIndex}`;
                                   
-                                  return (
-                                    <label key={uniqueKey} className="flex items-center p-2 rounded bg-gray-50 border border-gray-200 hover:bg-gray-100">
-                                      <input
-                                        type="checkbox"
-                                        id={uniqueKey}
-                                        checked={isChecked}
-                                        onChange={(e) => {
-                                          e.stopPropagation();
-                                          handleMultipleFilterValueChange(categoryFilter.filter._id, optionId || '', e.target.checked);
-                                        }}
-                                        className="mr-2"
-                                      />
-                                      <span className="text-sm text-gray-700">
-                                        {option.displayValue}
-                                      </span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-
+                                    return (
+                                      <label key={uniqueKey} className="flex items-center p-2 rounded bg-gray-50 border border-gray-200 hover:bg-gray-100">
+                                        <input
+                                          type="checkbox"
+                                          id={uniqueKey}
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            if (e.target.checked) {
+                                              handleFilterValueChange(categoryFilter.filter._id, optionId);
+                                            } else {
+                                              handleFilterValueRemove(categoryFilter.filter._id, optionId);
+                                            }
+                                          }}
+                                          className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                          {option.displayValue}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
                           
@@ -1204,20 +1452,29 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      {formData.subCategory ? (
-                        subSubCategories.length > 0 ? (
-                          "Please select a specific sub-sub-category above to see available filters"
-                        ) : (
-                          categories.find(cat => (cat.id || cat._id) === formData.subCategory)?.level === 3 ? (
-                            "No filters are assigned to this category yet. Please contact admin to assign filters."
+                    <div className="text-center py-8">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                        <FilterIcon className="w-12 h-12 mx-auto mb-4 text-yellow-400" />
+                        <h4 className="text-lg font-medium text-yellow-800 mb-2">🔍 Product Filters</h4>
+                        <p className="text-sm text-yellow-700 mb-4">
+                          {formData.subCategory ? (
+                            subSubCategories.length > 0 ? (
+                              "Please select a specific sub-sub-category above to see available filters"
+                            ) : (
+                              categories.find(cat => (cat.id || cat._id) === formData.subCategory)?.level === 3 ? (
+                                "No filters are assigned to this category yet. Please contact admin to assign filters."
+                              ) : (
+                                "Filters are only available for the most specific category level (sub-sub-categories). Please select a category that has sub-sub-categories."
+                              )
+                            )
                           ) : (
-                            "Filters are only available for the most specific category level (sub-sub-categories). Please select a category that has sub-sub-categories."
-                          )
-                        )
-                      ) : (
-                        "Select a category to see available filters"
-                      )}
+                            "Select a category above to see available product filters"
+                          )}
+                        </p>
+                        <div className="text-xs text-yellow-600">
+                          💡 Filters help customers find products by size, color, brand, price range, etc.
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1252,6 +1509,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         <p className="text-xs text-gray-500">Product will appear in featured sections</p>
                       </div>
                     </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.isTrending}
+                        onChange={(e) => handleInputChange('isTrending', e.target.checked)}
+                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">Trending Product</span>
+                        <p className="text-xs text-gray-500">Product will appear in trending sections</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1270,12 +1540,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 type="submit"
                 disabled={isLoading}
                 className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                onClick={handleSubmit}
               >
                 <Save className="w-4 h-4" />
                 {isLoading ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
               </button>
+              {errors.submit && (
+                <p className="text-red-500 text-sm">{errors.submit}</p>
+              )}
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

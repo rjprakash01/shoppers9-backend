@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import { formatPrice, formatPriceRange } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
+import FilterSidebar from '../components/FilterSidebar';
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,7 +19,7 @@ const Products: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true); // Show filters by default on desktop
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
@@ -82,6 +83,10 @@ const Products: React.FC = () => {
     setCurrentPage(updatedFilters.page || 1);
   };
 
+  const handleFiltersChange = (newFilters: Partial<ProductFilters>) => {
+    updateFilters({ ...newFilters, page: 1 });
+  };
+
   const handleAddToCart = async (product: Product) => {
     if (!product || !product._id || !product.variants.length) {
       console.error('Cannot add to cart: invalid product data', { product: product?._id, variants: product?.variants?.length });
@@ -139,13 +144,13 @@ const Products: React.FC = () => {
     
     if (viewMode === 'list') {
       return (
-        <div key={product._id} className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200">
+        <div key={product._id} className="bg-white border border-brand-gold/20 hover:shadow-md hover:border-brand-gold transition-all duration-200 rounded-2xl">
           <div className="flex p-4">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
                 src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
                 alt={product.name}
-                className="w-32 h-40 object-cover"
+                className="w-32 h-40 object-cover rounded-xl"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder-image.svg';
@@ -155,25 +160,31 @@ const Products: React.FC = () => {
             
             <div className="flex-1 ml-4">
               <Link to={`/products/${product._id}`}>
-                <h3 className="text-lg font-medium text-gray-900 mb-1 hover:text-pink-600 transition-colors">
+                <h3 className="text-lg font-medium font-poppins text-brand-indigo mb-1 hover:text-brand-gold transition-colors">
                   {product.name}
                 </h3>
               </Link>
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+              <p className="text-brand-indigo/70 text-sm mb-3 line-clamp-2 font-poppins">
                 {product.description}
               </p>
               
               <div className="flex items-center justify-between">
                 <div>
-                  {priceRange ? (
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatPriceRange(product.minPrice!, product.maxPrice!)}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg font-bold font-poppins text-brand-indigo">
+                      {formatPrice(product.price || 0)}
                     </span>
-                  ) : (
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(firstVariant?.sizes?.[0]?.price || 0)}
-                    </span>
-                  )}
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <>
+                        <span className="text-sm text-brand-indigo/50 line-through font-poppins">
+                          {formatPrice(product.originalPrice)}
+                        </span>
+                        <span className="text-xs bg-brand-gold/20 text-brand-indigo px-2 py-1 rounded-full font-medium font-poppins">
+                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -197,14 +208,13 @@ const Products: React.FC = () => {
                   <button
                     onClick={() => handleAddToCart(product)}
                     disabled={product.totalStock === 0}
-                    className={`px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                    className={`px-4 py-2 text-sm font-medium font-poppins rounded-xl transition-colors disabled:cursor-not-allowed ${
                       product.totalStock === 0 
-                        ? 'bg-gray-300 text-gray-700' 
-                        : 'text-white'
+                        ? 'bg-brand-slate/30 text-brand-indigo/50' 
+                        : 'bg-brand-gold text-brand-indigo hover:bg-white hover:text-brand-indigo border border-brand-gold'
                     }`}
-                    style={product.totalStock === 0 ? {} : { backgroundColor: '#322F61' }}
                   >
-                    {product.totalStock === 0 ? 'Out of Stock' : 'Add to Bag'}
+                    {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
                   </button>
                 </div>
               </div>
@@ -215,21 +225,21 @@ const Products: React.FC = () => {
     }
     
     return (
-      <div key={product._id} className="group bg-white border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+      <div key={product._id} className="group bg-white border border-brand-gold/20 hover:shadow-lg hover:border-brand-gold transition-all duration-200 rounded-2xl overflow-hidden">
         <div className="relative overflow-hidden">
           <Link to={`/products/${product._id}`} className="block">
             <img
               src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
               alt={product.name}
-              className="w-full aspect-[3/4] object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full aspect-[3/4] object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder-image.svg';
               }}
             />
             {product.totalStock === 0 && (
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                <span className="text-white font-medium text-sm bg-red-500 px-3 py-1">Out of Stock</span>
+              <div className="absolute inset-0 bg-brand-indigo/80 flex items-center justify-center">
+                <span className="text-white font-medium text-sm font-poppins bg-brand-gold/90 px-3 py-1 rounded-full">Out of Stock</span>
               </div>
             )}
           </Link>
@@ -240,48 +250,53 @@ const Products: React.FC = () => {
               handleToggleWishlist(product);
             }}
             disabled={wishlistLoading}
-            className={`absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 disabled:opacity-50 ${
+            className={`absolute top-2 right-2 p-2 bg-brand-gold/90 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 disabled:opacity-50 ${
               checkIsInWishlist(product._id) ? 'opacity-100' : ''
             }`}
           >
             <Heart className={`h-4 w-4 transition-colors ${
               checkIsInWishlist(product._id)
-                ? 'text-red-500 fill-current'
-                : 'text-gray-600 hover:text-red-500'
+                ? 'text-brand-indigo fill-current'
+                : 'text-brand-indigo'
             }`} />
           </button>
         </div>
         
         <div className="p-3">
           <Link to={`/products/${product._id}`} className="block">
-            <h3 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-pink-600 transition-colors">
+            <h3 className="text-sm font-medium font-poppins text-brand-indigo mb-1 line-clamp-2 group-hover:text-brand-gold transition-colors">
               {product.name}
             </h3>
           </Link>
           
           <div className="mb-2">
-            {priceRange ? (
-              <span className="text-sm font-bold text-gray-900">
-                {formatPriceRange(product.minPrice!, product.maxPrice!)}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-bold font-poppins text-brand-indigo">
+                {formatPrice(product.price || 0)}
               </span>
-            ) : (
-              <span className="text-sm font-bold text-gray-900">
-                {formatPrice(firstVariant?.sizes?.[0]?.price || 0)}
-              </span>
-            )}
+              {product.originalPrice && product.originalPrice > product.price && (
+                <>
+                  <span className="text-xs text-brand-indigo/50 line-through font-poppins">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="text-xs bg-brand-gold/20 text-brand-indigo px-1 py-0.5 rounded text-xs font-medium font-poppins">
+                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           
           <button
             onClick={() => handleAddToCart(product)}
             disabled={product.totalStock === 0}
-            className={`w-full py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+            className={`w-full py-2 text-xs font-medium font-poppins rounded-xl transition-colors disabled:cursor-not-allowed ${
               product.totalStock === 0 
-                ? 'bg-gray-300 text-gray-700' 
-                : 'text-white'
+                ? 'bg-brand-slate/30 text-brand-indigo/50' 
+                : 'bg-brand-gold text-brand-indigo hover:bg-white hover:text-brand-indigo border border-brand-gold'
             }`}
-            style={product.totalStock === 0 ? {} : { backgroundColor: '#322F61' }}
           >
-            {product.totalStock === 0 ? 'Out of Stock' : 'Add to Bag'}
+            {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>
         </div>
       </div>
@@ -301,10 +316,10 @@ const Products: React.FC = () => {
         <button
           key={i}
           onClick={() => updateFilters({ page: i })}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+          className={`px-3 py-2 text-sm font-medium font-poppins rounded-xl transition-colors ${
             i === currentPage
-              ? 'bg-pink-500 text-white shadow-sm'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              ? 'bg-brand-gold text-brand-indigo shadow-sm'
+              : 'bg-white text-brand-indigo border border-brand-gold/30 hover:bg-brand-gold/10'
           }`}
         >
           {i}
@@ -318,14 +333,14 @@ const Products: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <label htmlFor="itemsPerPage" className="text-sm font-medium text-gray-700">
+              <label htmlFor="itemsPerPage" className="text-sm font-medium font-poppins text-brand-indigo">
                 Items per page:
               </label>
               <select
                 id="itemsPerPage"
                 value={filters.limit || 12}
                 onChange={(e) => updateFilters({ limit: parseInt(e.target.value), page: 1 })}
-                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white text-sm"
+                className="px-3 py-1 border border-brand-gold/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold bg-white text-sm font-poppins text-brand-indigo"
               >
                 <option value={12}>12</option>
                 <option value={24}>24</option>
@@ -335,7 +350,7 @@ const Products: React.FC = () => {
               </select>
             </div>
             
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-brand-indigo/70 font-poppins">
               Showing {((currentPage - 1) * (filters.limit || 12)) + 1} to {Math.min(currentPage * (filters.limit || 12), products.length)} of {products.length} products
             </div>
           </div>
@@ -353,7 +368,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: 1 })}
               disabled={currentPage === 1}
-              className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="px-3 py-2 text-sm font-medium font-poppins bg-white text-brand-indigo border border-brand-gold/30 rounded-xl hover:bg-brand-gold/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
             >
               First
             </button>
@@ -361,7 +376,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: currentPage - 1 })}
               disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="px-4 py-2 text-sm font-medium font-poppins bg-white text-brand-indigo border border-brand-gold/30 rounded-xl hover:bg-brand-gold/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
             >
               Previous
             </button>
@@ -420,45 +435,66 @@ const Products: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="py-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              All Products
-            </h1>
-            <p className="text-gray-600">
-              {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
-            </p>
-          </div>
-          
-          {/* Search and Controls */}
-          <div className="bg-white border border-gray-200 p-4 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
-              {/* Search */}
-              <form onSubmit={handleSearch} className="flex-1 max-w-md">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search for products..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:border-pink-500 text-sm"
-                  />
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                </div>
-              </form>
-              
-              {/* Controls */}
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
-                >
-                  <Filter className="h-4 w-4" />
-                  <span>FILTER</span>
-                </button>
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+      <div className="flex">
+        {/* Filter Sidebar */}
+        <FilterSidebar
+          isOpen={showFilters}
+          onClose={() => setShowFilters(false)}
+          onFiltersChange={handleFiltersChange}
+          currentFilters={filters}
+        />
+        
+        {/* Main Content */}
+        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-80' : 'lg:ml-0'}`}>
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="py-8">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold font-playfair text-brand-indigo mb-2">
+                All Products
+              </h1>
+              <p className="text-brand-indigo/70 font-poppins">
+                {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
+              </p>
+            </div>
+            
+            {/* Search and Controls */}
+            <div className="bg-white border border-brand-gold/20 p-4 mb-6 rounded-2xl shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
+                {/* Search */}
+                <form onSubmit={handleSearch} className="flex-1 max-w-md">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search products..."
+                      className="w-full pl-10 pr-4 py-2 border border-brand-gold/30 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 text-sm font-poppins"
+                    />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-gold" />
+                  </div>
+                </form>
+                
+                {/* Controls */}
+                <div className="flex items-center space-x-4">
+                  {/* Mobile Filter Toggle */}
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="lg:hidden flex items-center space-x-2 px-4 py-2 border border-brand-gold/30 text-brand-indigo hover:bg-brand-gold/10 text-sm font-medium font-poppins rounded-xl transition-colors"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>FILTER</span>
+                  </button>
+                  
+                  {/* Desktop Filter Toggle */}
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="hidden lg:flex items-center space-x-2 px-4 py-2 border border-brand-gold/30 text-brand-indigo hover:bg-brand-gold/10 text-sm font-medium font-poppins rounded-xl transition-colors"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>{showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}</span>
+                  </button>
                 
                 <select
                   value={`${filters.sortBy}-${filters.sortOrder}`}
@@ -466,7 +502,7 @@ const Products: React.FC = () => {
                     const [sortBy, sortOrder] = e.target.value.split('-');
                     updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
                   }}
-                  className="px-3 py-2 border border-gray-300 focus:outline-none focus:border-pink-500 bg-white text-gray-700 text-sm"
+                  className="px-3 py-2 border border-brand-gold/30 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 bg-white text-brand-indigo text-sm font-poppins"
                 >
                   <option value="createdAt-desc">Newest First</option>
                   <option value="price-asc">Price: Low to High</option>
@@ -474,19 +510,19 @@ const Products: React.FC = () => {
                   <option value="name-asc">Name: A to Z</option>
                 </select>
                 
-                <div className="flex items-center border border-gray-300">
+                <div className="flex items-center border border-brand-gold/30 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 ${
-                      viewMode === 'grid' ? 'bg-pink-500 text-white' : 'text-gray-600 hover:bg-gray-50'
+                    className={`p-2 transition-colors ${
+                      viewMode === 'grid' ? 'bg-brand-gold text-brand-indigo' : 'text-brand-indigo hover:bg-brand-gold/10'
                     }`}
                   >
                     <Grid className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`p-2 ${
-                      viewMode === 'list' ? 'bg-pink-500 text-white' : 'text-gray-600 hover:bg-gray-50'
+                    className={`p-2 transition-colors ${
+                      viewMode === 'list' ? 'bg-brand-gold text-brand-indigo' : 'text-brand-indigo hover:bg-brand-gold/10'
                     }`}
                   >
                     <List className="h-4 w-4" />
@@ -566,6 +602,8 @@ const Products: React.FC = () => {
             {renderPagination()}
           </>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

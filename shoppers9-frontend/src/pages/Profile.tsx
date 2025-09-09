@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X, Camera, Settings, Shield, CreditCard, Bell, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, type Address } from '../services/auth';
 
@@ -51,9 +51,12 @@ const Profile: React.FC = () => {
         name: user.name || '',
         email: user.email || ''
       });
-      setAddresses(user.addresses || []);
+      // Only update addresses if we're not currently loading (to prevent state conflicts during operations)
+      if (!isLoading) {
+        setAddresses(user.addresses || []);
+      }
     }
-  }, [user]);
+  }, [user, isLoading]);
   
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,17 +150,66 @@ const Profile: React.FC = () => {
   };
   
   const handleDeleteAddress = async (addressId: string) => {
-    if (!confirm('Are you sure you want to delete this address?')) return;
+    // Validate addressId
+    if (!addressId) {
+      console.error('Address ID is undefined or empty');
+      alert('Error: Cannot delete address. Invalid address ID.');
+      return;
+    }
     
+    // Prevent deletion if already loading
+    if (isLoading) {
+      console.log('Delete operation already in progress');
+      return;
+    }
+    
+    console.log('Attempting to delete address with ID:', addressId);
+    
+    // Show confirmation dialog
+    const confirmed = window.confirm('Are you sure you want to delete this address?');
+    if (!confirmed) {
+      console.log('User cancelled address deletion');
+      return;
+    }
+    
+    console.log('User confirmed deletion, proceeding...');
     setIsLoading(true);
+    
     try {
+      // Call API to delete address
+      console.log('Calling API to delete address:', addressId);
       await authService.deleteAddress(addressId);
-      setAddresses(prev => prev.filter(addr => addr.id !== addressId));
-    } catch (error) {
+      console.log('API call successful, updating local state');
+      
+      // Update local state only after successful API call
+      setAddresses(prev => {
+        const filtered = prev.filter(addr => addr.id !== addressId);
+        console.log('Updated addresses count:', filtered.length);
+        return filtered;
+      });
+      
+      // Refresh user data to keep context in sync
+      try {
+        const updatedUser = await authService.fetchCurrentUser();
+        updateUser(updatedUser);
+        console.log('User context updated successfully');
+      } catch (refreshError) {
+        console.warn('Failed to refresh user data after address deletion:', refreshError);
+        // If refresh fails, we still have the local state updated
+      }
+    } catch (error: any) {
       console.error('Failed to delete address:', error);
-      alert('Failed to delete address. Please try again.');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete address. Please try again.';
+      alert(errorMessage);
+      
+      // If deletion failed, refresh the addresses from user context to restore state
+      if (user?.addresses) {
+        console.log('Restoring addresses from user context');
+        setAddresses(user.addresses);
+      }
     } finally {
       setIsLoading(false);
+      console.log('Delete operation completed');
     }
   };
   
@@ -197,134 +249,227 @@ const Profile: React.FC = () => {
     });
   };
   
+  const [activeTab, setActiveTab] = useState('profile');
+
+  const menuItems = [
+    { id: 'profile', label: 'Profile Info', icon: User },
+    { id: 'addresses', label: 'Addresses', icon: MapPin },
+    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+  ];
+
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-md p-6 text-center">
-            <p className="text-gray-600">Please log in to view your profile.</p>
+      <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full border border-brand-gold/20">
+          <div className="w-16 h-16 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="h-8 w-8 text-brand-indigo" />
           </div>
+          <h2 className="text-2xl font-bold font-playfair text-brand-indigo mb-2">Access Required</h2>
+          <p className="text-brand-indigo/70 font-poppins mb-6">Please log in to view your profile and manage your account.</p>
+          <button className="w-full bg-brand-gold text-brand-indigo py-3 px-6 rounded-xl font-semibold font-poppins hover:bg-white hover:text-brand-indigo border border-brand-gold transition-all duration-300">
+            Sign In
+          </button>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
-        
-        {/* Profile Information */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
-            {!isEditingProfile && (
-              <button
-                onClick={() => setIsEditingProfile(true)}
-                className="flex items-center text-primary-600 hover:text-primary-700"
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Edit
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+      {/* Header */}
+      <div className="bg-brand-indigo shadow-sm border-b border-brand-gold/20">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <h1 className="text-2xl font-bold font-playfair text-brand-gold">
+              My Account
+            </h1>
+            <div className="flex items-center space-x-4">
+              <button className="p-2 text-brand-gold hover:text-white transition-colors">
+                <Settings className="h-5 w-5" />
               </button>
-            )}
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-brand-gold/20">
+              {/* Profile Header */}
+              <div className="bg-brand-indigo px-6 py-8 text-center">
+                <div className="relative inline-block">
+                  <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <User className="h-10 w-10 text-brand-indigo" />
+                  </div>
+                  <button className="absolute bottom-3 right-0 bg-brand-gold rounded-full p-2 shadow-lg hover:shadow-xl transition-shadow">
+                    <Camera className="h-4 w-4 text-brand-indigo" />
+                  </button>
+                </div>
+                <h3 className="text-xl font-bold font-playfair text-brand-gold">{user.name || 'User'}</h3>
+                <p className="text-brand-slate text-sm font-poppins">{user.email}</p>
+              </div>
+
+              {/* Navigation Menu */}
+              <nav className="p-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
+                        activeTab === item.id
+                          ? 'bg-brand-gold text-brand-indigo shadow-lg'
+                          : 'text-brand-indigo hover:bg-brand-gold/10'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium font-poppins">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="mt-8 lg:mt-0 lg:col-span-9">
+            {activeTab === 'profile' && (
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-brand-gold/20">
+                <div className="bg-brand-indigo px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold font-playfair text-brand-gold">Profile Information</h2>
+                    {!isEditingProfile && (
+                      <button
+                        onClick={() => setIsEditingProfile(true)}
+                        className="flex items-center bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold px-4 py-2 rounded-xl transition-all duration-200 backdrop-blur-sm font-poppins"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="p-6">
           
           {isEditingProfile ? (
-            <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={profileForm?.name || ''}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Enter your name"
-                  />
+            <form onSubmit={handleProfileSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-4 h-5 w-5 text-purple-400" />
+                    <input
+                      type="text"
+                      value={profileForm?.name || ''}
+                      onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-4 h-5 w-5 text-purple-400" />
+                    <input
+                      type="email"
+                      value={profileForm?.email || ''}
+                      onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      placeholder="Enter your email address"
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="email"
-                    value={profileForm?.email || ''}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex items-center bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300"
+                  className="flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  <Check className="h-4 w-4 mr-1" />
-                  {isLoading ? 'Saving...' : 'Save'}
+                  <Check className="h-5 w-5 mr-2" />
+                  {isLoading ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   type="button"
                   onClick={cancelEditing}
-                  className="flex items-center bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="flex items-center justify-center bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 font-semibold"
                 >
-                  <X className="h-4 w-4 mr-1" />
+                  <X className="h-5 w-5 mr-2" />
                   Cancel
                 </button>
               </div>
             </form>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <User className="h-5 w-5 text-gray-400 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-500">Name</p>
-                  <p className="text-gray-900">{user.name || 'Not provided'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+                <div className="flex items-center mb-3">
+                  <div className="bg-purple-100 p-2 rounded-lg mr-4">
+                    <User className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Full Name</p>
+                    <p className="text-lg font-semibold text-gray-900">{user.name || 'Not provided'}</p>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center">
-                <Mail className="h-5 w-5 text-gray-400 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p className="text-gray-900">{user.email || 'Not provided'}</p>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+                <div className="flex items-center mb-3">
+                  <div className="bg-blue-100 p-2 rounded-lg mr-4">
+                    <Mail className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Email Address</p>
+                    <p className="text-lg font-semibold text-gray-900">{user.email || 'Not provided'}</p>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center">
-                <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                <div>
-                  <p className="text-sm text-gray-500">Mobile Number</p>
-                  <p className="text-gray-900">+91 {user.phone}</p>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100 md:col-span-2">
+                <div className="flex items-center mb-3">
+                  <div className="bg-green-100 p-2 rounded-lg mr-4">
+                    <Phone className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Mobile Number</p>
+                    <p className="text-lg font-semibold text-gray-900">+91 {user.phone}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Addresses */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Saved Addresses</h2>
-            {!isAddingAddress && (
-              <button
-                onClick={() => setIsAddingAddress(true)}
-                className="flex items-center bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Address
-              </button>
+                </div>
+              )}
+                </div>
+              </div>
             )}
-          </div>
+
+            {activeTab === 'addresses' && (
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-white">Saved Addresses</h2>
+                    {!isAddingAddress && (
+                      <button
+                        onClick={() => setIsAddingAddress(true)}
+                        className="flex items-center bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Address
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="p-6">
           
           {/* Add Address Form */}
           {isAddingAddress && (
@@ -677,7 +822,12 @@ const Profile: React.FC = () => {
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteAddress(address.id)}
+                            onClick={() => {
+                              console.log('Delete button clicked for address:', address);
+                              console.log('Address ID:', address.id);
+                              console.log('Address _id:', address._id);
+                              handleDeleteAddress(address.id || address._id);
+                            }}
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -690,10 +840,120 @@ const Profile: React.FC = () => {
               ))
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  );
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'security' && (
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+                  <h2 className="text-xl font-bold text-white">Security Settings</h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-red-50 to-orange-50 p-6 rounded-xl border border-red-100">
+                      <div className="flex items-center mb-4">
+                        <div className="bg-red-100 p-2 rounded-lg mr-4">
+                          <Shield className="h-6 w-6 text-red-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Change Password</h3>
+                          <p className="text-sm text-gray-600">Update your password to keep your account secure</p>
+                        </div>
+                      </div>
+                      <button className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-orange-600 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105">
+                        Change Password
+                      </button>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+                      <div className="flex items-center mb-4">
+                        <div className="bg-blue-100 p-2 rounded-lg mr-4">
+                          <Shield className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Two-Factor Authentication</h3>
+                          <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                        </div>
+                      </div>
+                      <button className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105">
+                        Enable 2FA
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+                  <h2 className="text-xl font-bold text-white">Notification Preferences</h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-green-100 p-2 rounded-lg mr-4">
+                            <Bell className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Email Notifications</h3>
+                            <p className="text-sm text-gray-600">Receive order updates and promotions via email</p>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" className="sr-only peer" defaultChecked />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-purple-100 p-2 rounded-lg mr-4">
+                            <Bell className="h-6 w-6 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">SMS Notifications</h3>
+                            <p className="text-sm text-gray-600">Get order updates via SMS</p>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" className="sr-only peer" />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="bg-yellow-100 p-2 rounded-lg mr-4">
+                            <Bell className="h-6 w-6 text-yellow-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Marketing Communications</h3>
+                            <p className="text-sm text-gray-600">Receive promotional offers and new product updates</p>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" className="sr-only peer" defaultChecked />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+         </div>
+       </div>
+     </div>
+   );
 };
 
 export default Profile;

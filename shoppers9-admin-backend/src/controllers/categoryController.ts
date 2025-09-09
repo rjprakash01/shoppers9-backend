@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Category from '../models/Category';
 import Product from '../models/Product';
 import { AuthRequest } from '../types';
+import { autoAssignFiltersToCategory } from '../utils/categoryFilterAssignment';
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
@@ -161,9 +162,18 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
 
     console.log('Category created successfully:', category);
 
+    // Auto-assign appropriate filters to the new category
+    try {
+      await autoAssignFiltersToCategory(category._id.toString(), req.admin?.id);
+      console.log('✅ Filters auto-assigned to category:', category.name);
+    } catch (filterError) {
+      console.error('⚠️ Error auto-assigning filters (category still created):', filterError);
+      // Don't fail the category creation if filter assignment fails
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Category created successfully',
+      message: 'Category created successfully with auto-assigned filters',
       data: category
     });
   } catch (error) {

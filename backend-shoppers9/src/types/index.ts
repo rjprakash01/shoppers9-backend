@@ -16,6 +16,7 @@ export interface IUser extends Document {
 
 export interface IAddress {
   _id?: string;
+  id?: string;
   name: string;
   phone: string;
   addressLine1: string;
@@ -32,14 +33,18 @@ export interface IProduct extends Document {
   _id: string;
   name: string;
   description: string;
-  category: string;
-  subCategory: string;
+  category: mongoose.Types.ObjectId;
+  subCategory: mongoose.Types.ObjectId;
+  subSubCategory?: mongoose.Types.ObjectId;
   brand: string;
   images: string[];
   variants: IProductVariant[];
   specifications: IProductSpecification;
   tags: string[];
   isActive: boolean;
+  isFeatured: boolean;
+  isTrending: boolean;
+  displayFilters: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }

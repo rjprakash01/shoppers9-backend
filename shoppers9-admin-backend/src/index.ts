@@ -18,6 +18,7 @@ import categoryFilterRoutes from './routes/categoryFilter';
 import productFilterValueRoutes from './routes/productFilterValue';
 import filterOptionRoutes from './routes/filterOption';
 import bannerRoutes from './routes/banner';
+import publicBannerRoutes from './routes/publicBanner';
 
 // Load environment variables
 dotenv.config();
@@ -123,6 +124,8 @@ app.post('/api/init-super-admin', async (req, res): Promise<void> => {
 app.use('/api/auth', authRoutes);
 // Public category routes (for frontend dropdown access)
 app.use('/api/categories', categoryRoutes);
+// Public banner routes (for frontend carousel access)
+app.use('/api/banners', publicBannerRoutes);
 // Specific admin routes must come before the general admin route
 app.use('/api/admin/products', productRoutes);
 app.use('/api/admin/users', userRoutes);

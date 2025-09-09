@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export interface Banner {
   _id: string;
@@ -63,8 +63,9 @@ const FALLBACK_BANNERS: Banner[] = [
 
 class BannerService {
   private baseURL = `${API_BASE_URL}/banners`;
+  private adminBaseURL = `${API_BASE_URL}/admin/banners`;
   private cache: { data: Banner[]; timestamp: number } | null = null;
-  private readonly CACHE_DURATION = 10 * 1000; // 10 seconds for faster updates
+  private readonly CACHE_DURATION = 60 * 1000; // 1 minute cache to reduce server load
 
   // Get active banners for frontend carousel with caching
   async getActiveBanners(forceRefresh = false): Promise<Banner[]> {
@@ -75,41 +76,55 @@ class BannerService {
 
     try {
       const response = await axios.get<BannerResponse>(`${this.baseURL}/active`, {
-        timeout: 1000 // Reduced timeout to 1 second for faster fallback
+        timeout: 5000 // Increased timeout to 5 seconds to prevent premature failures
       });
       
       const banners = response.data.data || [];
       
-      // Cache successful response
+      console.log('🎯 Banner API response:', banners.length, 'banners received');
+      console.log('🎯 Banner details:', banners.map(b => ({ title: b.title, displayType: b.displayType, image: b.image })));
+      
+      // Cache successful response - always use API data, even if empty
       this.cache = {
-        data: banners.length > 0 ? banners : FALLBACK_BANNERS,
+        data: banners,
         timestamp: Date.now()
       };
       
-      return this.cache.data;
+      // Always return API data, even if empty - don't use fallback
+      console.log('🎯 Returning banners from API:', banners.length, 'banners');
+      return banners;
     } catch (error: any) {
-      console.warn('Banner API unavailable, using fallback banners:', error.message);
+      console.error('🚨 Banner API error:', error.message);
       
-      // Cache fallback data for shorter duration
-      this.cache = {
-        data: FALLBACK_BANNERS,
-        timestamp: Date.now() - (this.CACHE_DURATION - 30000) // Cache for only 30 seconds
-      };
+      // Try to return cached data first
+      if (this.cache && this.cache.data.length > 0 && !this.cache.data[0].id.startsWith('fallback')) {
+        console.log('🔄 Returning cached real banners due to API error:', this.cache.data.length);
+        return this.cache.data;
+      }
       
-      return FALLBACK_BANNERS;
+      console.warn('🚨 API failed and no real cached data, returning empty array instead of fallback');
+      // Return empty array instead of fallback to force proper loading
+      return [];
     }
   }
 
   // Clear cache manually if needed
   clearCache(): void {
     this.cache = null;
+    // Also clear any localStorage cache
+    try {
+      localStorage.removeItem('bannerCache');
+      localStorage.removeItem('banners');
+    } catch (error) {
+      console.warn('Could not clear localStorage:', error);
+    }
   }
 
   // Admin methods (require authentication)
   async getAllBanners(page = 1, limit = 20): Promise<{ banners: Banner[]; pagination: any }> {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${this.baseURL}`, {
+      const response = await axios.get(`${this.adminBaseURL}`, {
         params: { page, limit },
         headers: {
           Authorization: `Bearer ${token}`
@@ -125,7 +140,7 @@ class BannerService {
   async getBannerById(bannerId: string): Promise<Banner> {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${this.baseURL}/${bannerId}`, {
+      const response = await axios.get(`${this.adminBaseURL}/${bannerId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -140,7 +155,7 @@ class BannerService {
   async createBanner(bannerData: Partial<Banner>): Promise<Banner> {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${this.baseURL}`, bannerData, {
+      const response = await axios.post(`${this.adminBaseURL}`, bannerData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -156,7 +171,7 @@ class BannerService {
   async updateBanner(bannerId: string, bannerData: Partial<Banner>): Promise<Banner> {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`${this.baseURL}/${bannerId}`, bannerData, {
+      const response = await axios.put(`${this.adminBaseURL}/${bannerId}`, bannerData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -172,7 +187,7 @@ class BannerService {
   async deleteBanner(bannerId: string): Promise<void> {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${this.baseURL}/${bannerId}`, {
+      await axios.delete(`${this.adminBaseURL}/${bannerId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -186,7 +201,7 @@ class BannerService {
   async updateBannerStatus(bannerId: string, isActive: boolean): Promise<Banner> {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.patch(`${this.baseURL}/${bannerId}/status`, 
+      const response = await axios.patch(`${this.adminBaseURL}/${bannerId}/status`, 
         { isActive }, 
         {
           headers: {
@@ -205,7 +220,7 @@ class BannerService {
   async reorderBanners(bannerOrders: { id: string; order: number }[]): Promise<void> {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${this.baseURL}/reorder`, 
+      await axios.patch(`${this.adminBaseURL}/reorder`, 
         { bannerOrders }, 
         {
           headers: {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { CheckCircle, Package, Truck, Calendar, ArrowRight, Home, ShoppingBag } from 'lucide-react';
+import { CheckCircle, Package, Truck, Calendar, ArrowRight, Home, ShoppingBag, Star, Gift, Shield, Clock, MapPin, Phone, Mail, CreditCard } from 'lucide-react';
 import { formatPrice } from '../utils/currency';
 import { orderService } from '../services/orders';
 
@@ -91,15 +91,15 @@ const OrderConfirmation: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+      <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold"></div>
       </div>
     );
   }
 
   if (error || !orderDetails) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5 py-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-16">
             <div className="mx-auto mb-8">
@@ -111,24 +111,24 @@ const OrderConfirmation: React.FC = () => {
                 xmlns="http://www.w3.org/2000/svg"
                 className="mx-auto"
               >
-                <circle cx="60" cy="60" r="50" stroke="#EF4444" strokeWidth="3" fill="none" />
-                <line x1="40" y1="40" x2="80" y2="80" stroke="#EF4444" strokeWidth="3" />
-                <line x1="80" y1="40" x2="40" y2="80" stroke="#EF4444" strokeWidth="3" />
+                <circle cx="60" cy="60" r="50" stroke="#C9A646" strokeWidth="3" fill="none" />
+                <line x1="40" y1="40" x2="80" y2="80" stroke="#C9A646" strokeWidth="3" />
+                <line x1="80" y1="40" x2="40" y2="80" stroke="#C9A646" strokeWidth="3" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Order Not Found</h1>
-            <p className="text-gray-600 mb-8">We couldn't find your order details. Please check your order history or contact support.</p>
+            <h1 className="text-3xl font-bold font-playfair text-brand-indigo mb-4">Order Not Found</h1>
+            <p className="text-brand-indigo/70 font-poppins mb-8">We couldn't find your order details. Please check your order history or contact support.</p>
             <div className="space-x-4">
               <Link
                 to="/"
-                className="inline-flex items-center bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors"
+                className="inline-flex items-center bg-brand-gold text-brand-indigo px-6 py-3 rounded-xl font-semibold font-poppins hover:bg-white hover:text-brand-indigo border border-brand-gold transition-colors"
               >
                 <Home className="mr-2 h-5 w-5" />
                 Go Home
               </Link>
               <Link
                 to="/products"
-                className="inline-flex items-center bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                className="inline-flex items-center bg-brand-indigo text-brand-gold px-6 py-3 rounded-xl font-semibold font-poppins hover:bg-brand-indigo/90 transition-colors"
               >
                 <ShoppingBag className="mr-2 h-5 w-5" />
                 Continue Shopping
@@ -141,87 +141,134 @@ const OrderConfirmation: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Success Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-6">
-            <CheckCircle className="h-20 w-20 text-green-500 mx-auto" />
+        <div className="text-center mb-12">
+          <div className="mx-auto mb-8">
+            <div className="w-32 h-32 bg-brand-gold rounded-full flex items-center justify-center mx-auto shadow-2xl">
+              <CheckCircle className="h-16 w-16 text-brand-indigo" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
-          <p className="text-gray-600">Thank you for your purchase. Your order has been successfully placed.</p>
+          <h1 className="text-4xl font-bold font-playfair text-brand-indigo mb-4">Order Confirmed!</h1>
+          <p className="text-xl text-brand-indigo/70 font-poppins max-w-2xl mx-auto">Thank you for your purchase! Your order has been successfully placed and we're already working on it.</p>
+          
+          {/* Celebration Animation */}
+          <div className="mt-8 flex justify-center space-x-2">
+            <Star className="h-6 w-6 text-brand-gold animate-pulse" />
+            <Star className="h-8 w-8 text-brand-gold animate-bounce" />
+            <Star className="h-6 w-6 text-brand-gold animate-pulse" />
+          </div>
         </div>
 
         {/* Order Details Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Order Details</h2>
+        <div className="bg-white rounded-2xl shadow-xl border border-brand-gold/20 mb-8">
+          <div className="px-8 py-6 border-b border-brand-gold/20">
+            <h2 className="text-2xl font-bold font-playfair text-brand-indigo flex items-center">
+              <Gift className="h-6 w-6 mr-3 text-brand-gold" />
+              Order Details
+            </h2>
           </div>
-          <div className="px-6 py-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Order Number</p>
-                <p className="font-semibold text-gray-900">{orderDetails.orderNumber}</p>
+          <div className="px-8 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-brand-gold/10 p-6 rounded-xl border border-brand-gold/30">
+                <div className="flex items-center mb-3">
+                  <Package className="h-5 w-5 text-brand-indigo mr-2" />
+                  <p className="text-sm font-medium font-poppins text-brand-indigo">Order Number</p>
+                </div>
+                <p className="text-xl font-bold font-poppins text-brand-indigo">#{orderDetails.orderNumber.slice(-8).toUpperCase()}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Amount</p>
-                <p className="font-semibold text-gray-900">{formatPrice(orderDetails.totalAmount)}</p>
+              <div className="bg-brand-gold/10 p-6 rounded-xl border border-brand-gold/30">
+                <div className="flex items-center mb-3">
+                  <CreditCard className="h-5 w-5 text-brand-indigo mr-2" />
+                  <p className="text-sm font-medium font-poppins text-brand-indigo">Total Amount</p>
+                </div>
+                <p className="text-2xl font-bold font-poppins text-brand-indigo">{formatPrice(orderDetails.totalAmount)}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Order Status</p>
-                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(orderDetails.status)}`}>
+              <div className="bg-brand-gold/10 p-6 rounded-xl border border-brand-gold/30">
+                <div className="flex items-center mb-3">
+                  <Clock className="h-5 w-5 text-brand-indigo mr-2" />
+                  <p className="text-sm font-medium font-poppins text-brand-indigo">Order Status</p>
+                </div>
+                <span className="inline-flex px-4 py-2 text-sm font-bold font-poppins rounded-full bg-brand-gold text-brand-indigo shadow-sm">
                   {orderDetails.status.charAt(0).toUpperCase() + orderDetails.status.slice(1)}
                 </span>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Estimated Delivery</p>
-                <p className="font-semibold text-gray-900">{formatDate(orderDetails.estimatedDelivery)}</p>
+              <div className="bg-brand-gold/10 p-6 rounded-xl border border-brand-gold/30">
+                <div className="flex items-center mb-3">
+                  <Calendar className="h-5 w-5 text-brand-indigo mr-2" />
+                  <p className="text-sm font-medium font-poppins text-brand-indigo">Expected Delivery</p>
+                </div>
+                <p className="text-lg font-bold font-poppins text-brand-indigo">{formatDate(orderDetails.estimatedDelivery)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Order Timeline */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Order Timeline</h2>
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+          <div className="px-8 py-6 border-b border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <Clock className="h-6 w-6 mr-3 text-blue-600" />
+              Order Timeline
+            </h2>
           </div>
-          <div className="px-6 py-4">
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
+          <div className="px-8 py-8">
+            <div className="relative">
+              {/* Timeline Line */}
+              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-green-500 via-blue-300 to-gray-300"></div>
+              
+              <div className="space-y-8">
+                <div className="flex items-center relative">
+                  <div className="flex-shrink-0 z-10">
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="ml-6 bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100 flex-1">
+                    <p className="font-bold text-green-800 text-lg">Order Placed</p>
+                    <p className="text-green-700">Your order has been successfully placed and confirmed</p>
+                    <p className="text-sm text-green-600 mt-1">Just now</p>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-900">Order Placed</p>
-                  <p className="text-sm text-gray-600">Your order has been successfully placed</p>
+                
+                <div className="flex items-center relative">
+                  <div className="flex-shrink-0 z-10">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                      <Package className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="ml-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100 flex-1">
+                    <p className="font-bold text-blue-800 text-lg">Processing</p>
+                    <p className="text-blue-700">We're carefully preparing your order for shipment</p>
+                    <p className="text-sm text-blue-600 mt-1">Within 24 hours</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Package className="h-6 w-6 text-gray-400" />
+                
+                <div className="flex items-center relative">
+                  <div className="flex-shrink-0 z-10">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center shadow-lg">
+                      <Truck className="h-6 w-6 text-gray-500" />
+                    </div>
+                  </div>
+                  <div className="ml-6 bg-gray-50 p-4 rounded-xl border border-gray-200 flex-1">
+                    <p className="font-bold text-gray-600 text-lg">Shipped</p>
+                    <p className="text-gray-500">Your order is on its way to you</p>
+                    <p className="text-sm text-gray-400 mt-1">Pending</p>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-600">Processing</p>
-                  <p className="text-sm text-gray-500">We're preparing your order</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Truck className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-600">Shipped</p>
-                  <p className="text-sm text-gray-500">Your order is on its way</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Calendar className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-600">Delivered</p>
-                  <p className="text-sm text-gray-500">Expected by {formatDate(orderDetails.estimatedDelivery)}</p>
+                
+                <div className="flex items-center relative">
+                  <div className="flex-shrink-0 z-10">
+                    <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center shadow-lg">
+                      <Calendar className="h-6 w-6 text-gray-500" />
+                    </div>
+                  </div>
+                  <div className="ml-6 bg-gray-50 p-4 rounded-xl border border-gray-200 flex-1">
+                    <p className="font-bold text-gray-600 text-lg">Delivered</p>
+                    <p className="text-gray-500">Expected delivery date</p>
+                    <p className="text-sm text-gray-400 mt-1">{formatDate(orderDetails.estimatedDelivery)}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -229,40 +276,72 @@ const OrderConfirmation: React.FC = () => {
         </div>
 
         {/* What's Next */}
-        <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">What's Next?</h3>
-          <ul className="space-y-2 text-blue-800">
-            <li className="flex items-center">
-              <ArrowRight className="h-4 w-4 mr-2 flex-shrink-0" />
-              You'll receive an email confirmation shortly
-            </li>
-            <li className="flex items-center">
-              <ArrowRight className="h-4 w-4 mr-2 flex-shrink-0" />
-              We'll send you tracking information once your order ships
-            </li>
-            <li className="flex items-center">
-              <ArrowRight className="h-4 w-4 mr-2 flex-shrink-0" />
-              You can track your order status in your account
-            </li>
-          </ul>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-8 mb-8">
+          <h3 className="text-2xl font-bold text-blue-900 mb-6 flex items-center">
+            <Shield className="h-6 w-6 mr-3" />
+            What's Next?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mb-4">
+                <Mail className="h-6 w-6 text-white" />
+              </div>
+              <h4 className="font-bold text-blue-900 mb-2">Email Confirmation</h4>
+              <p className="text-blue-700 text-sm">You'll receive an email confirmation with order details shortly</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mb-4">
+                <Truck className="h-6 w-6 text-white" />
+              </div>
+              <h4 className="font-bold text-blue-900 mb-2">Tracking Info</h4>
+              <p className="text-blue-700 text-sm">We'll send you tracking information once your order ships</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4">
+                <Package className="h-6 w-6 text-white" />
+              </div>
+              <h4 className="font-bold text-blue-900 mb-2">Order Tracking</h4>
+              <p className="text-blue-700 text-sm">Track your order status anytime in your account</p>
+            </div>
+          </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-6 justify-center">
           <Link
             to="/"
-            className="inline-flex items-center justify-center bg-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-pink-700 transition-colors"
+            className="inline-flex items-center justify-center bg-brand-gold text-brand-indigo px-10 py-4 rounded-xl font-bold font-poppins text-lg hover:bg-white hover:text-brand-indigo border border-brand-gold transition-all duration-300 shadow-lg hover:shadow-xl"
           >
-            <Home className="mr-2 h-5 w-5" />
+            <Home className="mr-3 h-6 w-6" />
             Back to Home
           </Link>
           <Link
             to="/products"
-            className="inline-flex items-center justify-center bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+            className="inline-flex items-center justify-center bg-brand-indigo text-brand-gold px-10 py-4 rounded-xl font-bold font-poppins text-lg hover:bg-brand-indigo/90 transition-all duration-300 shadow-lg hover:shadow-xl"
           >
-            <ShoppingBag className="mr-2 h-5 w-5" />
+            <ShoppingBag className="mr-3 h-6 w-6" />
             Continue Shopping
           </Link>
+        </div>
+        
+        {/* Security & Support */}
+        <div className="mt-12 text-center">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-brand-gold/20">
+            <div className="flex items-center justify-center space-x-8">
+              <div className="flex items-center text-brand-indigo">
+                <Shield className="h-5 w-5 mr-2 text-brand-gold" />
+                <span className="text-sm font-medium font-poppins">Secure Checkout</span>
+              </div>
+              <div className="flex items-center text-brand-indigo">
+                <Phone className="h-5 w-5 mr-2 text-brand-gold" />
+                <span className="text-sm font-medium font-poppins">24/7 Support</span>
+              </div>
+              <div className="flex items-center text-brand-indigo">
+                <Star className="h-5 w-5 mr-2 text-brand-gold" />
+                <span className="text-sm font-medium font-poppins">Quality Guaranteed</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

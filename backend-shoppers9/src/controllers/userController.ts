@@ -213,7 +213,7 @@ class UserController {
       }
 
       const addressIndex = user.addresses.findIndex(
-        addr => addr._id?.toString() === addressId
+        addr => addr._id?.toString() === addressId || addr.id?.toString() === addressId
       );
 
       if (addressIndex === -1) {

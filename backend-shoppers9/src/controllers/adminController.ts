@@ -363,7 +363,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       images,
       specifications,
       tags,
-      isActive = true
+      isActive = true,
+      isFeatured = false,
+      isTrending = false
     } = req.body;
 
     // Validate required fields
@@ -392,6 +394,8 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       specifications: specifications || {},
       tags: tags || [],
       isActive,
+      isFeatured,
+      isTrending,
       averageRating: 0,
       totalReviews: 0
     };

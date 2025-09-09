@@ -1,5 +1,30 @@
 import api from './api';
 
+// Available Color interface (from admin panel)
+export interface AvailableColor {
+  name: string;
+  code: string;
+  images: string[];
+}
+
+// Available Size interface (from admin panel)
+export interface AvailableSize {
+  name: string;
+}
+
+// Product Variant interface (color-size combination)
+export interface ProductVariant {
+  _id?: string;
+  color: string;
+  colorCode?: string;
+  size: string;
+  price: number;
+  originalPrice: number;
+  stock: number;
+  images: string[];
+}
+
+// Legacy Product Size interface (for backward compatibility)
 export interface ProductSize {
   size: string;
   price: number;
@@ -7,14 +32,6 @@ export interface ProductSize {
   discount: number;
   stock: number;
   sku: string;
-}
-
-export interface ProductVariant {
-  _id?: string;
-  color: string;
-  colorCode?: string;
-  sizes: ProductSize[];
-  images: string[];
 }
 
 export interface ProductSpecification {
@@ -35,11 +52,18 @@ export interface Product {
   category: string;
   subCategory: string;
   brand: string;
+  price?: number;
+  originalPrice?: number;
   images: string[];
-  variants: ProductVariant[];
+  availableColors?: AvailableColor[]; // Colors from admin panel
+  availableSizes?: AvailableSize[]; // Sizes from admin panel
+  variants: ProductVariant[]; // Color-size combinations
   specifications: ProductSpecification;
   tags: string[];
   isActive: boolean;
+  isFeatured: boolean;
+  isTrending: boolean;
+  displayFilters: string[];
   createdAt: string;
   updatedAt: string;
   // Virtual fields
@@ -62,14 +86,14 @@ export interface ProductsResponse {
 export interface ProductFilters {
   category?: string;
   subCategory?: string;
-  brand?: string;
+  brand?: string[];
   minPrice?: number;
   maxPrice?: number;
   sizes?: string[];
   colors?: string[];
-  fabric?: string;
+  fabric?: string[];
   fit?: string;
-  material?: string;
+  material?: string[];
   microwaveSafe?: boolean;
   inStock?: boolean;
   search?: string;
@@ -77,6 +101,22 @@ export interface ProductFilters {
   limit?: number;
   sortBy?: 'name' | 'price' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+}
+
+export interface FilterOption {
+  name: string;
+  count: number;
+  colorCode?: string;
+}
+
+export interface FilterData {
+  priceRange: { minPrice: number; maxPrice: number };
+  brands: FilterOption[];
+  sizes: FilterOption[];
+  colors: FilterOption[];
+  materials: FilterOption[];
+  fabrics: FilterOption[];
+  subcategories: { name: string; slug: string }[];
 }
 
 class ProductService {
@@ -134,8 +174,29 @@ class ProductService {
   }
 
   async getFeaturedProducts(limit: number = 8): Promise<Product[]> {
-    const response = await this.getProducts({ limit, sortBy: 'createdAt', sortOrder: 'desc' });
-    return response.products;
+    try {
+      const response = await api.get('/products/featured');
+      if (response.data.success) {
+        return response.data.data.products.slice(0, limit);
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+      return [];
+    }
+  }
+
+  async getTrendingProducts(limit: number = 8): Promise<Product[]> {
+    try {
+      const response = await api.get('/products/trending');
+      if (response.data.success) {
+        return response.data.data.products.slice(0, limit);
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch trending products:', error);
+      return [];
+    }
   }
 
   async getRelatedProducts(productId: string, category: string, limit: number = 4): Promise<Product[]> {
@@ -146,6 +207,32 @@ class ProductService {
     
     // Filter out the current product
     return response.products.filter(product => product._id !== productId).slice(0, limit);
+  }
+
+  async getFilters(category?: string): Promise<{ success: boolean; data: FilterData }> {
+    try {
+      const params = new URLSearchParams();
+      if (category) {
+        params.append('category', category);
+      }
+      
+      const response = await api.get(`/products/filters?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch filters:', error);
+      return {
+        success: false,
+        data: {
+          priceRange: { minPrice: 0, maxPrice: 10000 },
+          brands: [],
+          sizes: [],
+          colors: [],
+          materials: [],
+          fabrics: [],
+          subcategories: []
+        }
+      };
+    }
   }
 }
 

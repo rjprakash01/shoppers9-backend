@@ -118,7 +118,7 @@ export const getFilterById = async (req: Request, res: Response): Promise<void> 
 // @access  Private
 export const createFilter = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, displayName, type, dataType, description, categoryLevels, categories, sortOrder } = req.body;
+    const { name, displayName, type, dataType, description, categoryLevels, categories, sortOrder, options, isActive } = req.body;
 
     // Check if filter with same name already exists
     const existingFilter = await Filter.findOne({ name });
@@ -138,16 +138,39 @@ export const createFilter = async (req: AuthRequest, res: Response): Promise<voi
       description,
       categoryLevels: categoryLevels || [2, 3],
       categories: categories || [],
-      sortOrder,
+      sortOrder: sortOrder || 0,
+      isActive: isActive !== undefined ? isActive : true,
       ...(req.admin?._id && { createdBy: req.admin._id })
     });
 
     await filter.save();
 
+    // Create filter options if provided
+    if (options && Array.isArray(options) && options.length > 0) {
+      const filterOptions = options.map((option: any, index: number) => ({
+        filter: filter._id,
+        value: option.value,
+        displayValue: option.displayValue,
+        colorCode: option.colorCode || null,
+        isActive: option.isActive !== undefined ? option.isActive : true,
+        sortOrder: option.sortOrder !== undefined ? option.sortOrder : index + 1,
+        ...(req.admin?._id && { createdBy: req.admin._id })
+      }));
+
+      await FilterOption.insertMany(filterOptions);
+    }
+
+    // Get the complete filter with options
+    const completeFilter = await Filter.findById(filter._id);
+    const filterOptions = await FilterOption.find({ filter: filter._id }).sort({ sortOrder: 1 });
+
     res.status(201).json({
       success: true,
       message: 'Filter created successfully',
-      data: filter
+      data: {
+        ...completeFilter?.toObject(),
+        options: filterOptions
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -163,7 +186,7 @@ export const createFilter = async (req: AuthRequest, res: Response): Promise<voi
 // @access  Private
 export const updateFilter = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, displayName, type, dataType, description, categoryLevels, categories, sortOrder, isActive } = req.body;
+    const { name, displayName, type, dataType, description, categoryLevels, categories, sortOrder, isActive, options } = req.body;
 
     const filter = await Filter.findById(req.params.id);
     if (!filter) {
@@ -200,10 +223,38 @@ export const updateFilter = async (req: AuthRequest, res: Response): Promise<voi
 
     await filter.save();
 
+    // Update filter options if provided
+    if (options !== undefined && Array.isArray(options)) {
+      // Delete existing options
+      await FilterOption.deleteMany({ filter: req.params.id });
+
+      // Create new options if any
+      if (options.length > 0) {
+        const filterOptions = options.map((option: any, index: number) => ({
+          filter: req.params.id,
+          value: option.value,
+          displayValue: option.displayValue,
+          colorCode: option.colorCode || null,
+          isActive: option.isActive !== undefined ? option.isActive : true,
+          sortOrder: option.sortOrder !== undefined ? option.sortOrder : index + 1,
+          ...(req.admin?._id && { createdBy: req.admin._id })
+        }));
+
+        await FilterOption.insertMany(filterOptions);
+      }
+    }
+
+    // Get the complete filter with options
+    const completeFilter = await Filter.findById(req.params.id);
+    const filterOptions = await FilterOption.find({ filter: req.params.id }).sort({ sortOrder: 1 });
+
     res.json({
       success: true,
       message: 'Filter updated successfully',
-      data: filter
+      data: {
+        ...completeFilter?.toObject(),
+        options: filterOptions
+      }
     });
   } catch (error) {
     res.status(500).json({

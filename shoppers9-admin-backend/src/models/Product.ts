@@ -1,7 +1,46 @@
 import mongoose, { Schema } from 'mongoose';
-import { IProduct, IProductVariant, IProductSize, IProductSpecification } from '../types';
+import { IProduct, IProductVariant, IAvailableColor, IAvailableSize, IProductSpecification } from '../types';
 
-const productSizeSchema = new Schema<IProductSize>({
+// Available Color schema (from admin panel)
+const availableColorSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  code: {
+    type: String,
+    required: true,
+    trim: true,
+    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+  },
+  images: [{
+    type: String,
+    required: false
+  }]
+});
+
+// Available Size schema (from admin panel)
+const availableSizeSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  }
+});
+
+// Product Variant schema (color-size combination)
+const productVariantSchema = new Schema<IProductVariant>({
+  color: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  colorCode: {
+    type: String,
+    trim: true,
+    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+  },
   size: {
     type: String,
     required: true,
@@ -17,40 +56,15 @@ const productSizeSchema = new Schema<IProductSize>({
     required: true,
     min: 0
   },
-  discount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
   stock: {
     type: Number,
     required: true,
     min: 0,
     default: 0
   },
-  // sku: {
-  //   type: String,
-  //   required: false,
-  //   trim: true
-  // }
-});
-
-const productVariantSchema = new Schema<IProductVariant>({
-  color: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  colorCode: {
-    type: String,
-    trim: true,
-    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
-  },
-  sizes: [productSizeSchema],
   images: [{
     type: String,
-    required: true
+    required: false
   }]
 });
 
@@ -99,11 +113,27 @@ const productSchema = new Schema<IProduct>({
     required: true,
     trim: true
   },
+  price: {
+    type: Number,
+    min: 0,
+    required: false
+  },
+  originalPrice: {
+    type: Number,
+    min: 0,
+    required: false
+  },
   images: [{
     type: String,
     required: true
   }],
+  availableColors: [availableColorSchema],
+  availableSizes: [availableSizeSchema],
   variants: [productVariantSchema],
+  displayFilters: [{
+    type: String,
+    trim: true
+  }],
   specifications: productSpecificationSchema,
   tags: [{
     type: String,
@@ -112,6 +142,14 @@ const productSchema = new Schema<IProduct>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  isTrending: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
@@ -139,8 +177,10 @@ productSchema.index({ category: 1, subCategory: 1 });
 productSchema.index({ subSubCategory: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ isActive: 1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ isTrending: 1 });
 productSchema.index({ createdAt: -1 });
-productSchema.index({ 'variants.sizes.price': 1 });
+productSchema.index({ 'variants.price': 1 });
 
 // Virtual for minimum price calculation
 productSchema.virtual('minPrice').get(function() {
@@ -148,11 +188,9 @@ productSchema.virtual('minPrice').get(function() {
   
   let minPrice = Infinity;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      if (size.price < minPrice) {
-        minPrice = size.price;
-      }
-    });
+    if (variant.price < minPrice) {
+      minPrice = variant.price;
+    }
   });
   
   return minPrice === Infinity ? 0 : minPrice;
@@ -164,11 +202,9 @@ productSchema.virtual('maxPrice').get(function() {
   
   let maxPrice = 0;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      if (size.price > maxPrice) {
-        maxPrice = size.price;
-      }
-    });
+    if (variant.price > maxPrice) {
+      maxPrice = variant.price;
+    }
   });
   
   return maxPrice;
@@ -180,9 +216,7 @@ productSchema.virtual('totalStock').get(function() {
   
   let totalStock = 0;
   this.variants.forEach((variant: any) => {
-    variant.sizes.forEach((size: any) => {
-      totalStock += size.stock || 0;
-    });
+    totalStock += variant.stock || 0;
   });
   
   return totalStock;

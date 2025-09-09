@@ -55,35 +55,81 @@ export const getProducts = async (req: Request, res: Response) => {
         isActive: true
       });
       if (categoryDoc) {
-        // Find all subcategories of this category using multiple approaches
-        let subcategories: any[] = [];
-        try {
-          // Use ObjectId for parentCategory comparison since it's stored as ObjectId in the database
-          subcategories = await Category.find({
-            parentCategory: categoryDoc._id,
+        console.log(`Found category: ${categoryDoc.name} (${categoryDoc.slug}) - Level ${categoryDoc.level}`);
+        
+        // Get all descendant categories recursively
+        const getAllDescendants = async (parentId: any): Promise<any[]> => {
+          const children = await Category.find({
+            parentCategory: parentId,
             isActive: true
           }).lean();
           
-          console.log(`Found ${subcategories.length} subcategories for ${categoryDoc.name}:`);
-          subcategories.forEach(subcat => {
-            console.log(`  - ${subcat.name} (${subcat.slug})`);
-          });
-        } catch (error) {
-          console.error('Error finding subcategories:', error);
-          subcategories = [];
-        }
+          let allDescendants = [...children];
+          
+          // Recursively get descendants of each child
+          for (const child of children) {
+            const grandChildren = await getAllDescendants(child._id);
+            allDescendants = allDescendants.concat(grandChildren);
+          }
+          
+          return allDescendants;
+        };
+        
+        // Find all subcategories (level 2 and 3) under this category
+        const allSubcategories = await getAllDescendants(categoryDoc._id);
+        
+        console.log(`Found ${allSubcategories.length} total subcategories for ${categoryDoc.name}:`);
+        allSubcategories.forEach(subcat => {
+          console.log(`  - ${subcat.name} (${subcat.slug}) - Level ${subcat.level}`);
+        });
         
         // Create array of category IDs (parent + all subcategories) as strings
         // Since the Product schema defines category as String type
         const categoryIds = [categoryDoc._id.toString()];
-        subcategories.forEach(subcat => {
+        allSubcategories.forEach(subcat => {
           categoryIds.push(subcat._id.toString());
         });
         
         console.log('Category String IDs for query:', categoryIds);
         
-        // Use $in operator to match any of the category IDs (string format only)
-        query.category = { $in: categoryIds };
+        // Separate category IDs by level for proper field matching
+        const mainCategoryId = categoryDoc._id;
+        const subCategoryIds = allSubcategories
+          .filter(cat => cat.level === 2)
+          .map(cat => cat._id);
+        const subSubCategoryIds = allSubcategories
+          .filter(cat => cat.level === 3)
+          .map(cat => cat._id);
+        
+        console.log('Main category ID:', mainCategoryId);
+        console.log('Sub category IDs:', subCategoryIds);
+        console.log('Sub-sub category IDs:', subSubCategoryIds);
+        
+        // Build query conditions for proper field matching with ObjectIds
+        const orConditions = [];
+        
+        // Match main category (ObjectId)
+        orConditions.push({ category: mainCategoryId });
+        
+        // Match subcategories in subCategory field (ObjectIds)
+        if (subCategoryIds.length > 0) {
+          orConditions.push({ subCategory: { $in: subCategoryIds } });
+        }
+        
+        // Match sub-subcategories in subSubCategory field (ObjectIds)
+        if (subSubCategoryIds.length > 0) {
+          orConditions.push({ subSubCategory: { $in: subSubCategoryIds } });
+        }
+        
+        // Also allow products that have any of the subcategory IDs as their main category
+        // (for flexibility in data structure)
+        if (subCategoryIds.length > 0) {
+          orConditions.push({ category: { $in: subCategoryIds } });
+        }
+        
+        query.$or = orConditions;
+        
+        console.log('Final query $or conditions (ObjectIds):', JSON.stringify(orConditions, null, 2));
       } else {
         // Fallback to direct category matching (for backward compatibility)
         query.category = category;
@@ -192,10 +238,28 @@ export const getProducts = async (req: Request, res: Response) => {
   const hasNextPage = page < totalPages;
   const hasPrevPage = page > 1;
 
+  // Transform products to ensure proper image and pricing display
+  const transformedProducts = products.map(product => {
+    const productObj = (product as any).toObject ? (product as any).toObject() : product;
+    const firstVariant = productObj.variants?.[0];
+    
+    // Use first image from first available color, fallback to variant images, then main images
+    const firstColorImages = productObj.availableColors?.[0]?.images || [];
+    const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                        (firstVariant?.images?.[0] || productObj.images?.[0] || '');
+    
+    return {
+      ...productObj,
+      images: defaultImage ? [defaultImage, ...productObj.images.filter((img: string) => img !== defaultImage)] : productObj.images,
+      price: firstVariant?.price || productObj.price || 0,
+      originalPrice: firstVariant?.originalPrice || productObj.originalPrice || firstVariant?.price || productObj.price || 0
+    };
+  });
+
     return res.json({
       success: true,
       data: {
-        products,
+        products: transformedProducts,
         pagination: {
           currentPage: Number(page),
           totalPages,
@@ -324,49 +388,162 @@ export const getCategories = async (req: Request, res: Response) => {
  * Get available filters
  */
 export const getFilters = async (req: Request, res: Response) => {
-  const { category } = req.query;
-  
-  let filters: any[] = [];
-  
-  // Simplified implementation - return empty filters for now
-  // TODO: Implement proper filter system when models are available
-  
-  // Get price range from products
-  const matchQuery: any = { isActive: true };
-  if (category) {
-    try {
-      const categoryDoc = await Category.findOne({ 
-        $or: [
-          { name: { $regex: new RegExp(`^${category}$`, 'i') } },
-          { slug: category }
-        ]
-      });
-      if (categoryDoc) {
-        matchQuery.category = categoryDoc._id;
+  try {
+    const { category } = req.query;
+    
+    // Build match query for category filtering
+    const matchQuery: any = { isActive: true };
+    if (category) {
+      try {
+        const categoryDoc = await Category.findOne({ 
+          $or: [
+            { name: { $regex: new RegExp(`^${category}$`, 'i') } },
+            { slug: category }
+          ]
+        });
+        if (categoryDoc) {
+          // Get all descendant categories
+          const getAllDescendants = async (parentId: any) => {
+            const children = await Category.find({
+              parentCategory: parentId,
+              isActive: true
+            }).lean();
+            
+            let allDescendants = [...children];
+            for (const child of children) {
+              const grandChildren = await getAllDescendants(child._id);
+              allDescendants = allDescendants.concat(grandChildren);
+            }
+            return allDescendants;
+          };
+          
+          const descendants = await getAllDescendants(categoryDoc._id);
+          const categoryIds = [categoryDoc._id, ...descendants.map(d => d._id)];
+          
+          matchQuery.$or = [
+            { category: { $in: categoryIds } },
+            { subCategory: { $in: categoryIds } },
+            { subSubCategory: { $in: categoryIds } }
+          ];
+        }
+      } catch (error) {
+        console.error('Error finding category for filters:', error);
       }
-    } catch (error) {
-      matchQuery.category = category;
     }
+    
+    // Get price range
+    const priceRange = await Product.aggregate([
+      { $match: matchQuery },
+      { $unwind: '$variants' },
+      { $unwind: '$variants.sizes' },
+      {
+        $group: {
+          _id: null,
+          minPrice: { $min: '$variants.sizes.price' },
+          maxPrice: { $max: '$variants.sizes.price' }
+        }
+      }
+    ]);
+    
+    // Get available brands
+    const brands = await Product.aggregate([
+      { $match: matchQuery },
+      { $group: { _id: '$brand', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Get available sizes
+    const sizes = await Product.aggregate([
+      { $match: matchQuery },
+      { $unwind: '$variants' },
+      { $unwind: '$variants.sizes' },
+      { $group: { _id: '$variants.sizes.size', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Get available colors
+    const colors = await Product.aggregate([
+      { $match: matchQuery },
+      { $unwind: '$variants' },
+      { $group: { _id: { color: '$variants.color', colorCode: '$variants.colorCode' }, count: { $sum: 1 } } },
+      { $sort: { '_id.color': 1 } }
+    ]);
+    
+    // Get available materials (from specifications)
+    const materials = await Product.aggregate([
+      { $match: matchQuery },
+      { $match: { 
+          'specifications.material': { 
+            $exists: true, 
+            $ne: null, 
+            $not: { $eq: '' } 
+          } 
+        } 
+      },
+      { $group: { _id: '$specifications.material', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Get available fabrics (from specifications)
+    const fabrics = await Product.aggregate([
+      { $match: matchQuery },
+      { $match: { 
+          'specifications.fabric': { 
+            $exists: true, 
+            $ne: null, 
+            $not: { $eq: '' } 
+          } 
+        } 
+      },
+      { $group: { _id: '$specifications.fabric', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Get subcategories for the current category
+    let subcategories: any[] = [];
+    if (category) {
+      try {
+        const categoryDoc = await Category.findOne({ 
+          $or: [
+            { name: { $regex: new RegExp(`^${category}$`, 'i') } },
+            { slug: category }
+          ]
+        });
+        if (categoryDoc) {
+          subcategories = await Category.find({
+            parentCategory: categoryDoc._id,
+            isActive: true
+          }).select('name slug').lean();
+        }
+      } catch (error) {
+        console.error('Error finding subcategories:', error);
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        priceRange: priceRange[0] || { minPrice: 0, maxPrice: 10000 },
+        brands: brands.map(b => ({ name: b._id, count: b.count })),
+        sizes: sizes.map(s => ({ name: s._id, count: s.count })),
+        colors: colors.map(c => ({ 
+          name: c._id.color, 
+          colorCode: c._id.colorCode, 
+          count: c.count 
+        })),
+        materials: materials.map(m => ({ name: m._id, count: m.count })),
+        fabrics: fabrics.map(f => ({ name: f._id, count: f.count })),
+        subcategories: subcategories
+      }
+    });
+  } catch (error) {
+    console.error('Error getting filters:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get filters',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
-  
-  const priceRange = await Product.aggregate([
-    { $match: matchQuery },
-    {
-      $group: {
-        _id: null,
-        minPrice: { $min: '$price' },
-        maxPrice: { $max: '$price' }
-      }
-    }
-  ]);
-
-  res.json({
-    success: true,
-    data: {
-      filters,
-      priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
-    }
-  });
 };
 
 /**
@@ -379,13 +556,30 @@ export const getFeaturedProducts = async (req: Request, res: Response) => {
   })
     .populate('category', 'name slug')
     .sort({ popularity: -1, createdAt: -1 })
-    .limit(20)
-    .lean();
+    .limit(20);
+
+  // Transform products to ensure proper image and pricing display
+  const transformedProducts = products.map(product => {
+    const productObj = (product as any).toObject ? (product as any).toObject() : product;
+    const firstVariant = productObj.variants?.[0];
+    
+    // Use first image from first available color, fallback to variant images, then main images
+    const firstColorImages = productObj.availableColors?.[0]?.images || [];
+    const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                        (firstVariant?.images?.[0] || productObj.images?.[0] || '');
+    
+    return {
+      ...productObj,
+      images: defaultImage ? [defaultImage, ...productObj.images.filter((img: string) => img !== defaultImage)] : productObj.images,
+      price: firstVariant?.price || productObj.price || 0,
+      originalPrice: firstVariant?.originalPrice || productObj.originalPrice || firstVariant?.price || productObj.price || 0
+    };
+  });
 
   res.json({
     success: true,
     data: {
-      products
+      products: transformedProducts
     }
   });
 };
@@ -395,17 +589,35 @@ export const getFeaturedProducts = async (req: Request, res: Response) => {
  */
 export const getTrendingProducts = async (req: Request, res: Response) => {
   const products = await Product.find({
-    isActive: true
+    isActive: true,
+    isTrending: true
   })
     .populate('category', 'name slug')
     .sort({ popularity: -1, salesCount: -1, createdAt: -1 })
-    .limit(20)
-    .lean();
+    .limit(20);
+
+  // Transform products to ensure proper image and pricing display
+  const transformedProducts = products.map(product => {
+    const productObj = (product as any).toObject ? (product as any).toObject() : product;
+    const firstVariant = productObj.variants?.[0];
+    
+    // Use first image from first available color, fallback to variant images, then main images
+    const firstColorImages = productObj.availableColors?.[0]?.images || [];
+    const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                        (firstVariant?.images?.[0] || productObj.images?.[0] || '');
+    
+    return {
+      ...productObj,
+      images: defaultImage ? [defaultImage, ...productObj.images.filter((img: string) => img !== defaultImage)] : productObj.images,
+      price: firstVariant?.price || productObj.price || 0,
+      originalPrice: firstVariant?.originalPrice || productObj.originalPrice || firstVariant?.price || productObj.price || 0
+    };
+  });
 
   res.json({
     success: true,
     data: {
-      products
+      products: transformedProducts
     }
   });
 };
@@ -464,10 +676,26 @@ export const getProductById = async (req: Request, res: Response) => {
     $inc: { viewCount: 1 }
   });
 
+  // Transform product to ensure proper image and pricing display
+  const productObj = (product as any).toObject ? (product as any).toObject() : product;
+  const firstVariant = productObj.variants?.[0];
+  
+  // Use first image from first available color, fallback to variant images, then main images
+  const firstColorImages = productObj.availableColors?.[0]?.images || [];
+  const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                      (firstVariant?.images?.[0] || productObj.images?.[0] || '');
+  
+  const transformedProduct = {
+    ...productObj,
+    images: defaultImage ? [defaultImage, ...productObj.images.filter((img: string) => img !== defaultImage)] : productObj.images,
+    price: firstVariant?.price || productObj.price || 0,
+    originalPrice: firstVariant?.originalPrice || productObj.originalPrice || firstVariant?.price || productObj.price || 0
+  };
+
   res.json({
     success: true,
     data: {
-      product
+      product: transformedProduct
     }
   });
 };

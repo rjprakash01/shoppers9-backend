@@ -14,13 +14,37 @@ export const getCart = async (req: AuthenticatedRequest, res: Response) => {
   let cart: any = await Cart.findOne({ userId: userId })
     .populate({
       path: 'items.product',
-      select: 'name images price discountPrice brand category subCategory isActive'
+      select: 'name images price discountPrice brand category subCategory isActive variants availableColors'
     })
     .lean();
 
   if (!cart) {
     const newCart = new Cart({ userId: userId, items: [] });
     cart = await newCart.save();
+  }
+
+  // Transform cart items to show correct variant images
+  if (cart && cart.items) {
+    cart.items = cart.items.map((item: any) => {
+      const product = item.product;
+      if (product && product.variants) {
+        const variant = product.variants.find((v: any) => v._id?.toString() === item.variantId?.toString());
+        if (variant && variant.images && variant.images.length > 0) {
+          return {
+            ...item,
+            variant: {
+              ...variant,
+              images: variant.images
+            },
+            product: {
+              ...product,
+              images: variant.images // Use variant images for cart display
+            }
+          };
+        }
+      }
+      return item;
+    });
   }
 
   res.json({
@@ -85,13 +109,22 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
     let originalPrice = 0;
     let discount = 0;
     
+    // Try to get price from size-specific pricing first, then variant pricing
     if (variant.sizes && variant.sizes.length > 0) {
       const sizeOption = variant.sizes.find(s => s.size === size);
       if (sizeOption) {
-        price = sizeOption.price;
-        originalPrice = sizeOption.originalPrice;
-        discount = sizeOption.discount;
+        price = sizeOption.price || 0;
+        originalPrice = sizeOption.originalPrice || 0;
+        discount = sizeOption.discount || 0;
       }
+    }
+    
+    // Fallback to variant-level pricing if size-specific pricing is not available
+    if (price === 0) {
+      const variantObj = variant as any;
+      price = variantObj.price || 0;
+      originalPrice = variantObj.originalPrice || variantObj.price || 0;
+      discount = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
     }
     
     cart.items.push({
@@ -111,14 +144,41 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
   // Populate and return updated cart
   await cart.populate({
     path: 'items.product',
-    select: 'name images price discountPrice brand category subCategory isActive'
+    select: 'name images price discountPrice brand category subCategory isActive variants availableColors'
   });
+
+  // Transform cart items to show correct variant images
+  const cartObj = (cart as any).toObject ? (cart as any).toObject() : cart;
+  const transformedCart = {
+    ...cartObj,
+    items: cart.items.map(item => {
+      const itemObj = (item as any).toObject ? (item as any).toObject() : item;
+      const product = itemObj.product as any;
+      if (product && product.variants) {
+        const variant = product.variants.find((v: any) => v._id?.toString() === itemObj.variantId?.toString());
+        if (variant && variant.images && variant.images.length > 0) {
+          return {
+            ...itemObj,
+            variant: {
+              ...variant,
+              images: variant.images
+            },
+            product: {
+              ...product,
+              images: variant.images // Use variant images for cart display
+            }
+          };
+        }
+      }
+      return itemObj;
+    })
+  };
 
   res.json({
     success: true,
     message: 'Item added to cart successfully',
     data: {
-      cart
+      cart: transformedCart
     }
   });
 };

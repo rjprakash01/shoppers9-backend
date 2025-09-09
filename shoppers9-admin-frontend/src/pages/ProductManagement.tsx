@@ -358,6 +358,7 @@ const ProductManagement: React.FC = () => {
              (completeProductData.tags ? completeProductData.tags.split(',').map((t: string) => t.trim()) : ['']),
         isActive: completeProductData.isActive,
         isFeatured: completeProductData.isFeatured || false,
+        isTrending: completeProductData.isTrending || false,
         filterValues: transformedFilterValues
       };
       

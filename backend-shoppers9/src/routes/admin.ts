@@ -69,7 +69,9 @@ const createProductSchema = Joi.object({
   images: Joi.array().items(Joi.string().trim()).optional().default([]),
   specifications: Joi.object().optional().default({}),
   tags: Joi.array().items(Joi.string().trim()).optional().default([]),
-  isActive: Joi.boolean().optional().default(true)
+  isActive: Joi.boolean().optional().default(true),
+  isFeatured: Joi.boolean().optional().default(false),
+  isTrending: Joi.boolean().optional().default(false)
 });
 
 // Middleware to check admin access

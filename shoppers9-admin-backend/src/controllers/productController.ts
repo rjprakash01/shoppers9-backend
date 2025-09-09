@@ -32,36 +32,7 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
     }
 
     if (category) {
-      // Find products that belong to the selected category or have it as subcategory
-      // Also include products from child categories
-      const selectedCategory = await Category.findById(category);
-      if (selectedCategory) {
-        // Get all descendant categories
-        const getAllDescendants = async (categoryId: string): Promise<string[]> => {
-          const descendants = [categoryId];
-          const children = await Category.find({ parentCategory: categoryId });
-          for (const child of children) {
-            const childDescendants = await getAllDescendants(child._id.toString());
-            descendants.push(...childDescendants);
-          }
-          return descendants;
-        };
-        
-        const categoryIds = await getAllDescendants(category);
-        
-        // Find products that have the selected category or any of its descendants
-        // as either main category, subcategory, or sub-subcategory
-        andConditions.push({
-          $or: [
-            { category: { $in: categoryIds } },
-            { subCategory: { $in: categoryIds } },
-            { subSubCategory: { $in: categoryIds } }
-          ]
-        });
-      } else {
-        // Fallback to original logic if category not found
-        andConditions.push({ category: category });
-      }
+      andConditions.push({ category: category });
     }
 
     if (andConditions.length > 0) {
@@ -80,13 +51,6 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
       .populate('category', 'name slug level parentCategory')
       .populate('subCategory', 'name slug level parentCategory')
       .populate('subSubCategory', 'name slug level parentCategory')
-      .populate({
-        path: 'filterValues',
-        populate: [
-          { path: 'filter', select: 'name displayName type' },
-          { path: 'filterOption', select: 'value displayValue colorCode' }
-        ]
-      })
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
@@ -96,18 +60,22 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
     // Transform products to match admin frontend expectations
     const transformedProducts = products.map(product => {
       const firstVariant = product.variants?.[0];
-      const firstSize = firstVariant?.sizes?.[0];
+      
+      // Use first image from first available color, fallback to product images
+      const firstColorImages = product.availableColors?.[0]?.images || [];
+      const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                          (firstVariant?.images?.[0] || product.images?.[0] || '');
       
       return {
         id: product._id,
         name: product.name,
         description: product.description,
-        price: firstSize?.originalPrice || 0,
-        discountedPrice: firstSize?.price !== firstSize?.originalPrice ? firstSize?.price : undefined,
+        price: firstVariant?.originalPrice || 0,
+        discountedPrice: firstVariant?.price !== firstVariant?.originalPrice ? firstVariant?.price : undefined,
         category: product.category,
         subCategory: product.subCategory,
-        filterValues: product.filterValues || [],
-        images: product.images || [],
+        filterValues: Array.isArray(product.filterValues) ? product.filterValues : [],
+        images: defaultImage ? [defaultImage] : (product.images || []),
         stock: product.totalStock || 0,
         isActive: product.isActive,
         rating: 0, // Default rating
@@ -163,21 +131,26 @@ export const getProduct = async (req: Request, res: Response): Promise<Response 
 
     // Transform product to match admin frontend expectations
     const firstVariant = product.variants?.[0];
-    const firstSize = firstVariant?.sizes?.[0];
+    
+    // Use first image from first available color, fallback to product images
+    const firstColorImages = product.availableColors?.[0]?.images || [];
+    const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
+                        (firstVariant?.images?.[0] || product.images?.[0] || '');
     
     const transformedProduct = {
       id: product._id,
       name: product.name,
       description: product.description,
-      price: firstSize?.originalPrice || 0,
-      discountedPrice: firstSize?.price !== firstSize?.originalPrice ? firstSize?.price : undefined,
-      category: {
-        id: product.category,
-        name: product.category
-      },
-      images: product.images || [],
+      price: firstVariant?.price || 0,
+      originalPrice: firstVariant?.originalPrice || 0,
+      category: product.category,
+      subCategory: product.subCategory,
+      subSubCategory: product.subSubCategory,
+      images: defaultImage ? [defaultImage] : (product.images || []),
       stock: product.totalStock || 0,
       isActive: product.isActive,
+      isFeatured: product.isFeatured || false,
+      isTrending: product.isTrending || false,
       rating: 0,
       reviewCount: 0,
       createdAt: product.createdAt,
@@ -300,21 +273,61 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
     
     // SKU generation removed to fix duplicate key error
     
-    // Transform simple admin form data into variant-based structure
-    const variants = [{
-      color: req.body.color || 'Default',
-      colorCode: req.body.colorCode || '#000000',
-      sizes: [{
+    // Handle variants data from the new form structure
+    let variants: any[] = [];
+    if (req.body.variants) {
+      try {
+        // Parse variants if it's a JSON string
+        const variantsData = typeof req.body.variants === 'string' 
+          ? JSON.parse(req.body.variants) 
+          : req.body.variants;
+        
+        if (Array.isArray(variantsData) && variantsData.length > 0) {
+          variants = variantsData.map((variant: any) => ({
+            color: variant.color,
+            colorCode: variant.colorCode,
+            size: variant.size || 'One Size',
+            price: parseFloat(variant.price || 0),
+            originalPrice: parseFloat(variant.originalPrice || variant.price || 0),
+            stock: parseInt(variant.stock || 0),
+            images: variant.images || images
+          }));
+        }
+      } catch (error) {
+        console.warn('Error parsing variants:', error);
+      }
+    }
+    
+    // Fallback to simple variant structure if no variants provided
+    if (variants.length === 0) {
+      variants = [{
+        color: req.body.color || 'Default',
+        colorCode: req.body.colorCode || '#000000',
         size: req.body.size || 'One Size',
         price: parseFloat(req.body.price),
         originalPrice: parseFloat(req.body.originalPrice || req.body.price),
-        discount: req.body.originalPrice ? 
-          Math.round(((parseFloat(req.body.originalPrice) - parseFloat(req.body.price)) / parseFloat(req.body.originalPrice)) * 100) : 0,
         stock: parseInt(req.body.stock),
-        // sku: sku // Removed sku field from schema
-      }],
-      images: images
-    }];
+        images: images // Ensure main product images are assigned to the default variant
+      }];
+    }
+    
+    // Ensure all variants have images - if a variant has no images, use main product images
+    variants = variants.map(variant => ({
+      ...variant,
+      images: variant.images && variant.images.length > 0 ? variant.images : images
+    }));
+    
+    // Handle displayFilters
+    let displayFilters: string[] = [];
+    if (req.body.displayFilters) {
+      try {
+        displayFilters = typeof req.body.displayFilters === 'string' 
+          ? JSON.parse(req.body.displayFilters) 
+          : req.body.displayFilters;
+      } catch (error) {
+        console.warn('Error parsing displayFilters:', error);
+      }
+    }
     
     console.log('Variants:', JSON.stringify(variants, null, 2));
     
@@ -327,12 +340,15 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
       brand: req.body.brand,
       images: images,
       variants: variants,
+      displayFilters: displayFilters,
       filterValues: processedFilterValues,
       specifications: req.body.specifications ? 
         (typeof req.body.specifications === 'string' ? JSON.parse(req.body.specifications) : req.body.specifications) : {},
       tags: req.body.tags ? 
         (Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map((tag: string) => tag.trim())) : [],
-      isActive: req.body.isActive === 'true' || req.body.isActive === true
+      isActive: req.body.isActive === 'true' || req.body.isActive === true,
+      isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
+      isTrending: req.body.isTrending === 'true' || req.body.isTrending === true
     };
 
     // Add subSubCategory if provided
@@ -344,6 +360,10 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
     delete productData.sku;
 
     console.log('Final product data:', productData);
+    console.log('🔍 Debug - Request body isTrending:', req.body.isTrending);
+    console.log('🔍 Debug - Request body isFeatured:', req.body.isFeatured);
+    console.log('🔍 Debug - Processed isTrending:', productData.isTrending);
+    console.log('🔍 Debug - Processed isFeatured:', productData.isFeatured);
     
     const product = await Product.create(productData);
     console.log('Product created successfully:', product._id);
@@ -473,20 +493,30 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<Re
       updateData.isActive = req.body.isActive === 'true' || req.body.isActive === true;
     }
     
+    // Update isFeatured if provided
+    if (req.body.isFeatured !== undefined) {
+      updateData.isFeatured = req.body.isFeatured === 'true' || req.body.isFeatured === true;
+    }
+    
+    // Update isTrending if provided
+    if (req.body.isTrending !== undefined) {
+      updateData.isTrending = req.body.isTrending === 'true' || req.body.isTrending === true;
+    }
+    
     // Update variant data if price/stock information is provided
     if (req.body.price || req.body.stock || req.body.originalPrice) {
       const variants = existingProduct.variants || [];
-      if (variants.length > 0 && variants[0] && variants[0].sizes && variants[0].sizes.length > 0 && variants[0].sizes[0]) {
+      if (variants.length > 0 && variants[0] && variants[0].size) {
         // Update the first variant's first size (default behavior for simple admin form)
-        if (req.body.price) variants[0].sizes[0].price = parseFloat(req.body.price);
-        if (req.body.originalPrice) variants[0].sizes[0].originalPrice = parseFloat(req.body.originalPrice);
-        if (req.body.stock) variants[0].sizes[0].stock = parseInt(req.body.stock);
+        if (req.body.price) variants[0].price = parseFloat(req.body.price);
+        if (req.body.originalPrice) variants[0].originalPrice = parseFloat(req.body.originalPrice);
+        if (req.body.stock) variants[0].stock = parseInt(req.body.stock);
         
         // Recalculate discount
         if (req.body.price && req.body.originalPrice) {
           const price = parseFloat(req.body.price);
           const originalPrice = parseFloat(req.body.originalPrice);
-          variants[0].sizes[0].discount = Math.round(((originalPrice - price) / originalPrice) * 100);
+          // Note: discount calculation can be added to variant if needed
         }
         
         // Update variant images
@@ -873,7 +903,7 @@ export const getAvailableFilterOptionsForCategory = async (req: Request, res: Re
 
       // Collect all used filter values from products
       products.forEach(product => {
-        if (product.filterValues) {
+        if (product.filterValues && Array.isArray(product.filterValues)) {
           product.filterValues.forEach((fv: any) => {
             if (fv.filter && fv.filter._id.toString() === filter._id.toString()) {
               if (fv.filterOption) {

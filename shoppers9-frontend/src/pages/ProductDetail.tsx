@@ -106,12 +106,71 @@ const ProductDetail: React.FC = () => {
 
   const getCurrentSize = () => {
     const variant = getCurrentVariant();
-    return variant?.sizes.find(s => s.size === selectedSize);
+    // New structure: variant has individual size, price, stock
+    return variant ? {
+      size: variant.size,
+      price: variant.price,
+      originalPrice: variant.originalPrice,
+      stock: variant.stock,
+      discount: variant.originalPrice > variant.price ? 
+        Math.round(((variant.originalPrice - variant.price) / variant.originalPrice) * 100) : 0
+    } : null;
   };
 
   const getCurrentImages = () => {
+    if (!product) return [];
+    
+    // Collect all images from different sources
+    const allImages = new Set<string>();
+    
+    // 1. Add main product images
+    if (product.images) {
+      product.images.forEach(img => {
+        if (img && img.trim()) {
+          allImages.add(img);
+        }
+      });
+    }
+    
+    // 2. Add images from availableColors (uploaded color-specific images)
+    if (product.availableColors) {
+      product.availableColors.forEach(color => {
+        if (color.images) {
+          color.images.forEach(img => {
+            if (img && img.trim()) {
+              allImages.add(img);
+            }
+          });
+        }
+      });
+    }
+    
+    // 3. Add images from current variant (if selected)
     const variant = getCurrentVariant();
-    return getImageUrls(variant?.images);
+    if (variant?.images) {
+      variant.images.forEach(img => {
+        if (img && img.trim()) {
+          allImages.add(img);
+        }
+      });
+    }
+    
+    // 4. If no specific variant selected, add images from all variants
+    if (!variant && product.variants) {
+      product.variants.forEach(v => {
+        if (v.images) {
+          v.images.forEach(img => {
+            if (img && img.trim()) {
+              allImages.add(img);
+            }
+          });
+        }
+      });
+    }
+    
+    // Convert Set to Array and process with getImageUrls
+    const imageArray = Array.from(allImages);
+    return getImageUrls(imageArray);
   };
 
   if (isLoading) {
@@ -196,19 +255,57 @@ const ProductDetail: React.FC = () => {
             <p className="text-gray-600 mb-4">{product.description}</p>
 
             {/* Price */}
-            {currentSize && (
+            {(() => {
+              const priceData = currentSize || {
+                price: currentVariant?.price || product.price || 0,
+                originalPrice: currentVariant?.originalPrice || product.originalPrice || 0,
+                discount: 0
+              };
+              
+              if (priceData.originalPrice > priceData.price && priceData.price > 0) {
+                priceData.discount = Math.round(((priceData.originalPrice - priceData.price) / priceData.originalPrice) * 100);
+              }
+              
+              return priceData.price > 0;
+            })() && (
               <div className="mb-6">
                 <div className="flex items-center space-x-2">
                   <span className="text-3xl font-bold text-primary-600">
-                    {formatPrice(currentSize.price)}
+                    {(() => {
+                      const priceData = currentSize || {
+                        price: currentVariant?.price || product.price || 0,
+                        originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
+                      };
+                      return formatPrice(priceData.price);
+                    })()}
                   </span>
-                  {currentSize.originalPrice > currentSize.price && (
+                  {(() => {
+                    const priceData = currentSize || {
+                      price: currentVariant?.price || product.price || 0,
+                      originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
+                    };
+                    const discount = priceData.originalPrice > priceData.price && priceData.price > 0 ? 
+                      Math.round(((priceData.originalPrice - priceData.price) / priceData.originalPrice) * 100) : 0;
+                    
+                    return priceData.originalPrice > priceData.price && priceData.price > 0;
+                  })() && (
                     <>
                       <span className="text-lg text-gray-500 line-through">
-                        {formatPrice(currentSize.originalPrice)}
+                        {(() => {
+                          const priceData = currentSize || {
+                            originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
+                          };
+                          return formatPrice(priceData.originalPrice);
+                        })()}
                       </span>
                       <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
-                        {currentSize.discount}% OFF
+                        {(() => {
+                          const priceData = currentSize || {
+                            price: currentVariant?.price || product.price || 0,
+                            originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
+                          };
+                          return Math.round(((priceData.originalPrice - priceData.price) / priceData.originalPrice) * 100);
+                        })()}% OFF
                       </span>
                     </>
                   )}
@@ -216,54 +313,83 @@ const ProductDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Color Selection */}
-            {product.variants.length > 1 && (
+            {/* Color Selection - Show if there are multiple colors or displayFilters allows */}
+            {(() => {
+              const uniqueColors = Array.from(new Set(product.variants.map(v => v.color).filter(c => c && c !== 'Default')));
+              return uniqueColors.length > 0 && (!product.displayFilters || 
+                product.displayFilters.length === 0 || 
+                product.displayFilters.some(filterId => filterId.toLowerCase().includes('color')));
+            })() && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Color: {currentVariant?.color}</h3>
                 <div className="flex space-x-3">
-                  {product.variants.map((variant) => (
-                    <button
-                      key={variant._id}
-                      onClick={() => {
-                        setSelectedVariant(variant._id || '');
-                        setSelectedImageIndex(0);
-                        if (variant.sizes.length > 0) {
-                          setSelectedSize(variant.sizes[0].size);
-                        }
-                      }}
-                      className={`w-10 h-10 rounded-full border-2 ${
-                        selectedVariant === variant._id ? 'border-primary-600' : 'border-gray-300'
-                      }`}
-                      style={{ backgroundColor: variant.colorCode || variant.color }}
-                      title={variant.color}
-                    />
-                  ))}
+                  {Array.from(new Set(product.variants.map(v => v.color).filter(c => c && c !== 'Default'))).map((color) => {
+                    const colorVariant = product.variants.find(v => v.color === color);
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          if (colorVariant) {
+                            setSelectedVariant(colorVariant._id || '');
+                            setSelectedImageIndex(0);
+                            setSelectedSize(colorVariant.size || '');
+                          }
+                        }}
+                        className={`w-10 h-10 rounded-full border-2 ${
+                          currentVariant?.color === color ? 'border-primary-600' : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: colorVariant?.colorCode || color }}
+                        title={color}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Size Selection */}
-            {currentVariant && currentVariant.sizes.length > 0 && (
+            {/* Size Selection - Show available sizes */}
+            {(() => {
+              const uniqueSizes = Array.from(new Set(product.variants.map(v => v.size).filter(s => s && s.trim() !== '')));
+              return uniqueSizes.length > 0 && (!product.displayFilters || 
+                product.displayFilters.length === 0 || 
+                product.displayFilters.some(filterId => filterId.toLowerCase().includes('size')));
+            })() && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Size</h3>
                 <div className="flex flex-wrap gap-2">
-                  {currentVariant.sizes.map((size) => (
-                    <button
-                      key={size.size}
-                      onClick={() => setSelectedSize(size.size)}
-                      disabled={size.stock === 0}
-                      className={`px-4 py-2 border rounded-lg font-medium ${
-                        selectedSize === size.size
-                          ? 'border-primary-600 bg-primary-50 text-primary-600'
-                          : size.stock === 0
-                          ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {size.size}
-                      {size.stock === 0 && ' (Out of Stock)'}
-                    </button>
-                  ))}
+                  {/* Get unique sizes available for the selected color */}
+                  {Array.from(new Set(
+                    product.variants
+                      .filter(v => !currentVariant || v.color === currentVariant.color || v.color === 'Default')
+                      .map(v => v.size)
+                      .filter(s => s && s.trim() !== '')
+                  )).map((size) => {
+                    const sizeVariant = product.variants.find(v => 
+                      (v.color === (currentVariant?.color || 'Default')) && v.size === size
+                    );
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          if (sizeVariant) {
+                            setSelectedVariant(sizeVariant._id || '');
+                            setSelectedSize(size);
+                          }
+                        }}
+                        disabled={!sizeVariant || sizeVariant.stock === 0}
+                        className={`px-4 py-2 border rounded-lg font-medium ${
+                          selectedSize === size
+                            ? 'border-primary-600 bg-primary-50 text-primary-600'
+                            : !sizeVariant || sizeVariant.stock === 0
+                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        {size}
+                        {(!sizeVariant || sizeVariant.stock === 0) && ' (Out of Stock)'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

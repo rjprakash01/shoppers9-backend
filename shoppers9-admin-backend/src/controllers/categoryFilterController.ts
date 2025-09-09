@@ -4,6 +4,7 @@ import Category from '../models/Category';
 import Filter from '../models/Filter';
 import FilterOption from '../models/FilterOption';
 import { AuthRequest } from '../types';
+import { autoAssignFiltersToCategory, getFilterTypesForCategory } from '../utils/categoryFilterAssignment';
 
 // @desc    Get filters assigned to a category
 // @route   GET /api/admin/categories/:categoryId/filters
@@ -76,7 +77,8 @@ export const getCategoryFilters = async (req: Request, res: Response): Promise<v
       success: true,
       data: {
         category,
-        filters: filtersWithOptions,
+        categoryFilters: filtersWithOptions,
+        filters: filtersWithOptions, // Keep for backward compatibility
         pagination: {
           page,
           limit,
@@ -364,6 +366,125 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
     res.status(500).json({
       success: false,
       message: 'Error fetching available filters',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// @desc    Auto-assign filters to category based on category name
+// @route   POST /api/admin/categories/:categoryId/filters/auto-assign
+// @access  Private
+export const autoAssignCategoryFilters = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { categoryId } = req.params;
+    const { force = false } = req.body; // Force reassignment even if filters exist
+
+    if (!categoryId) {
+      res.status(400).json({
+        success: false,
+        message: 'Category ID is required'
+      });
+      return;
+    }
+
+    // Check if category exists
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+      return;
+    }
+
+    // Check if filters are already assigned (unless force is true)
+    if (!force) {
+      const existingFilters = await CategoryFilter.countDocuments({ category: categoryId });
+      if (existingFilters > 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Filters already assigned to this category. Use force=true to reassign.'
+        });
+        return;
+      }
+    }
+
+    // If force is true, remove existing assignments
+    if (force) {
+      await CategoryFilter.deleteMany({ category: categoryId });
+    }
+
+    // Auto-assign filters
+    await autoAssignFiltersToCategory(categoryId, req.admin?.id);
+
+    // Get the newly assigned filters
+    const assignedFilters = await CategoryFilter.find({ category: categoryId })
+      .populate({
+        path: 'filter',
+        select: 'name displayName type dataType description'
+      })
+      .sort({ sortOrder: 1 });
+
+    res.json({
+      success: true,
+      message: 'Filters auto-assigned successfully',
+      data: {
+        category,
+        assignedFilters,
+        totalAssigned: assignedFilters.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error auto-assigning filters',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// @desc    Get recommended filters for category based on name
+// @route   GET /api/admin/categories/:categoryId/filters/recommendations
+// @access  Private
+export const getCategoryFilterRecommendations = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { categoryId } = req.params;
+
+    // Check if category exists
+    const category = await Category.findById(categoryId).populate('parentCategory', 'name');
+    if (!category) {
+      res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+      return;
+    }
+
+    // Get parent category name if exists
+    const parentCategoryName = category.parentCategory && typeof category.parentCategory === 'object' && 'name' in category.parentCategory
+      ? (category.parentCategory as any).name 
+      : undefined;
+
+    // Get recommended filter types
+    const recommendations = getFilterTypesForCategory(category.name, parentCategoryName);
+
+    res.json({
+      success: true,
+      data: {
+        category: {
+          id: category._id,
+          name: category.name,
+          parentCategory: parentCategoryName
+        },
+        recommendations: recommendations.filterTypes,
+        detectionKeywords: recommendations.keywords.length > 0 ? recommendations.keywords : ['default'],
+        totalRecommendations: recommendations.filterTypes.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error getting filter recommendations',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

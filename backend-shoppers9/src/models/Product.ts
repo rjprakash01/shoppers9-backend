@@ -80,14 +80,18 @@ const productSchema = new Schema<IProduct>({
     maxlength: 2000
   },
   category: {
-    type: String,
-    required: true,
-    trim: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
   },
   subCategory: {
-    type: String,
-    required: true,
-    trim: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
+  },
+  subSubCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category'
   },
   brand: {
     type: String,
@@ -107,7 +111,19 @@ const productSchema = new Schema<IProduct>({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  isTrending: {
+    type: Boolean,
+    default: false
+  },
+  displayFilters: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Filter'
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -119,6 +135,8 @@ productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ category: 1, subCategory: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ isActive: 1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ isTrending: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ 'variants.sizes.price': 1 });
 

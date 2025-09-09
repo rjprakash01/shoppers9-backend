@@ -59,6 +59,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showFilterAssignmentInfo, setShowFilterAssignmentInfo] = useState(false);
+  const [filterAssignmentMessage, setFilterAssignmentMessage] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -148,6 +150,66 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  // Get filter preview based on category name
+  const getFilterPreview = (categoryName: string): string[] => {
+    const name = categoryName.toLowerCase();
+    
+    if (name.includes('shirt') || name.includes('t-shirt') || name.includes('top') || 
+        name.includes('dress') || name.includes('jacket') || name.includes('hoodie') ||
+        name.includes('sweater') || name.includes('blouse') || name.includes('kurta')) {
+      return [
+        'Clothing sizes: XS, S, M, L, XL, XXL, 3XL',
+        'Colors: Black, White, Red, Blue, Green, etc.',
+        'Materials: Cotton, Polyester, Wool, Silk, etc.'
+      ];
+    }
+    
+    if (name.includes('pant') || name.includes('jean') || name.includes('trouser') ||
+        name.includes('short') || name.includes('bottom')) {
+      return [
+        'Waist sizes: 28", 30", 32", 34", 36", 38", 40", 42", 44"',
+        'Colors: Black, Blue, Navy, Gray, Brown, etc.',
+        'Materials: Denim, Cotton, Polyester, Wool, etc.'
+      ];
+    }
+    
+    if (name.includes('shoe') || name.includes('sandal') || name.includes('boot') ||
+        name.includes('sneaker') || name.includes('slipper') || name.includes('footwear')) {
+      return [
+        'Shoe sizes: US 3-13 with UK equivalents',
+        'Colors: Black, Brown, White, Tan, Navy, etc.',
+        'Materials: Leather, Synthetic, Canvas, Suede, etc.'
+      ];
+    }
+    
+    if (name.includes('electronic') || name.includes('electronics') || name.includes('phone') ||
+        name.includes('smartphone') || name.includes('mobile') || name.includes('tablet') ||
+        name.includes('laptop') || name.includes('computer')) {
+      return [
+        'Storage Capacity: 16GB, 32GB, 64GB, 128GB, 256GB, 512GB, 1TB, 2TB',
+        'RAM: 2GB, 4GB, 6GB, 8GB, 12GB, 16GB, 32GB',
+        'Screen Size: 4.7", 5.5", 6.1", 6.7", 10.9", 12.9", 13.3", 15.6"',
+        'Brand: Apple, Samsung, Google, OnePlus, Xiaomi, etc.',
+        'Colors: Black, White, Silver, Gold, Blue, Red, etc.'
+      ];
+    }
+    
+    if (name.includes('household') || name.includes('kitchen') || name.includes('home') ||
+        name.includes('appliance') || name.includes('container') || name.includes('storage')) {
+      return [
+        'Capacity: 100ml, 500ml, 1L, 2L, 5L, 10L',
+        'Weight: 500g, 1kg, 2kg, 5kg, 10kg',
+        'Sizes: Small, Medium, Large, Extra Large',
+        'Colors: White, Black, Silver, Red, Blue, etc.'
+      ];
+    }
+    
+    return [
+      'General sizes: One Size, Small, Medium, Large, Extra Large',
+      'Colors: Black, White, Red, Blue, Green'
+    ];
   };
 
 
@@ -251,6 +313,32 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
                 placeholder="Enter category name"
               />
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              
+              {/* Auto-filter assignment info */}
+              {formData.name && !isEditing && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-blue-800">
+                        Smart Filter Assignment
+                      </h3>
+                      <div className="mt-1 text-sm text-blue-700">
+                        <p>Filters will be automatically assigned based on your category name:</p>
+                        <ul className="mt-1 list-disc list-inside">
+                          {getFilterPreview(formData.name).map((filter, index) => (
+                            <li key={index}>{filter}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

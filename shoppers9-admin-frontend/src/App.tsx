@@ -8,7 +8,7 @@ import Users from './pages/Users';
 import ProductManagement from './pages/ProductManagement';
 import Orders from './pages/Orders';
 import CategoryManagement from './components/CategoryManagement';
-import FilterManagement from './components/filtermanagement';
+import FilterManagement from './pages/FilterManagement';
 import BannerManagement from './components/BannerManagement';
 import FilterOptionManagement from './components/FilterOptionManagement';
 

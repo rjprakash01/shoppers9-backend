@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Truck, MapPin, User, Mail, Lock, Tag, Percent, X, Smartphone, Wallet, Building2, Plus, Edit2 } from 'lucide-react';
+import { CreditCard, Truck, MapPin, User, Mail, Lock, Tag, Percent, X, Smartphone, Wallet, Building2, Plus, Edit2, Shield, Star, Gift, CheckCircle, ArrowLeft, Package } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPrice } from '../utils/currency';
@@ -278,8 +278,27 @@ const Checkout: React.FC = () => {
   };
   
   const handlePlaceOrder = async () => {
-    if (!validateShipping() || !validatePayment()) {
-      alert('Please fill in all required fields');
+    if (!validateShipping()) {
+      alert('Please fill in all required shipping address fields');
+      return;
+    }
+    
+    if (!validatePayment()) {
+      let message = 'Please complete payment information: ';
+      switch (selectedPaymentMethod) {
+        case 'card':
+          message += 'Card number, expiry date, CVV, and cardholder name are required';
+          break;
+        case 'upi':
+          message += 'Valid UPI ID is required';
+          break;
+        case 'netbanking':
+          message += 'Please select a bank';
+          break;
+        default:
+          message = 'Please complete payment information';
+      }
+      alert(message);
       return;
     }
     
@@ -323,17 +342,21 @@ const Checkout: React.FC = () => {
           totalAmount: response.totalAmount 
         } 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Order creation failed:', error);
-      alert('Failed to place order. Please try again.');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to place order. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
   
   const renderOrderSummary = () => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-brand-gold/20">
+      <h3 className="text-2xl font-bold font-playfair text-brand-indigo mb-6 flex items-center">
+        <Gift className="h-6 w-6 mr-3 text-brand-gold" />
+        Order Summary
+      </h3>
       
       <div className="space-y-4 mb-6">
         {cartItems.map((item, index) => (
@@ -341,17 +364,17 @@ const Checkout: React.FC = () => {
             <img
               src={item.variant?.images?.[0] || '/placeholder-image.svg'}
               alt={item.productData?.name || 'Product'}
-              className="w-16 h-16 object-cover rounded-lg"
+              className="w-16 h-16 object-cover rounded-lg border border-brand-gold/20"
             />
             <div className="flex-1">
-              <h4 className="font-medium text-gray-900">{item.productData?.name}</h4>
-              <p className="text-sm text-gray-600">
+              <h4 className="font-medium font-poppins text-brand-indigo">{item.productData?.name}</h4>
+              <p className="text-sm text-brand-indigo/70 font-poppins">
                 {item.variant?.color} • Size: {item.size}
               </p>
-              <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+              <p className="text-sm text-brand-indigo/70 font-poppins">Qty: {item.quantity}</p>
             </div>
             <div className="text-right">
-              <p className="font-medium text-gray-900">
+              <p className="font-medium font-poppins text-brand-indigo">
                 {formatPrice(item.price * item.quantity)}
               </p>
             </div>
@@ -451,11 +474,13 @@ const Checkout: React.FC = () => {
   );
   
   const renderShippingForm = () => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">
-          <Truck className="h-6 w-6 text-primary-600 mr-3" />
-          <h3 className="text-lg font-semibold text-gray-900">Shipping Address</h3>
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-4">
+            <Truck className="h-6 w-6 text-white" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900">Shipping Address</h3>
         </div>
         <div className="flex gap-2">
           <button
@@ -748,10 +773,12 @@ const Checkout: React.FC = () => {
   );
   
   const renderPaymentForm = () => (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center mb-6">
-        <CreditCard className="h-6 w-6 text-primary-600 mr-3" />
-        <h3 className="text-lg font-semibold text-gray-900">Payment Method</h3>
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center mb-8">
+        <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mr-4">
+          <CreditCard className="h-6 w-6 text-white" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900">Payment Method</h3>
       </div>
       
       {/* Payment Method Selection */}
@@ -956,11 +983,52 @@ const Checkout: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-          <p className="text-gray-600 mt-2">Complete your order</p>
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+      {/* Header */}
+      <div className="bg-brand-indigo shadow-sm border-b border-brand-gold/20">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate('/cart')}
+                className="mr-4 p-2 text-brand-gold hover:text-white transition-colors rounded-lg hover:bg-brand-gold/10"
+              >
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+              <h1 className="text-2xl font-bold font-playfair text-brand-gold">
+                Checkout
+              </h1>
+            </div>
+            <div className="text-sm text-brand-slate font-poppins">
+              Step 2 of 2
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        {/* Progress Indicator */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-brand-gold/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-brand-slate/30 rounded-full flex items-center justify-center">
+                  <Package className="h-4 w-4 text-brand-indigo/50" />
+                </div>
+                <span className="ml-2 text-brand-indigo/50 font-poppins">Cart</span>
+              </div>
+              <div className="w-16 h-1 bg-brand-gold rounded"></div>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-brand-gold rounded-full flex items-center justify-center">
+                  <CreditCard className="h-4 w-4 text-brand-indigo" />
+                </div>
+                <span className="ml-2 font-semibold font-poppins text-brand-indigo">Checkout</span>
+              </div>
+            </div>
+            <div className="text-sm text-brand-indigo/70 font-poppins">
+              Complete your purchase
+            </div>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -972,17 +1040,50 @@ const Checkout: React.FC = () => {
           <div className="lg:col-span-1">
             {renderOrderSummary()}
             
+            {/* Security Features */}
+            <div className="bg-brand-gold/10 rounded-xl p-4 mb-6 border border-brand-gold/30">
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-brand-indigo font-poppins">
+                  <Shield className="h-4 w-4 mr-2" />
+                  <span>256-bit SSL Encryption</span>
+                </div>
+                <div className="flex items-center text-sm text-brand-indigo font-poppins">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <span>Secure Payment Processing</span>
+                </div>
+                <div className="flex items-center text-sm text-brand-indigo font-poppins">
+                  <Star className="h-4 w-4 mr-2" />
+                  <span>Money Back Guarantee</span>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={handlePlaceOrder}
               disabled={isLoading || !validateShipping() || !validatePayment()}
-              className="w-full mt-6 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-brand-gold text-brand-indigo py-4 px-6 rounded-xl font-bold font-poppins text-lg hover:bg-white hover:text-brand-indigo border border-brand-gold disabled:bg-brand-slate/30 disabled:text-brand-indigo/50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl mb-4"
             >
-              {isLoading ? 'Placing Order...' : `Place Order - ${formatPrice(totalAmount)}`}
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Placing Order...
+                </div>
+              ) : (
+                `Place Order ${formatPrice(totalAmount)}`
+              )}
             </button>
             
-            <p className="text-xs text-gray-500 text-center mt-4">
-              By placing your order, you agree to our Terms of Service and Privacy Policy.
+            <p className="text-sm text-gray-500 text-center">
+              By placing your order, you agree to our <span className="text-purple-600 hover:text-purple-700 cursor-pointer">Terms of Service</span> and <span className="text-purple-600 hover:text-purple-700 cursor-pointer">Privacy Policy</span>.
             </p>
+            
+            {/* Security Badge */}
+            <div className="mt-4 text-center">
+              <div className="flex items-center justify-center text-sm text-gray-500">
+                <Shield className="h-4 w-4 mr-2" />
+                <span>Your payment information is secure and encrypted</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
