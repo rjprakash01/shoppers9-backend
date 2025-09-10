@@ -15,9 +15,8 @@ COPY shoppers9-admin-frontend/ ./
 # Temporarily disable strict unused checks for build
 RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/' tsconfig.app.json
 
-# Accept build argument for Admin API URL
-ARG VITE_ADMIN_API_URL=https://admin-api.shoppers9.com
-ENV VITE_ADMIN_API_URL=$VITE_ADMIN_API_URL
+# Use relative URLs in production (no VITE_ADMIN_API_URL set)
+# This allows the frontend to use nginx proxy
 
 # Build the application
 RUN npm run build
