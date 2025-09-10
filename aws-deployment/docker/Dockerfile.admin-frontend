@@ -12,14 +12,18 @@ RUN npm ci
 # Copy source code
 COPY shoppers9-admin-frontend/ ./
 
-# Copy production environment file
+# Copy production environment file and remove development env
 COPY shoppers9-admin-frontend/.env.production ./.env.production
+RUN rm -f .env
+
+# Set production environment
+ENV NODE_ENV=production
 
 # Temporarily disable strict unused checks for build
 RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/' tsconfig.app.json || true
 
 # Build the application for production
-RUN npm run build
+RUN npm run build -- --mode production
 
 # Production stage with Nginx
 FROM nginx:alpine AS production

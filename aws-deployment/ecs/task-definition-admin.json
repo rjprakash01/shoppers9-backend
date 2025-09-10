@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "shoppers9-admin",
-      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin-frontend:latest",
       "portMappings": [
         {
           "containerPort": 8080,
