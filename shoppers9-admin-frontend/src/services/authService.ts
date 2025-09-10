@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use relative URL in development to leverage Vite proxy, absolute URL in production
-// Fixed: Always use the environment variable or fallback to production URL
-const API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:4000';
+// Use relative URL in production to leverage nginx proxy, localhost in development
+const API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || 
+  (import.meta.env.DEV ? 'http://localhost:4000' : '');
 console.log('🔧 AuthService initialized with API_BASE_URL:', API_BASE_URL);
 console.log('🔧 Environment mode:', import.meta.env.DEV ? 'development' : 'production');
 console.log('🔧 VITE_ADMIN_API_URL from env:', import.meta.env.VITE_ADMIN_API_URL);
