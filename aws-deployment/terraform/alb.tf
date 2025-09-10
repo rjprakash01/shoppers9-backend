@@ -18,6 +18,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 5001
+    to_port     = 5001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -88,6 +95,28 @@ resource "aws_lb_target_group" "admin" {
   tags = var.tags
 }
 
+resource "aws_lb_target_group" "admin_backend" {
+  name        = "${var.project_name}-admin-backend-tg"
+  port        = 5001
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = var.tags
+}
+
 resource "aws_lb_target_group" "frontend" {
   name        = "${var.project_name}-frontend-tg"
   port        = 8080
@@ -117,12 +146,70 @@ resource "aws_lb_listener" "frontend" {
   protocol          = "HTTP"
 
   default_action {
-    type = "redirect"
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
 
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
+  tags = var.tags
+}
+
+# HTTP Listener Rules for Backend API (when no SSL certificate)
+resource "aws_lb_listener_rule" "backend_http" {
+  count = var.certificate_arn == "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# HTTP Listener Rules for Admin Backend API (when no SSL certificate)
+resource "aws_lb_listener_rule" "admin_backend_api_http" {
+  count = var.certificate_arn == "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend.arn
+  priority     = 150
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.admin_backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/admin-api/*"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# HTTP Listener Rules for Admin Frontend (when no SSL certificate)
+resource "aws_lb_listener_rule" "admin_http" {
+  count = var.certificate_arn == "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend.arn
+  priority     = 200
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.admin.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/admin/*"]
     }
   }
 
@@ -235,7 +322,38 @@ resource "aws_lb_listener_rule" "backend_auth" {
   tags = var.tags
 }
 
-# Listener Rules for Admin
+# Listener Rules for Admin Backend API
+resource "aws_lb_listener_rule" "admin_backend_api" {
+  count = var.certificate_arn != "" ? 1 : 0
+
+  listener_arn = aws_lb_listener.frontend_https[0].arn
+  priority     = 180
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.admin_backend.arn
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [var.admin_domain_name]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/admin-api/*"]
+    }
+  }
+
+  tags = var.tags
+}
+
+# Listener Rules for Admin Frontend
 resource "aws_lb_listener_rule" "admin" {
   count = var.certificate_arn != "" ? 1 : 0
 
@@ -301,14 +419,17 @@ resource "aws_lb_listener" "backend" {
   tags = var.tags
 }
 
-resource "aws_lb_listener" "admin" {
+# Removed duplicate admin listener - using port 8080 for admin instead
+
+# HTTP Listener for Admin Backend
+resource "aws_lb_listener" "admin_backend" {
   load_balancer_arn = aws_lb.main.arn
-  port              = "3001"
+  port              = "5001"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.admin.arn
+    target_group_arn = aws_lb_target_group.admin_backend.arn
   }
 
   tags = var.tags

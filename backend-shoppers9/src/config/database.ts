@@ -25,9 +25,9 @@ export const connectDB = async (): Promise<void> => {
 
     // Add SSL configuration for DocumentDB
     if (mongoUri.includes('docdb.amazonaws.com')) {
-      connectionOptions.ssl = true;
-      connectionOptions.sslValidate = false; // DocumentDB uses self-signed certificates
-      connectionOptions.sslCA = undefined; // Don't validate CA for DocumentDB
+      connectionOptions.tls = true;
+      connectionOptions.tlsAllowInvalidCertificates = true; // DocumentDB uses self-signed certificates
+      connectionOptions.tlsAllowInvalidHostnames = true; // Allow hostname mismatch
     }
     
     // MongoDB Atlas configuration
@@ -38,11 +38,13 @@ export const connectDB = async (): Promise<void> => {
       connectionOptions.w = 'majority';
     }
 
-    mongoose.connect(mongoUri, connectionOptions).catch((error) => {
+    try {
+      await mongoose.connect(mongoUri, connectionOptions);
+    } catch (error: any) {
       console.log('⚠️ MongoDB connection failed - continuing in development mode');
       console.log('💡 Install MongoDB locally or use MongoDB Atlas for persistent data');
       console.error('Connection error details:', error.message);
-    });
+    }
     
     mongoose.connection.on('connected', () => {
       console.log('✅ MongoDB connected successfully');

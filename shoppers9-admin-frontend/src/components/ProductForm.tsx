@@ -19,7 +19,7 @@ interface Category {
   name: string;
   slug: string;
   level: number;
-  parentCategory?: string | { id?: string; _id?: string; name?: string } | null;
+  parentCategory?: string | { id?: string; _id?: string; name?: string };
   isActive: boolean;
   children: Category[];
 }

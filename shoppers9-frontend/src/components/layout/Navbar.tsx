@@ -5,6 +5,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { categoriesService, type Category } from '../../services/categories';
 
+// Type declaration for NodeJS
+declare global {
+  namespace NodeJS {
+    interface Timeout {}
+  }
+}
+
+/// <reference types="node" />
+
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { cartCount } = useCart();
@@ -13,7 +22,7 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCategoriesMenu, setShowCategoriesMenu] = useState('');
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -66,7 +75,7 @@ const Navbar: React.FC = () => {
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
     }
-    const timeout = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       setShowCategoriesMenu('');
     }, 150); // Small delay to prevent flickering
     setHoverTimeout(timeout);

@@ -12,6 +12,7 @@ export interface OrderItem {
 export interface Order {
   _id: string;
   orderId: string;
+  orderNumber?: string;
   user: string;
   items: OrderItem[];
   totalAmount: number;

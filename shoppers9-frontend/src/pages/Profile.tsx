@@ -825,8 +825,7 @@ const Profile: React.FC = () => {
                             onClick={() => {
                               console.log('Delete button clicked for address:', address);
                               console.log('Address ID:', address.id);
-                              console.log('Address _id:', address._id);
-                              handleDeleteAddress(address.id || address._id);
+                              handleDeleteAddress(address.id);
                             }}
                             className="text-red-600 hover:text-red-700"
                           >

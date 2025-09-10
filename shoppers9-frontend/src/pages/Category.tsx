@@ -100,13 +100,13 @@ const Category: React.FC = () => {
                     <span className="text-lg font-bold text-gray-900">
                       {formatPrice(product.price || 0)}
                     </span>
-                    {product.originalPrice && product.originalPrice > product.price && (
+                    {product.originalPrice && product.originalPrice > (product.price || 0) && (
                       <>
                         <span className="text-sm text-gray-500 line-through">
                           {formatPrice(product.originalPrice)}
                         </span>
                         <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
-                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                          {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
                         </span>
                       </>
                     )}
@@ -139,9 +139,9 @@ const Category: React.FC = () => {
               }}
             />
             {/* Discount Badge */}
-            {firstVariant?.sizes?.[0]?.discount && firstVariant.sizes[0].discount > 0 && (
+            {firstVariant && firstVariant.originalPrice > firstVariant.price && (
               <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
-                {firstVariant.sizes[0].discount}% OFF
+                {Math.round(((firstVariant.originalPrice - firstVariant.price) / firstVariant.originalPrice) * 100)}% OFF
               </div>
             )}
             <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -162,13 +162,13 @@ const Category: React.FC = () => {
               <span className="text-sm font-bold text-gray-900">
                 {formatPrice(product.price || 0)}
               </span>
-              {product.originalPrice && product.originalPrice > product.price && (
+              {product.originalPrice && product.originalPrice > (product.price || 0) && (
                 <>
                   <span className="text-xs text-gray-500 line-through">
                     {formatPrice(product.originalPrice)}
                   </span>
                   <span className="text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded text-xs font-medium">
-                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                    {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
                   </span>
                 </>
               )}

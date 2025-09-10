@@ -4,7 +4,16 @@ const connectDB = async (): Promise<void> => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shoppers9';
     
-    await mongoose.connect(mongoURI);
+    // DocumentDB SSL configuration
+    const options: mongoose.ConnectOptions = {
+      ssl: true,
+      sslValidate: false, // Disable SSL certificate validation for DocumentDB
+      tlsInsecure: true,  // Allow insecure SSL connections
+      tlsAllowInvalidCertificates: true, // Allow invalid certificates
+      tlsAllowInvalidHostnames: true,    // Allow invalid hostnames
+    };
+    
+    await mongoose.connect(mongoURI, options);
     
     console.log('✅ MongoDB connected successfully');
     console.log(`📍 Database: ${mongoose.connection.name}`);

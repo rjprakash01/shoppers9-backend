@@ -8,7 +8,7 @@ COPY backend-shoppers9/package*.json ./
 COPY backend-shoppers9/tsconfig.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY backend-shoppers9/src/ ./src/
@@ -30,13 +30,13 @@ RUN adduser -S nodejs -u 1001
 
 # Copy package files and install production dependencies
 COPY --chown=nodejs:nodejs backend-shoppers9/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Copy production environment file
-COPY --chown=nodejs:nodejs .env.production ./.env
+# Environment variables are provided via AWS Secrets Manager
+# COPY --chown=nodejs:nodejs .env.production ./.env
 
 # Switch to non-root user
 USER nodejs

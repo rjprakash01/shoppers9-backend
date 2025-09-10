@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Use relative URL in development to leverage Vite proxy, absolute URL in production
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://admin-api.shoppers9.com');
-const ADMIN_API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_ADMIN_API_URL || 'https://admin-api.shoppers9.com');
+const API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:4000';
+const ADMIN_API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:4000';
 
 export interface Banner {
   _id: string;

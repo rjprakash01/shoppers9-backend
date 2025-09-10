@@ -16,7 +16,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
-import OrderDetail from './pages/orderdetail';
+import OrderDetail from './pages/OrderDetail';
 import OrderConfirmation from './pages/OrderConfirmation';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 

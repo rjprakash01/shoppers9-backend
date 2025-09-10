@@ -21,6 +21,7 @@ import {
 
 interface Filter {
   _id: string;
+  id?: string;
   name: string;
   displayName: string;
   type: 'single' | 'multiple';
@@ -405,8 +406,8 @@ const FilterManagement: React.FC = () => {
     setIsFilterFormOpen(true);
   };
 
-  const renderCategoryTree = (categories: Category[], level = 0): JSX.Element[] => {
-    const options: JSX.Element[] = [];
+  const renderCategoryTree = (categories: Category[], level = 0): React.ReactElement[] => {
+    const options: React.ReactElement[] = [];
     
     categories.forEach(category => {
       const categoryId = category.id || category._id; // Support both id and _id
@@ -818,7 +819,9 @@ const FilterManagement: React.FC = () => {
                             console.log('Filter ID:', filter._id, 'Filter id:', filter.id);
                             const filterId = filter._id || filter.id;
                             console.log('Using filter ID:', filterId);
-                            handleAssignFilter(filterId);
+                            if (filterId) {
+                              handleAssignFilter(filterId);
+                            }
                           }}
                           className="text-green-600 hover:text-green-900"
                         >

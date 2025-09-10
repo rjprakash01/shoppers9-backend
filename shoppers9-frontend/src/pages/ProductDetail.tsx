@@ -37,8 +37,8 @@ const ProductDetail: React.FC = () => {
       // Set default selections
       if (productData && productData.variants && productData.variants.length > 0) {
         setSelectedVariant(productData.variants[0]._id || '');
-        if (productData.variants[0].sizes && productData.variants[0].sizes.length > 0) {
-          setSelectedSize(productData.variants[0].sizes[0].size);
+        if (productData.variants[0].size) {
+          setSelectedSize(productData.variants[0].size);
         }
       }
     } catch (error) {

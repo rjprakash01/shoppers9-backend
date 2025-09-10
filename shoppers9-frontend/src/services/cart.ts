@@ -159,7 +159,7 @@ class CartService {
 
     // Find the specific variant and size to get pricing
     const variant = product.variants.find(v => v._id === variantId);
-    const sizeInfo = variant?.sizes.find(s => s.size === size);
+    const sizeInfo = variant?.size === size ? variant : null;
     
     if (!variant || !sizeInfo) {
       throw new Error('Invalid variant or size selected');
@@ -177,7 +177,7 @@ class CartService {
         quantity,
         price: sizeInfo.price,
         originalPrice: sizeInfo.originalPrice,
-        discount: sizeInfo.discount,
+        discount: Math.max(0, sizeInfo.originalPrice - sizeInfo.price),
         isSelected: true,
         productData: product,
         variant: {

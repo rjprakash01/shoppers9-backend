@@ -36,14 +36,14 @@ const WishlistPage: React.FC = () => {
       }
       
       const firstVariant = item.product.variants?.[0];
-      const firstSize = firstVariant?.sizes?.[0];
+      const firstSize = firstVariant?.size;
       
       if (firstVariant && firstVariant._id && firstSize) {
-        await addToCart(item.product, firstVariant._id, firstSize.size, 1);
+        await addToCart(item.product, firstVariant._id, firstSize, 1);
         // Optionally remove from wishlist after adding to cart
         await handleRemoveFromWishlist(item.product._id);
       } else {
-        console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant?._id, size: firstSize?.size });
+        console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant?._id, size: firstSize });
         setError('Product variant or size not available');
       }
     } catch (err: any) {
@@ -152,8 +152,8 @@ const WishlistPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {items.map((item) => {
               const firstVariant = item.product.variants?.[0];
-              const firstSize = firstVariant?.sizes?.[0];
-              const isOutOfStock = !firstSize || firstSize.stock === 0;
+              const firstSize = firstVariant?.size;
+              const isOutOfStock = !firstSize;
               
               return (
                 <div key={item._id} className="bg-white rounded-2xl shadow-md overflow-hidden group hover:shadow-lg transition-shadow border border-brand-gold/20 hover:border-brand-gold">
@@ -195,7 +195,7 @@ const WishlistPage: React.FC = () => {
                         {item.product.minPrice !== item.product.maxPrice ? (
                           formatPriceRange(item.product.minPrice || 0, item.product.maxPrice || 0)
                         ) : (
-                          formatPrice(firstSize?.price || item.product.minPrice || 0)
+                          formatPrice(item.product.minPrice || 0)
                         )}
                       </div>
                     </div>

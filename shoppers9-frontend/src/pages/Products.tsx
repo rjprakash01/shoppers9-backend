@@ -94,15 +94,15 @@ const Products: React.FC = () => {
     }
     
     const firstVariant = product.variants[0];
-    const firstSize = firstVariant.sizes[0];
+    const firstSize = firstVariant.size;
     
     if (!firstSize || !firstVariant._id) {
-      console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant._id, size: firstSize?.size });
+      console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant._id, size: firstSize });
       return;
     }
     
     try {
-      await addToCart(product, firstVariant._id, firstSize.size, 1);
+      await addToCart(product, firstVariant._id, firstSize, 1);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     }
@@ -172,15 +172,15 @@ const Products: React.FC = () => {
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold font-poppins text-brand-indigo">
-                      {formatPrice(product.price || 0)}
-                    </span>
-                    {product.originalPrice && product.originalPrice > product.price && (
+                {formatPrice(product.price || product.minPrice || 0)}
+              </span>
+                    {product.originalPrice && product.originalPrice > (product.price || 0) && (
                       <>
                         <span className="text-sm text-brand-indigo/50 line-through font-poppins">
-                          {formatPrice(product.originalPrice)}
-                        </span>
+                    {formatPrice(product.originalPrice || product.maxPrice || 0)}
+                  </span>
                         <span className="text-xs bg-brand-gold/20 text-brand-indigo px-2 py-1 rounded-full font-medium font-poppins">
-                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                          {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
                         </span>
                       </>
                     )}
@@ -272,15 +272,15 @@ const Products: React.FC = () => {
           <div className="mb-2">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-bold font-poppins text-brand-indigo">
-                {formatPrice(product.price || 0)}
+                {formatPrice(product.price || product.minPrice || 0)}
               </span>
-              {product.originalPrice && product.originalPrice > product.price && (
+              {product.originalPrice && product.originalPrice > (product.price || 0) && (
                 <>
                   <span className="text-xs text-brand-indigo/50 line-through font-poppins">
-                    {formatPrice(product.originalPrice)}
-                  </span>
+                  {formatPrice(product.originalPrice || product.maxPrice || 0)}
+                </span>
                   <span className="text-xs bg-brand-gold/20 text-brand-indigo px-1 py-0.5 rounded text-xs font-medium font-poppins">
-                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                    {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
                   </span>
                 </>
               )}
