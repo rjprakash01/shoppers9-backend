@@ -31,8 +31,21 @@ const PORT = process.env.PORT || 5001;
 connectDB();
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  process.env.ADMIN_FRONTEND_URL || 'http://localhost:5174',
+  'http://localhost:5175',
+  'https://admin.shoppers9.com',
+  'https://shoppers9.com'
+];
+
+// Add CORS_ORIGIN if specified in environment
+if (process.env.CORS_ORIGIN) {
+  allowedOrigins.push(process.env.CORS_ORIGIN);
+}
+
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
