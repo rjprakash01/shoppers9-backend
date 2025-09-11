@@ -12,7 +12,7 @@
       "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend:latest",
       "portMappings": [
         {
-          "containerPort": 3000,
+          "containerPort": 3001,
           "protocol": "tcp"
         }
       ],
@@ -24,7 +24,7 @@
         },
         {
           "name": "PORT",
-          "value": "3000"
+          "value": "3001"
         }
       ],
       "secrets": [
@@ -64,7 +64,7 @@
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "curl -f http://localhost:3000/health || exit 1"
+          "curl -f http://localhost:3001/health || exit 1"
         ],
         "interval": 30,
         "timeout": 5,

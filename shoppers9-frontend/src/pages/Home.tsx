@@ -16,6 +16,8 @@ interface Category {
   slug: string;
   description?: string;
   image?: string;
+  level: number;
+  isActive: boolean;
 }
 
 interface FilterData {
@@ -101,7 +103,7 @@ const Home: React.FC = () => {
       const data = response.data;
       if (data.success && data.data.categories) {
         // Filter only level 1 categories for display
-        const level1Categories = data.data.categories.filter(cat => cat.level === 1 && cat.isActive);
+        const level1Categories = data.data.categories.filter((cat: Category) => cat.level === 1 && cat.isActive);
         setCategories(level1Categories);
       }
     } catch (error) {
@@ -139,12 +141,10 @@ const Home: React.FC = () => {
     let maxDiscount = 0;
     
     product.variants?.forEach(variant => {
-      variant.sizes?.forEach(size => {
-        if (size.originalPrice && size.price) {
-          const discount = calculateDiscountPercentage(size.originalPrice, size.price);
-          maxDiscount = Math.max(maxDiscount, discount);
-        }
-      });
+      if (variant.originalPrice && variant.price) {
+        const discount = calculateDiscountPercentage(variant.originalPrice, variant.price);
+        maxDiscount = Math.max(maxDiscount, discount);
+      }
     });
     
     return maxDiscount;
@@ -155,11 +155,9 @@ const Home: React.FC = () => {
     let minOriginalPrice = Infinity;
     
     product.variants?.forEach(variant => {
-      variant.sizes?.forEach(size => {
-        if (size.originalPrice && size.originalPrice > 0) {
-          minOriginalPrice = Math.min(minOriginalPrice, size.originalPrice);
-        }
-      });
+      if (variant.originalPrice && variant.originalPrice > 0) {
+        minOriginalPrice = Math.min(minOriginalPrice, variant.originalPrice);
+      }
     });
     
     return minOriginalPrice === Infinity ? 0 : minOriginalPrice;
@@ -170,11 +168,9 @@ const Home: React.FC = () => {
     let maxOriginalPrice = 0;
     
     product.variants?.forEach(variant => {
-      variant.sizes?.forEach(size => {
-        if (size.originalPrice && size.originalPrice > 0) {
-          maxOriginalPrice = Math.max(maxOriginalPrice, size.originalPrice);
-        }
-      });
+      if (variant.originalPrice && variant.originalPrice > 0) {
+        maxOriginalPrice = Math.max(maxOriginalPrice, variant.originalPrice);
+      }
     });
     
     return maxOriginalPrice;
@@ -401,13 +397,13 @@ const Home: React.FC = () => {
                           <span className="text-sm sm:text-base md:text-xl font-bold font-poppins text-brand-indigo">
                             {formatPrice(product.price || 0)}
                           </span>
-                          {product.originalPrice && product.originalPrice > product.price && (
+                          {product.originalPrice && product.originalPrice > (product.price || 0) && (
                             <>
                               <span className="text-xs sm:text-sm text-brand-indigo/50 line-through font-poppins">
                                 {formatPrice(product.originalPrice)}
                               </span>
                               <span className="text-xs sm:text-sm font-bold text-brand-indigo bg-brand-gold/20 px-2 py-1 rounded-full font-poppins">
-                                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off
+                                {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% off
                               </span>
                             </>
                           )}
@@ -509,13 +505,13 @@ const Home: React.FC = () => {
                           <span className="text-lg font-bold font-poppins text-brand-gold">
                             {formatPrice(product.price || 0)}
                           </span>
-                          {product.originalPrice && product.originalPrice > product.price && (
+                          {product.originalPrice && product.originalPrice > (product.price || 0) && (
                             <>
                               <span className="text-sm text-brand-slate line-through font-poppins">
                                 {formatPrice(product.originalPrice)}
                               </span>
                               <span className="text-xs bg-brand-gold/20 text-brand-gold px-1 py-0.5 rounded text-xs font-medium font-poppins">
-                                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                                {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
                               </span>
                             </>
                           )}

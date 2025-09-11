@@ -112,11 +112,27 @@ const Cart: React.FC = () => {
     setIsUpdating(itemKey);
     try {
       // First add to wishlist
+      const productId = item.product || item.productId;
+      if (!productId) return;
+      
       const product = item.productData || {
-        _id: item.product || item.productId,
+        _id: productId,
         name: 'Product',
+        description: '',
+        category: '',
+        subCategory: '',
+        brand: '',
         price: item.price,
-        images: item.variant?.images || []
+        images: item.variant?.images || [],
+        variants: [],
+        specifications: {},
+        tags: [],
+        isActive: true,
+        isFeatured: false,
+        isTrending: false,
+        displayFilters: [],
+        createdAt: '',
+        updatedAt: ''
       };
       
       await addToWishlist(product, item.variantId);
@@ -488,11 +504,11 @@ const Cart: React.FC = () => {
         </div>
         
         {/* Saved for Later / Wishlist Section */}
-        {((isAuthenticated && wishlist?.items.length > 0) || (!isAuthenticated && localWishlist.length > 0)) && (
+        {((isAuthenticated && wishlist?.items && wishlist.items.length > 0) || (!isAuthenticated && localWishlist.length > 0)) && (
           <div className="mt-8">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Saved for Later ({isAuthenticated ? wishlist?.items.length || 0 : localWishlist.length})
+                Saved for Later ({isAuthenticated ? (wishlist?.items?.length || 0) : localWishlist.length})
               </h3>
               
               <div className="space-y-4">

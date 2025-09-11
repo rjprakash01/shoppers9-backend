@@ -56,26 +56,33 @@ resource "aws_iam_role" "ecs_task_role" {
 }
 
 # CloudWatch Log Groups
-# resource "aws_cloudwatch_log_group" "backend" {
-#   name              = "/ecs/${var.project_name}-backend"
-#   retention_in_days = 30
-#
-#   tags = var.tags
-# }
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/${var.project_name}-backend"
+  retention_in_days = 30
 
-# resource "aws_cloudwatch_log_group" "admin" {
-#   name              = "/ecs/${var.project_name}-admin"
-#   retention_in_days = 30
-#
-#   tags = var.tags
-# }
+  tags = var.tags
+}
 
-# resource "aws_cloudwatch_log_group" "frontend" {
-#   name              = "/ecs/${var.project_name}-frontend"
-#   retention_in_days = 30
-#
-#   tags = var.tags
-# }
+resource "aws_cloudwatch_log_group" "admin" {
+  name              = "/ecs/${var.project_name}-admin"
+  retention_in_days = 30
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_log_group" "admin_backend" {
+  name              = "/ecs/${var.project_name}-admin-backend"
+  retention_in_days = 30
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_log_group" "frontend" {
+  name              = "/ecs/${var.project_name}-frontend"
+  retention_in_days = 30
+
+  tags = var.tags
+}
 
 # Security Groups
 resource "aws_security_group" "ecs_backend" {
@@ -126,6 +133,30 @@ resource "aws_security_group" "ecs_frontend" {
   })
 }
 
+resource "aws_security_group" "ecs_admin_backend" {
+  name        = "${var.project_name}-ecs-admin-backend"
+  description = "Security group for ECS admin backend tasks"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 5001
+    to_port         = 5001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-ecs-admin-backend"
+  })
+}
+
 # ECS Task Definitions
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend"
@@ -160,7 +191,7 @@ resource "aws_ecs_task_definition" "backend" {
       secrets = [
         {
           name      = "MONGODB_URI"
-          valueFrom = "${aws_secretsmanager_secret.mongodb_uri.arn}:uri::"
+          valueFrom = "${aws_secretsmanager_secret.mongodb_uri.arn}"
         },
         {
           name      = "JWT_SECRET"
@@ -251,6 +282,74 @@ resource "aws_ecs_task_definition" "admin" {
   tags = var.tags
 }
 
+resource "aws_ecs_task_definition" "admin_backend" {
+  family                   = "${var.project_name}-admin-backend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.ecs_backend_cpu
+  memory                   = var.ecs_backend_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "${var.project_name}-admin-backend"
+      image = "${aws_ecr_repository.admin_backend.repository_url}:latest"
+      portMappings = [
+        {
+          containerPort = 5001
+          protocol      = "tcp"
+        }
+      ]
+      essential = true
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = "production"
+        },
+        {
+          name  = "PORT"
+          value = "5001"
+        }
+      ]
+      secrets = [
+        {
+          name      = "MONGODB_URI"
+          valueFrom = "${aws_secretsmanager_secret.mongodb_uri.arn}"
+        },
+        {
+          name      = "JWT_SECRET"
+          valueFrom = "${aws_secretsmanager_secret.jwt_secret.arn}:secret::"
+        },
+        {
+          name      = "JWT_REFRESH_SECRET"
+          valueFrom = "${aws_secretsmanager_secret.jwt_refresh_secret.arn}:secret::"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.project_name}-admin-backend"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+      healthCheck = {
+        command = [
+          "CMD-SHELL",
+          "curl -f http://localhost:5001/health || exit 1"
+        ]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = var.tags
+}
+
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend"
   network_mode             = "awsvpc"
@@ -311,7 +410,7 @@ resource "aws_ecs_service" "backend" {
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "${var.project_name}-backend"
-    container_port   = 3000
+    container_port   = 3001
   }
 
   depends_on = [aws_lb_listener.backend]
@@ -337,7 +436,7 @@ resource "aws_ecs_service" "admin" {
     container_port   = 8080
   }
 
-  depends_on = [aws_lb_listener.admin]
+  depends_on = [aws_lb_listener.frontend_http]
 
   tags = var.tags
 }
@@ -361,6 +460,29 @@ resource "aws_ecs_service" "frontend" {
   }
 
   depends_on = [aws_lb_listener.frontend]
+
+  tags = var.tags
+}
+
+resource "aws_ecs_service" "admin_backend" {
+  name            = "${var.project_name}-admin-backend"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.admin_backend.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs_admin_backend.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.admin_backend.arn
+    container_name   = "${var.project_name}-admin-backend"
+    container_port   = 5001
+  }
+
+  depends_on = [aws_lb_listener.admin_backend]
 
   tags = var.tags
 }

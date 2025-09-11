@@ -18,7 +18,7 @@ const Login: React.FC = () => {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
       
-      await login('admin@shoppers9.com', 'admin123', 'email');
+      await login('superadmin@shoppers9.com', 'superadmin123', 'email');
       navigate('/dashboard');
     } catch (error: any) {
       

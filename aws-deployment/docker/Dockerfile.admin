@@ -15,9 +15,8 @@ COPY shoppers9-admin-frontend/ ./
 # Temporarily disable strict unused checks for build
 RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/' tsconfig.app.json
 
-# Accept build argument for API URL
-ARG VITE_API_URL=https://api.shoppers9.com
-ENV VITE_API_URL=$VITE_API_URL
+# Use relative URLs in production (no VITE_ADMIN_API_URL set)
+# This allows the frontend to use nginx proxy
 
 # Build the application
 RUN npm run build
@@ -53,7 +52,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080 || exit 1
+  CMD curl -f http://localhost:8080/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "shoppers9-admin",
-      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin:latest",
+      "image": "414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin-frontend:latest",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -28,7 +28,7 @@
         },
         {
           "name": "VITE_API_URL",
-          "value": "http://shoppers9-alb-268030346.us-east-1.elb.amazonaws.com/api"
+          "value": "https://api.shoppers9.com/api"
         }
       ],
       "logConfiguration": {

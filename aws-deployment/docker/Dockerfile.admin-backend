@@ -8,7 +8,7 @@ COPY shoppers9-admin-backend/package*.json ./
 COPY shoppers9-admin-backend/tsconfig.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY shoppers9-admin-backend/src/ ./src/
@@ -30,7 +30,7 @@ RUN adduser -S nodejs -u 1001
 
 # Copy package files and install production dependencies
 COPY --chown=nodejs:nodejs shoppers9-admin-backend/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
