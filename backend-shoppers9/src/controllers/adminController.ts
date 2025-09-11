@@ -13,7 +13,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
     const { startDate, endDate } = req.query;
     
     // Check if database is connected
-    console.log('Database readyState (dashboard):', mongoose.connection.readyState);
     if (mongoose.connection.readyState !== 1) {
       return res.status(503).json({
         success: false,
@@ -271,7 +270,7 @@ export const getAllProducts = async (req: Request, res: Response, next: NextFunc
     const { page = 1, limit = 20, search, category, isActive } = req.query;
     
     // Check if database is connected
-    console.log('Database readyState:', mongoose.connection.readyState);
+    
     if (mongoose.connection.readyState !== 1) {
       return res.status(503).json({
         success: false,
@@ -409,7 +408,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       data: product
     });
   } catch (error) {
-    console.error('Create product error:', error);
+    
     next(error);
   }
 };
@@ -420,7 +419,6 @@ export const getProductsByCategory = async (req: Request, res: Response, next: N
     const { page = 1, limit = 12, search, isActive } = req.query;
     
     // Check if database is connected
-    console.log('Database readyState (products by category):', mongoose.connection.readyState);
     if (mongoose.connection.readyState !== 1) {
       return res.status(503).json({
         success: false,
@@ -473,7 +471,6 @@ export const getAllOrders = async (req: Request, res: Response, next: NextFuncti
     const { page = 1, limit = 20, status, paymentStatus, search } = req.query;
     
     // Check if database is connected
-    console.log('Database readyState (orders):', mongoose.connection.readyState);
     if (mongoose.connection.readyState !== 1) {
       return res.status(503).json({
         success: false,
@@ -548,7 +545,6 @@ export const getAllCategories = async (req: Request, res: Response, next: NextFu
     const { page = 1, limit = 20, search, isActive } = req.query;
     
     // Check if database is connected
-    console.log('Database readyState (categories):', mongoose.connection.readyState);
     if (mongoose.connection.readyState !== 1) {
       // Return error when database is disconnected
       const mockCategories = [
@@ -696,8 +692,7 @@ export const getSalesAnalytics = async (req: Request, res: Response, next: NextF
     
     // Check database connection status
     const dbState = mongoose.connection.readyState;
-    console.log('Database readyState:', dbState);
-    
+
     // If database is not connected (readyState !== 1), return error
     if (dbState !== 1) {
       return res.status(503).json({

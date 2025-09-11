@@ -21,7 +21,7 @@ const Login: React.FC = () => {
       await login('admin@shoppers9.com', 'admin123', 'email');
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Login failed:', error);
+      
       alert(`Login failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);

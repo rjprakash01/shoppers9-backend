@@ -251,8 +251,6 @@ const ProductManagement: React.FC = () => {
     }
   };
 
-
-
   const handleCreateProduct = async (productData: FormData) => {
     try {
       // Add selected category to the product data if not already present
@@ -269,7 +267,7 @@ const ProductManagement: React.FC = () => {
       }
       await fetchCategoryTree();
     } catch (error) {
-      console.error('Error creating product:', error);
+      
       throw error;
     }
   };
@@ -288,7 +286,7 @@ const ProductManagement: React.FC = () => {
         fetchAllProducts(currentPage);
       }
     } catch (err) {
-      console.error('Error updating product:', err);
+      
       alert(`Error updating product: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
@@ -306,7 +304,7 @@ const ProductManagement: React.FC = () => {
       }
       fetchCategoryTree();
     } catch (err) {
-      console.error('Error deleting product:', err);
+      
     }
   };
 
@@ -320,7 +318,7 @@ const ProductManagement: React.FC = () => {
         fetchAllProducts(currentPage);
       }
     } catch (err) {
-      console.error('Error updating product status:', err);
+      
     }
   };
 
@@ -365,7 +363,7 @@ const ProductManagement: React.FC = () => {
       setEditingProduct({ ...product, ...completeInitialData });
       setIsProductFormOpen(true);
     } catch (error) {
-      console.error('Error fetching complete product data for editing:', error);
+      
       // Fallback to basic product data if detailed fetch fails
       setEditingProduct(product);
       setIsProductFormOpen(true);
@@ -410,8 +408,6 @@ const ProductManagement: React.FC = () => {
       fetchAllProducts(currentPage);
     }
   };
-
-
 
   // Get main categories (level 1)
   const getMainCategories = (): Category[] => {
@@ -488,15 +484,11 @@ const ProductManagement: React.FC = () => {
     return selectedCategory ? findCategory(categories, selectedCategory) : null;
   };
 
-
-
   const getStockStatus = (stock: number) => {
     if (stock === 0) return { label: 'Out of Stock', color: 'text-red-600 bg-red-50' };
     if (stock < 10) return { label: 'Low Stock', color: 'text-amber-600 bg-amber-50' };
     return { label: 'In Stock', color: 'text-green-600 bg-green-50' };
   };
-
-
 
   const renderProductCard = (product: Product) => {
     const stockStatus = getStockStatus(product.stock);

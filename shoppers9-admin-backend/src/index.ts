@@ -39,8 +39,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging middleware
-app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.path} - ${new Date().toLocaleTimeString()}`);
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   next();
 });
 
@@ -111,7 +110,7 @@ app.post('/api/init-super-admin', async (req, res): Promise<void> => {
     });
     
   } catch (error) {
-    console.error('Error creating super admin:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Error creating super admin',
@@ -146,11 +145,7 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Shoppers9 Admin Backend running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔧 Access restrictions removed - all authenticated users can access admin features`);
-  console.log(`🌟 Server ready to accept connections`);
+  console.log(`Admin backend server running on port ${PORT}`);
 });
 
 export default app;

@@ -102,7 +102,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       const response = await authService.getAllCategories(1, 100);
       setCategories(response.categories || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      
     }
   };
 
@@ -212,8 +212,6 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     ];
   };
 
-
-
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -273,7 +271,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
         imagePreview: undefined
       });
     } catch (error) {
-      console.error('Error submitting form:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -465,8 +463,6 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               </label>
             </div>
           </div>
-
-
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-4 pt-6 border-t">

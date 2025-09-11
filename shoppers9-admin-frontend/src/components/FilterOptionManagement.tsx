@@ -70,7 +70,7 @@ const FilterOptionManagement: React.FC = () => {
       setFilter(response.data);
       setError(null);
     } catch (error: any) {
-      console.error('Error fetching filter:', error);
+      
       const errorMessage = error.response?.data?.message || 'Failed to fetch filter details';
       setError(errorMessage);
     }
@@ -81,21 +81,20 @@ const FilterOptionManagement: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const response = await authService.get(`/api/admin/filter-options/filter/${filterId}`);
-      console.log('Filter options API response:', response);
-      
+
       // Handle the backend response format: {success: true, data: {filter, options, pagination}}
       if (response.success && response.data && Array.isArray(response.data.options)) {
-        console.log('Setting options from response.data.options:', response.data.options);
+        
         setOptions(response.data.options);
       } else if (Array.isArray(response.data)) {
-        console.log('Setting options from response.data:', response.data);
+        
         setOptions(response.data);
       } else {
-        console.warn('Unexpected filter options response format:', response);
+        
         setOptions([]);
       }
     } catch (error: any) {
-      console.error('Error fetching filter options:', error);
+      
       const errorMessage = error.response?.data?.message || 'Failed to fetch filter options';
       setError(errorMessage);
       setOptions([]);
@@ -130,7 +129,7 @@ const FilterOptionManagement: React.FC = () => {
       await fetchFilterOptions();
       handleCloseForm();
     } catch (error) {
-      console.error('Error saving filter option:', error);
+      
       alert('Error saving filter option. Please try again.');
     }
   };
@@ -154,7 +153,7 @@ const FilterOptionManagement: React.FC = () => {
       await authService.delete(`/api/admin/filter-options/${optionId}`);
       await fetchFilterOptions();
     } catch (error) {
-      console.error('Error deleting filter option:', error);
+      
       alert('Error deleting filter option. Please try again.');
     }
   };
@@ -166,7 +165,7 @@ const FilterOptionManagement: React.FC = () => {
       });
       await fetchFilterOptions();
     } catch (error) {
-      console.error('Error updating filter option status:', error);
+      
     }
   };
 

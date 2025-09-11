@@ -67,7 +67,7 @@ const Profile: React.FC = () => {
       updateUser(updatedUser);
       setIsEditingProfile(false);
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      
       alert('Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -106,7 +106,7 @@ const Profile: React.FC = () => {
       });
       setIsAddingAddress(false);
     } catch (error: any) {
-      console.error('Failed to add address:', error);
+      
       alert(error.response?.data?.message || 'Failed to add address. Please try again.');
     } finally {
       setIsLoading(false);
@@ -142,7 +142,7 @@ const Profile: React.FC = () => {
         isDefault: false
       });
     } catch (error: any) {
-      console.error('Failed to update address:', error);
+      
       alert(error.response?.data?.message || 'Failed to update address. Please try again.');
     } finally {
       setIsLoading(false);
@@ -152,39 +152,35 @@ const Profile: React.FC = () => {
   const handleDeleteAddress = async (addressId: string) => {
     // Validate addressId
     if (!addressId) {
-      console.error('Address ID is undefined or empty');
+      
       alert('Error: Cannot delete address. Invalid address ID.');
       return;
     }
     
     // Prevent deletion if already loading
     if (isLoading) {
-      console.log('Delete operation already in progress');
+      
       return;
     }
-    
-    console.log('Attempting to delete address with ID:', addressId);
-    
+
     // Show confirmation dialog
     const confirmed = window.confirm('Are you sure you want to delete this address?');
     if (!confirmed) {
-      console.log('User cancelled address deletion');
+      
       return;
     }
-    
-    console.log('User confirmed deletion, proceeding...');
+
     setIsLoading(true);
     
     try {
       // Call API to delete address
-      console.log('Calling API to delete address:', addressId);
-      await authService.deleteAddress(addressId);
-      console.log('API call successful, updating local state');
       
+      await authService.deleteAddress(addressId);
+
       // Update local state only after successful API call
       setAddresses(prev => {
         const filtered = prev.filter(addr => addr.id !== addressId);
-        console.log('Updated addresses count:', filtered.length);
+        
         return filtered;
       });
       
@@ -192,24 +188,24 @@ const Profile: React.FC = () => {
       try {
         const updatedUser = await authService.fetchCurrentUser();
         updateUser(updatedUser);
-        console.log('User context updated successfully');
+        
       } catch (refreshError) {
-        console.warn('Failed to refresh user data after address deletion:', refreshError);
+        
         // If refresh fails, we still have the local state updated
       }
     } catch (error: any) {
-      console.error('Failed to delete address:', error);
+      
       const errorMessage = error.response?.data?.message || error.message || 'Failed to delete address. Please try again.';
       alert(errorMessage);
       
       // If deletion failed, refresh the addresses from user context to restore state
       if (user?.addresses) {
-        console.log('Restoring addresses from user context');
+        
         setAddresses(user.addresses);
       }
     } finally {
       setIsLoading(false);
-      console.log('Delete operation completed');
+      
     }
   };
   
@@ -823,9 +819,7 @@ const Profile: React.FC = () => {
                           </button>
                           <button
                             onClick={() => {
-                              console.log('Delete button clicked for address:', address);
-                              console.log('Address ID:', address.id);
-                              console.log('Address _id:', address._id);
+
                               handleDeleteAddress(address.id || address._id);
                             }}
                             className="text-red-600 hover:text-red-700"

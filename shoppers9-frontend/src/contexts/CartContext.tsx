@@ -64,7 +64,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setLocalCart(Array.isArray(parsedCart) ? parsedCart : []);
       }
     } catch (error) {
-      console.error('Error loading local cart:', error);
+      
       setLocalCart([]);
     }
   };
@@ -74,7 +74,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       localStorage.setItem('localCart', JSON.stringify(items));
       setLocalCart(items);
     } catch (error) {
-      console.error('Error saving local cart:', error);
+      
     }
   };
 
@@ -97,7 +97,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const serverCart = await cartService.getCart();
       setCart(serverCart);
     } catch (error) {
-      console.error('Error syncing cart on login:', error);
+      
       // If sync fails, keep local cart
     } finally {
       setIsLoading(false);
@@ -163,15 +163,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       if (quantity <= 0) {
         throw new Error('Quantity must be greater than 0');
       }
-      
-      console.log('CartContext - addToCart called with:', { 
-        productId: product._id, 
-        variantId, 
-        size, 
-        quantity,
-        isAuthenticated 
-      });
-      
+
       if (isAuthenticated) {
         // User is logged in - add to server cart
         const updatedCart = await cartService.addToCart(product._id, variantId, size, quantity);
@@ -182,7 +174,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         saveLocalCart(updatedLocalCart);
       }
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -202,7 +194,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setLocalCart(updatedLocalCart);
       }
     } catch (error) {
-      console.error('Failed to update cart item:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -222,7 +214,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setLocalCart(updatedLocalCart);
       }
     } catch (error) {
-      console.error('Failed to remove from cart:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -241,7 +233,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         setLocalCart([]);
       }
     } catch (error) {
-      console.error('Failed to clear cart:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -252,13 +244,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     if (isAuthenticated) {
       try {
         setIsLoading(true);
-        console.log('Refreshing cart from server...');
+        
         const serverCart = await cartService.getCart();
-        console.log('Server cart received:', serverCart);
-        console.log('Server cart items:', serverCart?.items);
+
         setCart(serverCart);
       } catch (error) {
-        console.error('Failed to refresh cart:', error);
+        
         setCart(null);
       } finally {
         setIsLoading(false);

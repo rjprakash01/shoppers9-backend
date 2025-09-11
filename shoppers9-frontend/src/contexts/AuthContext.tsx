@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setUser(freshUser);
             } catch (error) {
               // If validation fails, keep the stored user but don't redirect
-              console.warn('Token validation failed, keeping stored user data');
+              
             }
           } else {
             // No stored user, try to fetch from server

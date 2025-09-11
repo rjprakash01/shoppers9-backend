@@ -68,7 +68,7 @@ export async function convertImageToSVG(
       svgPath: outputPath
     };
   } catch (error) {
-    console.error('Error converting image to SVG:', error);
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

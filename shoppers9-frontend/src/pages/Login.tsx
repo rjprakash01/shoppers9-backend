@@ -35,7 +35,7 @@ const Login: React.FC = () => {
 
     // For test phone number 1234567890, skip OTP sending and go directly to OTP screen
     if (phone === '1234567890') {
-      console.log('Test phone number detected, skipping OTP send');
+      
       setOtpSent(true);
       setStep('otp');
       setIsLoading(false);
@@ -44,13 +44,13 @@ const Login: React.FC = () => {
 
     try {
       // Send phone number with +91 prefix to backend
-      console.log('Sending OTP to phone:', phone);
+      
       const response = await authService.sendOTP(phone);
-      console.log('OTP sent successfully:', response);
+      
       setOtpSent(true);
       setStep('otp');
     } catch (error: any) {
-      console.error('OTP send error:', error);
+      
       setError(error.response?.data?.message || 'Failed to send OTP');
     } finally {
       setIsLoading(false);
@@ -75,7 +75,7 @@ const Login: React.FC = () => {
         return;
       } catch (error: any) {
         // If backend verification fails, still proceed for test user
-        console.log('Backend verification failed for test user, but proceeding...');
+        
         navigate(from, { replace: true });
         return;
       }

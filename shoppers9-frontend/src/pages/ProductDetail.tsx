@@ -42,8 +42,7 @@ const ProductDetail: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load product:', error);
-      
+
       // Don't show mock data, just set product to null to show "Product Not Found"
       setProduct(null);
     } finally {
@@ -53,7 +52,7 @@ const ProductDetail: React.FC = () => {
 
   const handleAddToCart = async () => {
     if (!product || !product._id || !selectedVariant || !selectedSize) {
-      console.error('Cannot add to cart: missing product data', { product: product?._id, selectedVariant, selectedSize });
+      
       return;
     }
     
@@ -62,7 +61,7 @@ const ProductDetail: React.FC = () => {
       await addToCart(product, selectedVariant, selectedSize, quantity);
       // Show success message or redirect
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      
     } finally {
       setIsAddingToCart(false);
     }
@@ -70,35 +69,32 @@ const ProductDetail: React.FC = () => {
 
   const handleToggleWishlist = async () => {
     if (!product || !product._id) {
-      console.error('Cannot toggle wishlist: missing product data');
+      
       return;
     }
 
     try {
-      console.log('Toggling wishlist for product:', product._id);
-      const isCurrentlyInWishlist = checkIsInWishlist(product._id);
-      console.log('Currently in wishlist:', isCurrentlyInWishlist);
       
+      const isCurrentlyInWishlist = checkIsInWishlist(product._id);
+
       if (isCurrentlyInWishlist) {
-        console.log('Removing from wishlist...');
+        
         await removeFromWishlist(product._id);
       } else {
-        console.log('Adding to wishlist...');
+        
         await addToWishlist(product);
       }
-      console.log('Wishlist toggle completed successfully');
+      
     } catch (error) {
-      console.error('Failed to toggle wishlist:', error);
+      
       // For unauthenticated users trying to use server wishlist, redirect to login
       if (!isAuthenticated && (error as any)?.message?.includes('401')) {
-        console.log('Redirecting to login for authentication');
+        
         navigate('/login');
       }
       // For other errors, just log them - don't crash the UI
     }
   };
-
-
 
   const getCurrentVariant = () => {
     return product?.variants.find(v => v._id === selectedVariant);

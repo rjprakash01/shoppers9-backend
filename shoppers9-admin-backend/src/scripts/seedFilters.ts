@@ -527,7 +527,6 @@ const filtersData: FilterData[] = [
 
 const seedFilters = async (): Promise<void> => {
   try {
-    console.log('🌱 Starting filter seeding...');
 
     // Connect to database
     await connectDB();
@@ -535,7 +534,6 @@ const seedFilters = async (): Promise<void> => {
     // Clear existing filters and options
     await FilterOption.deleteMany({});
     await Filter.deleteMany({});
-    console.log('🗑️  Cleared existing filters and options');
 
     let totalFilters = 0;
     let totalOptions = 0;
@@ -553,7 +551,6 @@ const seedFilters = async (): Promise<void> => {
 
       await filter.save();
       totalFilters++;
-      console.log(`✅ Created filter: ${filter.displayName}`);
 
       // Create filter options
       const options = filterData.options.map((option, index) => ({
@@ -566,20 +563,15 @@ const seedFilters = async (): Promise<void> => {
 
       await FilterOption.insertMany(options);
       totalOptions += options.length;
-      console.log(`  📝 Created ${options.length} options for ${filter.displayName}`);
+      
     }
 
-    console.log(`\n🎉 Filter seeding completed!`);
-    console.log(`📊 Summary:`);
-    console.log(`   - Filters created: ${totalFilters}`);
-    console.log(`   - Filter options created: ${totalOptions}`);
-
   } catch (error) {
-    console.error('❌ Error seeding filters:', error);
+    
   } finally {
     // Close database connection
     await mongoose.connection.close();
-    console.log('🔌 Database connection closed');
+    
     process.exit(0);
   }
 };

@@ -33,27 +33,23 @@ async function seedBanners() {
   try {
     // Connect to database
     await connectDB();
-    console.log('Connected to MongoDB');
 
     // Clear existing banners
     await Banner.deleteMany({});
-    console.log('Cleared existing banners');
 
     // Insert sample banners
     const createdBanners = await Banner.insertMany(sampleBanners);
-    console.log(`Created ${createdBanners.length} sample banners:`);
-    
+
     createdBanners.forEach((banner, index) => {
-      console.log(`${index + 1}. ${banner.title} - ${banner.subtitle}`);
+      
     });
 
-    console.log('\nBanner seeding completed successfully!');
   } catch (error) {
-    console.error('Error seeding banners:', error);
+    
   } finally {
     // Close database connection
     await mongoose.connection.close();
-    console.log('Database connection closed');
+    
     process.exit(0);
   }
 }

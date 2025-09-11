@@ -64,7 +64,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         });
       }
     } catch (error) {
-      console.error('Failed to fetch filter data:', error);
+      
     } finally {
       setIsLoading(false);
     }

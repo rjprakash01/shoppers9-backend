@@ -207,13 +207,11 @@ router.post('/webhook',
     try {
       // TODO: Implement webhook handling for different payment providers
       // This would handle callbacks from Razorpay, Stripe, etc.
-      
-      console.log('Payment webhook received:', req.body);
-      
+
       // For now, just acknowledge the webhook
       res.status(200).json({ received: true });
     } catch (error) {
-      console.error('Webhook error:', error);
+      
       res.status(400).json({ error: 'Webhook processing failed' });
     }
   }

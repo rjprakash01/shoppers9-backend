@@ -28,7 +28,7 @@ class MockPaymentProvider implements PaymentProvider {
   async verifyPayment(paymentId: string, signature?: string): Promise<boolean> {
     // Mock verification - always return true for development
     // In production, this would verify the payment signature
-    console.log(`Mock payment verification for ${paymentId}`);
+    
     return true;
   }
 
@@ -106,7 +106,7 @@ export class PaymentService {
     switch (paymentProvider.toLowerCase()) {
       case 'razorpay':
         if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-          console.warn('Razorpay credentials not found, falling back to mock provider');
+          
           this.provider = new MockPaymentProvider();
         } else {
           this.provider = new RazorpayProvider(
@@ -117,14 +117,14 @@ export class PaymentService {
         break;
       case 'stripe':
         if (!process.env.STRIPE_SECRET_KEY) {
-          console.warn('Stripe credentials not found, falling back to mock provider');
+          
           this.provider = new MockPaymentProvider();
         } else {
           this.provider = new StripeProvider(process.env.STRIPE_SECRET_KEY);
         }
         break;
       default:
-        console.log('Using mock payment provider for development');
+        
         this.provider = new MockPaymentProvider();
     }
   }
@@ -148,7 +148,7 @@ export class PaymentService {
 
       return paymentIntent;
     } catch (error) {
-      console.error('Error creating payment intent:', error);
+      
       throw error;
     }
   }
@@ -157,7 +157,7 @@ export class PaymentService {
     try {
       return await this.provider.verifyPayment(paymentId, signature);
     } catch (error) {
-      console.error('Error verifying payment:', error);
+      
       return false;
     }
   }
@@ -185,7 +185,7 @@ export class PaymentService {
 
       return true;
     } catch (error) {
-      console.error('Error processing payment:', error);
+      
       return false;
     }
   }
@@ -213,7 +213,7 @@ export class PaymentService {
 
       return refund;
     } catch (error) {
-      console.error('Error processing refund:', error);
+      
       throw error;
     }
   }

@@ -37,7 +37,6 @@ const Home: React.FC = () => {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
-
   useEffect(() => {
     loadFeaturedProducts();
     loadTrendingProducts();
@@ -62,7 +61,7 @@ const Home: React.FC = () => {
       const products = await productService.getFeaturedProducts(8);
       setFeaturedProducts(products || []);
     } catch (error) {
-      console.error('Failed to load featured products:', error);
+      
       setFeaturedProducts([]);
     } finally {
       setIsLoading(false);
@@ -76,14 +75,12 @@ const Home: React.FC = () => {
       const products = await productService.getTrendingProducts(12);
       setTrendingProducts(products || []);
     } catch (error) {
-      console.error('Failed to load trending products:', error);
+      
       setTrendingProducts([]);
     } finally {
       setTrendingLoading(false);
     }
   };
-
-
 
   const fetchFilterData = async () => {
     try {
@@ -92,7 +89,7 @@ const Home: React.FC = () => {
         setFilterData(response.data.data);
       }
     } catch (error) {
-      console.error('Failed to fetch filter data:', error);
+      
     }
   };
 
@@ -108,7 +105,7 @@ const Home: React.FC = () => {
         setCategories(level1Categories);
       }
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
+      
     } finally {
       setCategoriesLoading(false);
     }
@@ -131,9 +128,8 @@ const Home: React.FC = () => {
       const sortedCategoryBanners = categoryCardBanners.sort((a, b) => (a.order || 0) - (b.order || 0));
       
       setCategoryBanners(sortedCategoryBanners);
-      console.log('Category banners updated:', sortedCategoryBanners.length, 'banners found', sortedCategoryBanners.map(b => ({ title: b.title, order: b.order })));
     } catch (error) {
-      console.error('Failed to fetch category banners:', error);
+      
       setCategoryBanners([]);
     }
   };
@@ -206,12 +202,6 @@ const Home: React.FC = () => {
     // Return null if no specific match - don't use fallback to avoid banner duplication
     return null;
   };
-
-
-
-
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/10">
@@ -439,7 +429,6 @@ const Home: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
 
                   </div>
                 </Link>
@@ -537,7 +526,6 @@ const Home: React.FC = () => {
                         <span className="text-xs text-brand-gold ml-1 font-medium font-poppins">4.5</span>
                       </div>
                     </div>
-                    
 
                   </div>
                 </Link>
@@ -718,9 +706,6 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
-
-
-
 
     </div>
   );

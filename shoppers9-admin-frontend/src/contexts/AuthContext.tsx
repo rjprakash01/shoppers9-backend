@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
       } catch (error) {
-        console.error('Error parsing stored user data:', error);
+        
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminUser');
       }
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(result.message || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      
       throw error;
     }
   };

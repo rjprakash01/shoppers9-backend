@@ -33,7 +33,7 @@ export const getActiveBanners = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching active banners:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to fetch banners'
@@ -72,7 +72,7 @@ export const getAllBanners = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching banners:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to fetch banners'
@@ -103,7 +103,7 @@ export const getBannerById = async (req: Request, res: Response) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching banner:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to fetch banner'
@@ -127,7 +127,7 @@ export const createBanner = async (req: Request, res: Response) => {
 
     res.status(201).json(response);
   } catch (error) {
-    console.error('Error creating banner:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to create banner'
@@ -164,7 +164,7 @@ export const updateBanner = async (req: Request, res: Response) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error('Error updating banner:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to update banner'
@@ -194,7 +194,7 @@ export const deleteBanner = async (req: Request, res: Response) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error('Error deleting banner:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to delete banner'
@@ -231,7 +231,7 @@ export const updateBannerStatus = async (req: Request, res: Response) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error('Error updating banner status:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to update banner status'
@@ -267,7 +267,7 @@ export const reorderBanners = async (req: Request, res: Response) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error('Error reordering banners:', error);
+    
     const response: ApiResponse = {
       success: false,
       message: 'Failed to reorder banners'

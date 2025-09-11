@@ -63,7 +63,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
         setLocalWishlist(Array.isArray(parsedWishlist) ? parsedWishlist : []);
       }
     } catch (error) {
-      console.error('Failed to load local wishlist:', error);
+      
       setLocalWishlist([]);
     }
   };
@@ -73,7 +73,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
       localStorage.setItem('localWishlist', JSON.stringify(items));
       setLocalWishlist(items);
     } catch (error) {
-      console.error('Failed to save local wishlist:', error);
+      
     }
   };
 
@@ -91,7 +91,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
       const serverWishlist = await wishlistService.getWishlist();
       setWishlist(serverWishlist);
     } catch (error) {
-      console.error('Failed to load server wishlist:', error);
+      
       setWishlist(null);
     } finally {
       setIsLoading(false);
@@ -108,7 +108,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
           await wishlistService.addToWishlist(localItem.product._id, localItem.variantId);
         } catch (error) {
           // Item might already exist in server wishlist, continue with others
-          console.warn('Failed to sync wishlist item:', error);
+          
         }
       }
       
@@ -119,7 +119,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
       // Clear local wishlist
       saveLocalWishlist([]);
     } catch (error) {
-      console.error('Failed to sync wishlist on login:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -131,30 +131,24 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
       
       // Validate input parameters
       if (!product) {
-        console.error('Product is required to add to wishlist');
+        
         throw new Error('Product is required to add to wishlist');
       }
       
       if (!product._id) {
-        console.error('Product ID is required');
+        
         throw new Error('Product ID is required');
       }
-      
-      console.log('WishlistContext - addToWishlist called with:', { 
-        productId: product._id, 
-        variantId,
-        isAuthenticated 
-      });
-      
+
       if (isAuthenticated) {
         // User is logged in - add to server wishlist
-        console.log('Adding to server wishlist...');
+        
         const updatedWishlist = await wishlistService.addToWishlist(product._id, variantId);
-        console.log('Server wishlist updated:', updatedWishlist);
+        
         setWishlist(updatedWishlist);
       } else {
         // User is not logged in - add to local wishlist
-        console.log('Adding to local wishlist...');
+        
         const existingIndex = localWishlist.findIndex(
           item => item.product._id === product._id && item.variantId === variantId
         );
@@ -166,14 +160,14 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
             addedAt: new Date().toISOString()
           };
           const updatedLocalWishlist = [...localWishlist, newItem];
-          console.log('Saving to local wishlist:', updatedLocalWishlist.length, 'items');
+          
           saveLocalWishlist(updatedLocalWishlist);
         } else {
-          console.log('Item already exists in local wishlist');
+          
         }
       }
     } catch (error) {
-      console.error('Failed to add to wishlist:', error);
+      
       // Don't re-throw the error to prevent UI crashes
       // Just log it and let the UI handle the failure gracefully
     } finally {
@@ -197,7 +191,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
         saveLocalWishlist(updatedLocalWishlist);
       }
     } catch (error) {
-      console.error('Failed to remove from wishlist:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -217,7 +211,7 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
         saveLocalWishlist([]);
       }
     } catch (error) {
-      console.error('Failed to clear wishlist:', error);
+      
       throw error;
     } finally {
       setIsLoading(false);

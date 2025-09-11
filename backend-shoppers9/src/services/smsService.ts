@@ -15,14 +15,14 @@ class SMSService {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
 
     if (!accountSid || !authToken) {
-      console.warn('Twilio credentials not configured. SMS service will be disabled.');
+      
       return;
     }
 
     try {
       this.client = new Twilio(accountSid, authToken);
     } catch (error) {
-      console.error('Failed to initialize Twilio client:', error);
+      
     }
   }
 
@@ -30,13 +30,12 @@ class SMSService {
     try {
       // For test phone number, always use hardcoded OTP
       if (phone === '1234567890') {
-        console.log(`📱 Test OTP for ${phone}: 1234 (hardcoded for testing)`);
         return true;
       }
 
       // In development, just log the OTP
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 OTP for ${phone}: ${otp}`);
+        
         return true;
       }
 
@@ -52,14 +51,12 @@ class SMSService {
         to: `+91${phone}`
       });
 
-      console.log(`SMS sent successfully. SID: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Failed to send SMS:', error);
-      
+
       // In development, don't fail if SMS service is not configured
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 [DEV] OTP for ${phone}: ${otp}`);
+        
         return true;
       }
       
@@ -70,12 +67,12 @@ class SMSService {
   async sendOrderConfirmation(phone: string, orderNumber: string): Promise<boolean> {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 Order confirmation for ${phone}: Order ${orderNumber} confirmed`);
+        
         return true;
       }
 
       if (!this.client) {
-        console.warn('SMS service not configured for order confirmation');
+        
         return false;
       }
 
@@ -87,10 +84,9 @@ class SMSService {
         to: `+91${phone}`
       });
 
-      console.log(`Order confirmation SMS sent. SID: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Failed to send order confirmation SMS:', error);
+      
       return false;
     }
   }
@@ -98,12 +94,12 @@ class SMSService {
   async sendOrderUpdate(phone: string, orderNumber: string, status: string): Promise<boolean> {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 Order update for ${phone}: Order ${orderNumber} is ${status}`);
+        
         return true;
       }
 
       if (!this.client) {
-        console.warn('SMS service not configured for order updates');
+        
         return false;
       }
 
@@ -128,10 +124,9 @@ class SMSService {
         to: `+91${phone}`
       });
 
-      console.log(`Order update SMS sent. SID: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Failed to send order update SMS:', error);
+      
       return false;
     }
   }
@@ -139,12 +134,12 @@ class SMSService {
   async sendWelcomeMessage(phone: string, name: string): Promise<boolean> {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 Welcome message for ${phone}: Welcome ${name}!`);
+        
         return true;
       }
 
       if (!this.client) {
-        console.warn('SMS service not configured for welcome message');
+        
         return false;
       }
 
@@ -156,10 +151,9 @@ class SMSService {
         to: `+91${phone}`
       });
 
-      console.log(`Welcome SMS sent. SID: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Failed to send welcome SMS:', error);
+      
       return false;
     }
   }

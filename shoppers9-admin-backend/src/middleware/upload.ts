@@ -29,23 +29,18 @@ if (!fs.existsSync(bannersDir)) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Determine destination based on the URL path
-    console.log('Upload destination check:', {
-      originalUrl: req.originalUrl,
-      path: req.path,
-      route: req.route?.path
-    });
-    
+
     if (req.originalUrl.includes('/categories') || req.path.includes('categories')) {
-      console.log('Saving to categories directory');
+      
       cb(null, categoriesDir);
     } else if (req.originalUrl.includes('/products') || req.path.includes('products')) {
-      console.log('Saving to products directory');
+      
       cb(null, productsDir);
     } else if (req.originalUrl.includes('/banners') || req.path.includes('banners')) {
-      console.log('Saving to banners directory');
+      
       cb(null, bannersDir);
     } else {
-      console.log('Saving to main uploads directory');
+      
       cb(null, uploadsDir);
     }
   },
@@ -59,13 +54,7 @@ const storage = multer.diskStorage({
 
 // File filter to allow specific image formats
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  console.log('File filter check:', {
-    originalname: file.originalname,
-    mimetype: file.mimetype,
-    fieldname: file.fieldname,
-    size: file.size
-  });
-  
+
   const allowedMimeTypes = [
     'image/jpeg',
     'image/jpg', 
@@ -80,17 +69,11 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg', '.webp', '.gif', '.bmp', '.tiff', '.tif'];
   const fileExtension = path.extname(file.originalname).toLowerCase();
   
-  console.log('Validation check:', {
-    fileExtension,
-    mimetypeAllowed: allowedMimeTypes.includes(file.mimetype),
-    extensionAllowed: allowedExtensions.includes(fileExtension)
-  });
-  
   if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
-    console.log('File accepted:', file.originalname);
+    
     cb(null, true);
   } else {
-    console.log('File rejected:', file.originalname, 'mimetype:', file.mimetype, 'extension:', fileExtension);
+    
     cb(new Error('Only image files (JPG, JPEG, PNG, SVG, WebP, GIF, BMP, TIFF) are allowed!'));
   }
 };

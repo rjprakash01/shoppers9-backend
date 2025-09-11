@@ -48,7 +48,7 @@ const Category: React.FC = () => {
         setCategoryName(categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1));
       }
     } catch (error) {
-      console.error('Failed to fetch category products:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -256,7 +256,7 @@ const Category: React.FC = () => {
         />
         
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-0' : ''}`}>
+        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-80' : 'lg:ml-0'}`}>
           <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header */}
@@ -352,7 +352,6 @@ const Category: React.FC = () => {
               {products && products.map(renderProductCard)}
             </div>
 
-            
             {renderPagination()}
           </>
         )}

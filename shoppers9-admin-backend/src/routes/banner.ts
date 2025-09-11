@@ -35,14 +35,6 @@ router.post('/upload/banner', auth, uploadBannerImage, handleUploadError, async 
       return;
     }
 
-    console.log('Banner upload request:', {
-      originalname: req.file.originalname,
-      filename: req.file.filename,
-      path: req.file.path,
-      mimetype: req.file.mimetype,
-      size: req.file.size
-    });
-
     // Define output directory for SVG files
     const outputDir = path.join(process.cwd(), 'uploads', 'banners');
     
@@ -80,12 +72,6 @@ router.post('/upload/banner', auth, uploadBannerImage, handleUploadError, async 
     const relativePath = result.svgPath.replace(process.cwd(), '').replace(/\\/g, '/');
     const urlPath = relativePath.startsWith('/uploads/') ? relativePath : `/uploads/banners/${path.basename(result.svgPath)}`;
 
-    console.log('Banner conversion successful:', {
-      originalFile: req.file.filename,
-      svgPath: result.svgPath,
-      urlPath: urlPath
-    });
-
     res.status(200).json({
       success: true,
       message: 'Banner image uploaded and converted successfully',
@@ -98,8 +84,7 @@ router.post('/upload/banner', auth, uploadBannerImage, handleUploadError, async 
     });
 
   } catch (error) {
-    console.error('Banner upload error:', error);
-    
+
     // Clean up uploaded file in case of error
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);

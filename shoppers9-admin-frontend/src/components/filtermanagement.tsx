@@ -121,7 +121,7 @@ const FilterManagement: React.FC = () => {
         setCategories(flatCategories);
       }
     } catch (err: any) {
-      console.error('Error fetching categories:', err);
+      
     }
   };
 
@@ -129,16 +129,14 @@ const FilterManagement: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('Fetching filters for page:', currentPage, 'search:', searchTerm);
+      
       const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
       const response = await authService.get(`/api/admin/filters?page=${currentPage}&limit=${pageSize}${searchParam}`);
-      console.log('Filters response:', response);
-      
+
       // Handle the backend response format: {success: true, data: {filters: [...], pagination: {...}}}
       // Note: authService.get() returns response.data directly, so we access response.data.filters
       if (response && response.success && response.data && Array.isArray(response.data.filters)) {
-        console.log('Setting filters from response.data.filters:', response.data.filters);
-    
+
         setFilters(response.data.filters);
         
         // Handle pagination data
@@ -147,14 +145,14 @@ const FilterManagement: React.FC = () => {
           setTotalFilters(response.data.pagination.total);
         }
       } else if (response && Array.isArray(response)) {
-        console.log('Setting filters from response (direct array):', response);
+        :', response);
         setFilters(response);
       } else {
-        console.log('No valid filters found, setting empty array. Response:', response);
+        
         setFilters([]);
       }
     } catch (err: any) {
-      console.error('Error fetching filters:', err);
+      
       setError(err.response?.data?.message || 'Failed to fetch filters');
       setFilters([]); // Ensure filters is always an array
     } finally {
@@ -166,8 +164,7 @@ const FilterManagement: React.FC = () => {
     e.preventDefault();
     try {
       setError(null);
-      console.log('Submitting filter data:', formData);
-      
+
       let response;
       if (editingFilter) {
         response = await authService.put(`/api/admin/filters/${editingFilter._id}`, formData);
@@ -176,20 +173,17 @@ const FilterManagement: React.FC = () => {
         // Reset to page 1 to see the newly created filter
         setCurrentPage(1);
       }
-      
-      console.log('Filter creation/update response:', response);
-      
+
       await fetchFilters();
       handleCloseForm();
     } catch (err: any) {
-      console.error('Error saving filter:', err);
+      
       setError(err.response?.data?.message || 'Failed to save filter');
     }
   };
 
   const handleEdit = (filter: Filter) => {
-    console.log('handleEdit called with filter:', filter);
-    console.log('Filter ID in handleEdit:', filter._id);
+
     setEditingFilter(filter);
     setFormData({
       name: filter.name,
@@ -206,31 +200,31 @@ const FilterManagement: React.FC = () => {
   };
 
   const handleDelete = async (filterId: string) => {
-    console.log('handleDelete called with filterId:', filterId);
+    
     if (!window.confirm('Are you sure you want to delete this filter?')) {
       return;
     }
     
     try {
       setError(null);
-      console.log('Sending DELETE request to:', `/api/admin/filters/${filterId}`);
+      
       await authService.delete(`/api/admin/filters/${filterId}`);
       await fetchFilters();
     } catch (err: any) {
-      console.error('Error deleting filter:', err);
+      
       setError(err.response?.data?.message || 'Failed to delete filter');
     }
   };
 
   const handleToggleStatus = async (filterId: string, currentStatus: boolean) => {
-    console.log('handleToggleStatus called with filterId:', filterId);
+    
     try {
       setError(null);
-      console.log('Sending PUT request to:', `/api/admin/filters/${filterId}/toggle-status`);
+      
       await authService.put(`/api/admin/filters/${filterId}/toggle-status`);
       await fetchFilters();
     } catch (err: any) {
-      console.error('Error updating filter status:', err);
+      
       setError(err.response?.data?.message || 'Failed to update filter status');
     }
   };
@@ -261,8 +255,7 @@ const FilterManagement: React.FC = () => {
   };
 
   const handleManageOptions = (filter: Filter) => {
-    console.log('Manage Options clicked, filter:', filter);
-    console.log('Filter ID:', filter._id);
+
     if (filter._id) {
       navigate(`/filter-options/${filter._id}`);
     } else {

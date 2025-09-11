@@ -152,7 +152,7 @@ const Checkout: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Failed to fetch addresses:', error);
+      
     }
   };
 
@@ -164,7 +164,7 @@ const Checkout: React.FC = () => {
       setCartSummary(summary);
       setAppliedCoupon(summary.appliedCoupon || null);
     } catch (error) {
-      console.error('Failed to fetch cart summary:', error);
+      
     }
   };
 
@@ -199,7 +199,7 @@ const Checkout: React.FC = () => {
       setCouponError('');
       await fetchCartSummary();
     } catch (error) {
-      console.error('Failed to remove coupon:', error);
+      
     }
   };
 
@@ -242,7 +242,7 @@ const Checkout: React.FC = () => {
       setSelectedAddressId(newAddress.id);
       setShowAddressForm(false);
     } catch (error) {
-      console.error('Failed to add address:', error);
+      
     } finally {
       setIsAddingAddress(false);
     }
@@ -343,7 +343,7 @@ const Checkout: React.FC = () => {
         } 
       });
     } catch (error: any) {
-      console.error('Order creation failed:', error);
+      
       const errorMessage = error.response?.data?.message || error.message || 'Failed to place order. Please try again.';
       alert(errorMessage);
     } finally {

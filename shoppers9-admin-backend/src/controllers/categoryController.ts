@@ -107,9 +107,7 @@ export const getCategory = async (req: Request, res: Response): Promise<void> =>
 
 export const createCategory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    console.log('Creating category with data:', req.body);
-    console.log('Uploaded file:', req.file);
-    
+
     // Handle parentCategory - extract ID if it's an object
     let parentCategoryId = null;
     if (req.body.parentCategory) {
@@ -155,19 +153,14 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
     // Remove slug from categoryData to let the pre-save hook generate it
     delete categoryData.slug;
 
-    console.log('Processed category data:', categoryData);
-
     const category = await Category.create(categoryData);
     await category.populate('parentCategory', 'name level');
-
-    console.log('Category created successfully:', category);
 
     // Auto-assign appropriate filters to the new category
     try {
       await autoAssignFiltersToCategory(category._id.toString(), req.admin?.id);
-      console.log('✅ Filters auto-assigned to category:', category.name);
+      
     } catch (filterError) {
-      console.error('⚠️ Error auto-assigning filters (category still created):', filterError);
       // Don't fail the category creation if filter assignment fails
     }
 
@@ -177,8 +170,7 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
       data: category
     });
   } catch (error) {
-    console.error('Error creating category:', error);
-    
+
     if (error instanceof Error && error.message.includes('duplicate key')) {
       res.status(400).json({
         success: false,
@@ -197,9 +189,7 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
 
 export const updateCategory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    console.log('Updating category with data:', req.body);
-    console.log('Uploaded file:', req.file);
-    
+
     // Handle parentCategory - extract ID if it's an object
     let parentCategoryId = null;
     if (req.body.parentCategory) {

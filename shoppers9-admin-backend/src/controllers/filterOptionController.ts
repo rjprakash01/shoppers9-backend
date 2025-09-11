@@ -49,10 +49,6 @@ export const getFilterOptions = async (req: Request, res: Response): Promise<voi
       .populate('updatedBy', 'firstName lastName');
 
     const total = await FilterOption.countDocuments(query);
-    
-    console.log(`Filter options query for filter ${filterId}:`, query);
-    console.log(`Found ${options.length} options, total: ${total}`);
-    console.log('Options:', options);
 
     res.json({
       success: true,

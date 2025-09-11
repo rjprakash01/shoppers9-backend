@@ -115,7 +115,7 @@ const BannerManagement: React.FC = () => {
       const flatCategories = flattenCategories(rawCategories);
       setCategories(flatCategories.filter(cat => cat.isActive));
     } catch (err: any) {
-      console.error('Error loading categories:', err);
+      
     } finally {
       setLoadingCategories(false);
     }
@@ -167,8 +167,7 @@ const BannerManagement: React.FC = () => {
       setFormData(prev => ({ ...prev, image: imageUrl }));
       setError(null);
     } catch (err: any) {
-      console.error('Banner upload error details:', err);
-      
+
       if (err.response?.status === 401) {
         setError('Authentication failed. Please log in again.');
       } else if (err.response?.status === 413) {

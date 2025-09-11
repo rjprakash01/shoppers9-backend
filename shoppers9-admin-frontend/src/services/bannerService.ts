@@ -70,7 +70,7 @@ class AdminBannerService {
       );
       return response.data;
     } catch (error) {
-      console.error('Error fetching banners:', error);
+      
       throw error;
     }
   }
@@ -83,7 +83,7 @@ class AdminBannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching banner:', error);
+      
       throw error;
     }
   }
@@ -96,7 +96,7 @@ class AdminBannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error creating banner:', error);
+      
       throw error;
     }
   }
@@ -109,7 +109,7 @@ class AdminBannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error updating banner:', error);
+      
       throw error;
     }
   }
@@ -121,7 +121,7 @@ class AdminBannerService {
         headers: this.getAuthHeaders()
       });
     } catch (error) {
-      console.error('Error deleting banner:', error);
+      
       throw error;
     }
   }
@@ -136,7 +136,7 @@ class AdminBannerService {
       );
       return response.data.data;
     } catch (error) {
-      console.error('Error updating banner status:', error);
+      
       throw error;
     }
   }
@@ -150,7 +150,7 @@ class AdminBannerService {
         { headers: this.getAuthHeaders() }
       );
     } catch (error) {
-      console.error('Error reordering banners:', error);
+      
       throw error;
     }
   }
@@ -158,37 +158,23 @@ class AdminBannerService {
   // Upload banner image
   async uploadBannerImage(file: File): Promise<string> {
     try {
-      console.log('Starting banner image upload:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
-      });
-      
+
       const formData = new FormData();
       formData.append('image', file);
 
       const uploadUrl = `${API_BASE_URL}/api/admin/banners/upload/banner`;
-      console.log('Upload URL:', uploadUrl);
-      
+
       const headers = this.getUploadHeaders();
-      console.log('Upload headers:', { ...headers, Authorization: headers.Authorization ? '[PRESENT]' : '[MISSING]' });
 
       const response = await axios.post(
         uploadUrl,
         formData,
         { headers }
       );
-      
-      console.log('Upload response:', response.data);
+
       return response.data.data.imageUrl;
     } catch (error: any) {
-      console.error('Error uploading banner image:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        code: error.code
-      });
+      
       throw error;
     }
   }

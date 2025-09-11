@@ -273,11 +273,9 @@ const seedCategories = async (): Promise<void> => {
   try {
     // Connect to database
     await connectDB();
-    console.log('Connected to MongoDB');
 
     // Clear existing categories
     await Category.deleteMany({});
-    console.log('Cleared existing categories');
 
     // Create categories level by level to handle parent references
     const categoryMap = new Map<string, string>(); // slug -> _id mapping
@@ -288,7 +286,7 @@ const seedCategories = async (): Promise<void> => {
       const category = new Category(categoryData);
       const savedCategory = await category.save();
       categoryMap.set(categoryData.slug, savedCategory._id.toString());
-      console.log(`Created level 1 category: ${categoryData.name}`);
+      
     }
 
     // Level 2 categories
@@ -302,7 +300,7 @@ const seedCategories = async (): Promise<void> => {
         });
         const savedCategory = await category.save();
         categoryMap.set(categoryData.slug, savedCategory._id.toString());
-        console.log(`Created level 2 category: ${categoryData.name}`);
+        
       }
     }
 
@@ -317,36 +315,32 @@ const seedCategories = async (): Promise<void> => {
         });
         const savedCategory = await category.save();
         categoryMap.set(categoryData.slug, savedCategory._id.toString());
-        console.log(`Created level 3 category: ${categoryData.name}`);
+        
       }
     }
 
-    console.log('\n✅ Categories seeded successfully!');
-    console.log(`Total categories created: ${categoriesData.length}`);
-    
     // Display category tree
     const categories = await Category.find({}).populate('parentCategory', 'name');
-    console.log('\n📋 Category Tree:');
-    
+
     const level1 = categories.filter(cat => cat.level === 1);
     for (const cat1 of level1) {
-      console.log(`├── ${cat1.name}`);
+      
       const level2 = categories.filter(cat => cat.level === 2 && cat.parentCategory?.toString() === cat1._id.toString());
       for (const cat2 of level2) {
-        console.log(`│   ├── ${cat2.name}`);
+        
         const level3 = categories.filter(cat => cat.level === 3 && cat.parentCategory?.toString() === cat2._id.toString());
         for (const cat3 of level3) {
-          console.log(`│   │   ├── ${cat3.name}`);
+          
         }
       }
     }
 
   } catch (error) {
-    console.error('❌ Error seeding categories:', error);
+    
   } finally {
     // Close database connection
     await mongoose.connection.close();
-    console.log('\n🔌 Database connection closed');
+    
     process.exit(0);
   }
 };

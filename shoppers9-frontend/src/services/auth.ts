@@ -28,19 +28,13 @@ export interface LoginResponse {
 
 class AuthService {
   async sendOTP(phone: string): Promise<{ message: string }> {
-    console.log('🔄 Sending OTP request for phone:', phone);
+    
     try {
       const response = await api.post('/auth/send-otp', { phone });
-      console.log('✅ OTP response received:', response.data);
+      
       return response.data;
     } catch (error: any) {
-      console.error('❌ OTP request failed:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
+
       throw error;
     }
   }

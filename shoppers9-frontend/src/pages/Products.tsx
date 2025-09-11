@@ -58,7 +58,7 @@ const Products: React.FC = () => {
       setProducts(response.products);
       setTotalPages(response.pagination.totalPages);
     } catch (error) {
-      console.error('Failed to fetch products:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +89,7 @@ const Products: React.FC = () => {
 
   const handleAddToCart = async (product: Product) => {
     if (!product || !product._id || !product.variants.length) {
-      console.error('Cannot add to cart: invalid product data', { product: product?._id, variants: product?.variants?.length });
+      
       return;
     }
     
@@ -97,41 +97,40 @@ const Products: React.FC = () => {
     const firstSize = firstVariant.sizes[0];
     
     if (!firstSize || !firstVariant._id) {
-      console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant._id, size: firstSize?.size });
+      
       return;
     }
     
     try {
       await addToCart(product, firstVariant._id, firstSize.size, 1);
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      
     }
   };
 
   const handleToggleWishlist = async (product: Product) => {
     if (!product || !product._id) {
-      console.error('Cannot toggle wishlist: missing product data');
+      
       return;
     }
 
     try {
-      console.log('Toggling wishlist for product:', product._id);
-      const isCurrentlyInWishlist = checkIsInWishlist(product._id);
-      console.log('Currently in wishlist:', isCurrentlyInWishlist);
       
+      const isCurrentlyInWishlist = checkIsInWishlist(product._id);
+
       if (isCurrentlyInWishlist) {
-        console.log('Removing from wishlist...');
+        
         await removeFromWishlist(product._id);
       } else {
-        console.log('Adding to wishlist...');
+        
         await addToWishlist(product);
       }
-      console.log('Wishlist toggle completed successfully');
+      
     } catch (error) {
-      console.error('Failed to toggle wishlist:', error);
+      
       // For unauthenticated users trying to use server wishlist, redirect to login
       if (!isAuthenticated && (error as any)?.message?.includes('401')) {
-        console.log('Redirecting to login for authentication');
+        
         window.location.href = '/login';
       }
       // For other errors, just log them - don't crash the UI

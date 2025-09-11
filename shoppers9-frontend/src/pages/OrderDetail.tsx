@@ -153,7 +153,7 @@ const OrderDetail: React.FC = () => {
         
         alert(`Order cancelled successfully! You will receive a refund of ₹${refundAmount.toFixed(2)} within ${refundTimeframe}.`);
       } catch (error) {
-        console.error('Failed to cancel order:', error);
+        
         alert('Failed to cancel order. Please try again.');
       } finally {
         setCancelling(false);
@@ -193,7 +193,7 @@ const OrderDetail: React.FC = () => {
       
       setTrackingInfo(mockTrackingInfo);
     } catch (error) {
-      console.error('Failed to track order:', error);
+      
       alert('Failed to track order. Please try again.');
     } finally {
       setTrackingLoading(false);

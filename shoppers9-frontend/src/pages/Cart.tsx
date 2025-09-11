@@ -27,9 +27,9 @@ const Cart: React.FC = () => {
   
   // Debug: Log cart items and their IDs
   React.useEffect(() => {
-    console.log('Cart items:', cartItems);
+    
     cartItems.forEach((item, index) => {
-      console.log(`Item ${index}: ID=${item._id}, product=${item.product || item.productId}`);
+      
     });
   }, [cartItems]);
 
@@ -48,21 +48,21 @@ const Cart: React.FC = () => {
         await updateCartItem(productId!, item.variantId, item.size, newQuantity);
       }
     } catch (error) {
-      console.error('Failed to update cart item:', error);
+      
     } finally {
       setIsUpdating(null);
     }
   };
 
   const handleForceRefresh = async () => {
-    console.log('Force refreshing cart...');
+    
     localStorage.removeItem('cart');
     await refreshCart();
   };
 
   const handleTestLogin = async () => {
     try {
-      console.log('Attempting test login...');
+      
       const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
         method: 'POST',
         headers: {
@@ -76,16 +76,15 @@ const Cart: React.FC = () => {
       });
       
       const data = await response.json();
-      console.log('Login response:', data);
-      
+
       if (data.success && data.data.accessToken) {
         localStorage.setItem('authToken', data.data.accessToken);
         localStorage.setItem('user', JSON.stringify(data.data.user));
-        console.log('Login successful! Refreshing page...');
+        
         window.location.reload();
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      
     }
   };
 
@@ -102,7 +101,7 @@ const Cart: React.FC = () => {
         await removeFromCart(productId!, item.variantId, item.size);
       }
     } catch (error) {
-      console.error('Failed to remove cart item:', error);
+      
     } finally {
       setIsUpdating(null);
     }
@@ -132,7 +131,7 @@ const Cart: React.FC = () => {
       
       // Item saved for later successfully
     } catch (error) {
-      console.error('Failed to save item for later:', error);
+      
       alert('Failed to save item for later. Please try again.');
     } finally {
       setIsUpdating(null);
@@ -152,7 +151,7 @@ const Cart: React.FC = () => {
       
       // Item moved to cart successfully
     } catch (error) {
-      console.error('Failed to move item to cart:', error);
+      
       alert('Failed to move item to cart. Please try again.');
     }
   };
@@ -162,7 +161,7 @@ const Cart: React.FC = () => {
       await removeFromWishlist(productId);
       // Item removed from saved items successfully
     } catch (error) {
-      console.error('Failed to remove from wishlist:', error);
+      
       alert('Failed to remove item. Please try again.');
     }
   };
@@ -192,9 +191,7 @@ const Cart: React.FC = () => {
               <ShoppingBag className="mr-3 h-6 w-6" />
               Start Shopping
             </Link>
-            
 
-            
             <div className="text-sm text-gray-500 mt-6">
               <Link to="/" className="text-purple-600 hover:text-purple-700 font-medium">
                 ← Back to Home

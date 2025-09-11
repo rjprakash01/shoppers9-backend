@@ -1,0 +1,29 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 414691912398.dkr.ecr.us-east-1.amazonaws.com
+      - REPOSITORY_URI_BACKEND=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend
+      - REPOSITORY_URI_FRONTEND=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend
+      - REPOSITORY_URI_ADMIN=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin-frontend
+      - IMAGE_TAG=latest
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker images...
+      - docker build -f aws-deployment/docker/Dockerfile.backend -t $REPOSITORY_URI_BACKEND:$IMAGE_TAG .
+      - docker build -f aws-deployment/docker/Dockerfile.frontend -t $REPOSITORY_URI_FRONTEND:$IMAGE_TAG .
+      - docker build -f aws-deployment/docker/Dockerfile.admin-frontend -t $REPOSITORY_URI_ADMIN:$IMAGE_TAG .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI_BACKEND:$IMAGE_TAG
+      - docker push $REPOSITORY_URI_FRONTEND:$IMAGE_TAG
+      - docker push $REPOSITORY_URI_ADMIN:$IMAGE_TAG
+      - echo Updating ECS services...
+      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-backend --force-new-deployment
+      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-frontend --force-new-deployment
+      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-admin --force-new-deployment

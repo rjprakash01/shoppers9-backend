@@ -10,20 +10,16 @@ dotenv.config();
 
 const assignCategoryFilters = async (): Promise<void> => {
   try {
-    console.log('🔧 Starting category filter assignment...');
 
     // Connect to database
     await connectDB();
 
     // Clear existing category filter assignments
     await CategoryFilter.deleteMany({});
-    console.log('🗑️  Cleared existing category filter assignments');
 
     // Get all categories and filters
     const categories = await Category.find({});
     const filters = await Filter.find({});
-
-    console.log(`Found ${categories.length} categories and ${filters.length} filters`);
 
     // Define filter assignments for different category types
     const filterAssignments: Record<string, string[]> = {
@@ -64,7 +60,7 @@ const assignCategoryFilters = async (): Promise<void> => {
         const filterNames = filterAssignments[categorySlug] || [];
         
         if (filterNames.length > 0) {
-          console.log(`\n📁 Assigning filters to category: ${category.name} (${categorySlug})`);
+          `);
           
           for (let i = 0; i < filterNames.length; i++) {
             const filterName = filterNames[i];
@@ -81,9 +77,9 @@ const assignCategoryFilters = async (): Promise<void> => {
               
               await categoryFilter.save();
               assignmentCount++;
-              console.log(`  ✅ Assigned filter: ${filter.displayName}`);
+              
             } else {
-              console.log(`  ❌ Filter not found: ${filterName}`);
+              
             }
           }
         } else {
@@ -105,26 +101,22 @@ const assignCategoryFilters = async (): Promise<void> => {
               
               await categoryFilter.save();
               assignmentCount++;
-              console.log(`  ✅ Assigned default filter to ${category.name}: ${filter.displayName}`);
+              
             }
           }
         }
       }
     }
 
-    console.log(`\n🎉 Category filter assignment completed!`);
-    console.log(`📊 Total assignments created: ${assignmentCount}`);
-
     // Verify assignments
     const totalAssignments = await CategoryFilter.countDocuments();
-    console.log(`📋 Total category filter assignments in database: ${totalAssignments}`);
 
   } catch (error) {
-    console.error('❌ Error assigning category filters:', error);
+    
   } finally {
     // Close database connection
     await mongoose.connection.close();
-    console.log('🔌 Database connection closed');
+    
     process.exit(0);
   }
 };

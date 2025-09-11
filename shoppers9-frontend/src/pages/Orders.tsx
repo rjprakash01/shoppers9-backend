@@ -29,7 +29,7 @@ const Orders: React.FC = () => {
         const response = await orderService.getOrders();
         setOrders(response.orders);
       } catch (err) {
-        console.error('Failed to fetch orders:', err);
+        
         setError('Failed to load orders. Please try again.');
       } finally {
         setIsLoading(false);
@@ -84,7 +84,7 @@ const Orders: React.FC = () => {
       const response = await orderService.getOrders();
       setOrders(response.orders);
     } catch (err) {
-      console.error('Failed to refresh orders:', err);
+      
       setError('Failed to refresh orders. Please try again.');
     } finally {
       setIsLoading(false);

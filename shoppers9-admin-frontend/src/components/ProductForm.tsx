@@ -197,27 +197,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   // Fetch available filters when category selection changes
   useEffect(() => {
-    console.log('🔍 ProductForm: Filter useEffect triggered');
-    console.log('🔍 ProductForm: Categories loaded:', categories.length);
-    console.log('🔍 ProductForm: Form data categories:', {
-      category: formData.category,
-      subCategory: formData.subCategory,
-      subSubCategory: formData.subSubCategory
-    });
-    
+
     if (categories.length === 0) {
-      console.log('🔍 ProductForm: No categories loaded yet, skipping filter fetch');
+      
       return;
     }
 
     const categoryToCheck = formData.subSubCategory || formData.subCategory || formData.category;
-    console.log('🔍 ProductForm: Category to check for filters:', categoryToCheck);
-    
+
     if (categoryToCheck) {
-      console.log('🔍 ProductForm: Fetching filters for category:', categoryToCheck);
+      
       fetchAvailableFilters(categoryToCheck);
     } else {
-      console.log('🔍 ProductForm: No category selected, clearing filters');
+      
       setAvailableFilters([]);
     }
   }, [formData.category, formData.subCategory, formData.subSubCategory, categories]);
@@ -227,16 +219,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
     if (categories.length > 0) {
       const mainCats = categories.filter(cat => cat.level === 1);
       setMainCategories(mainCats);
-      console.log('🔍 ProductForm: Main categories set:', mainCats.length);
+      
     }
   }, [categories]);
 
   const fetchCategories = async () => {
     try {
-      console.log('🔍 ProductForm: Fetching categories...');
-      const response = await authService.get('/api/admin/categories/tree');
-      console.log('🔍 ProductForm: Categories response:', response);
       
+      const response = await authService.get('/api/admin/categories/tree');
+
       const flattenCategories = (categories: any[]): Category[] => {
         let flattened: Category[] = [];
         
@@ -264,39 +255,32 @@ const ProductForm: React.FC<ProductFormProps> = ({
       };
       
       const flatCategories = flattenCategories(response.data || []);
-      console.log('🔍 ProductForm: Flattened categories:', flatCategories.length);
+      
       setCategories(flatCategories);
     } catch (error) {
-      console.error('🔍 ProductForm: Error fetching categories:', error);
+      
       setCategories([]);
     }
   };
 
   const fetchAvailableFilters = async (categoryId: string) => {
     try {
-      console.log('🔍 ProductForm: Fetching available filters for category:', categoryId);
-      const response = await authService.get(`/api/admin/categories/${categoryId}/filters`);
-      console.log('🔍 ProductForm: Available filters response:', response);
       
+      const response = await authService.get(`/api/admin/categories/${categoryId}/filters`);
+
       if (response.success && response.data && response.data.categoryFilters) {
-        console.log('🔍 ProductForm: Setting available filters:', response.data.categoryFilters.length);
+        
         setAvailableFilters(response.data.categoryFilters);
         
         response.data.categoryFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
-          console.log(`🔍 ProductForm: Filter ${index + 1}:`, {
-            id: categoryFilter._id,
-            filterName: categoryFilter.filter?.name,
-            filterDisplayName: categoryFilter.filter?.displayName,
-            filterType: categoryFilter.filter?.type,
-            optionsCount: categoryFilter.filter?.options?.length || 0
-          });
+          
         });
       } else {
-        console.log('🔍 ProductForm: No filters found or invalid response structure');
+        
         setAvailableFilters([]);
       }
     } catch (error) {
-      console.error('🔍 ProductForm: Error fetching available filters:', error);
+      
       setAvailableFilters([]);
     }
   };
@@ -343,12 +327,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleMainCategoryChange = (categoryId: string) => {
-    console.log('🔍 ProductForm: Main category changed to:', categoryId);
-    
+
     if (categoryId) {
       const subCats = filterCategoriesByParent(2, categoryId);
       setSubCategories(subCats);
-      console.log('🔍 ProductForm: Sub categories found:', subCats.length);
+      
     } else {
       setSubCategories([]);
     }
@@ -363,12 +346,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleSubCategoryChange = (categoryId: string) => {
-    console.log('🔍 ProductForm: Sub category changed to:', categoryId);
-    
+
     if (categoryId) {
       const subSubCats = filterCategoriesByParent(3, categoryId);
       setSubSubCategories(subSubCats);
-      console.log('🔍 ProductForm: Sub-sub categories found:', subSubCats.length);
+      
     } else {
       setSubSubCategories([]);
     }
@@ -381,7 +363,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleSubSubCategoryChange = (categoryId: string) => {
-    console.log('🔍 ProductForm: Sub-sub category changed to:', categoryId);
+    
     setFormData(prev => ({
       ...prev,
       subSubCategory: categoryId
@@ -689,7 +671,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     e.preventDefault();
     
     if (!validateForm()) {
-      console.log('Form validation failed');
+      
       return;
     }
 
@@ -721,7 +703,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       }
       onClose();
     } catch (error) {
-      console.error('Form submission error:', error);
+      
       setErrors({ submit: 'Failed to save product. Please try again.' });
     } finally {
       setIsLoading(false);
@@ -887,8 +869,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
                   </div>
                 </div>
-
-
 
                 {/* Pricing & Inventory */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">

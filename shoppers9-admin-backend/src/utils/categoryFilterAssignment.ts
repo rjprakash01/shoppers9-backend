@@ -375,8 +375,7 @@ const DEFAULT_FILTERS: FilterAssignmentRule = {
  */
 export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: string): Promise<void> => {
   try {
-    console.log(`🔧 Auto-assigning filters to category: ${categoryId}`);
-    
+
     // Get the category with its full hierarchy
     const category = await Category.findById(categoryId).populate('parentCategory');
     if (!category) {
@@ -390,14 +389,12 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
     }
     
     const contextString = categoryContext.join(' ');
-    console.log(`📝 Category context: ${contextString}`);
 
     // Find matching filter rule
     let matchingRule: FilterAssignmentRule | null = null;
     for (const rule of FILTER_ASSIGNMENT_RULES) {
       if (rule.keywords.some(keyword => contextString.includes(keyword))) {
         matchingRule = rule;
-        console.log(`✅ Found matching rule for keywords: ${rule.keywords.join(', ')}`);
         break;
       }
     }
@@ -405,19 +402,18 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
     // Use default filters if no specific rule matches
     if (!matchingRule) {
       matchingRule = DEFAULT_FILTERS;
-      console.log(`📋 Using default filters for category`);
+      
     }
 
     // Create or find filters and assign them to the category
     for (const filterType of matchingRule.filterTypes) {
-      console.log(`🔍 Processing filter: ${filterType.name}`);
-      
+
       // Check if filter already exists
       let filter = await Filter.findOne({ name: filterType.name });
       
       if (!filter) {
         // Create new filter
-        console.log(`➕ Creating new filter: ${filterType.name}`);
+        
         filter = await Filter.create({
           name: filterType.name,
           displayName: filterType.displayName,
@@ -437,7 +433,7 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
         });
 
         if (!existingOption) {
-          console.log(`➕ Creating filter option: ${optionData.value}`);
+          
           await FilterOption.create({
             filter: filter._id,
             value: optionData.value,
@@ -457,7 +453,7 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
 
       if (!existingAssignment) {
         // Assign filter to category
-        console.log(`🔗 Assigning filter ${filterType.name} to category`);
+        
         await CategoryFilter.create({
           category: categoryId,
           filter: filter._id,
@@ -467,13 +463,12 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
           createdBy: adminId
         });
       } else {
-        console.log(`⚠️ Filter ${filterType.name} already assigned to category`);
+        
       }
     }
 
-    console.log(`✅ Successfully auto-assigned filters to category: ${category.name}`);
   } catch (error) {
-    console.error('❌ Error auto-assigning filters to category:', error);
+    
     throw error;
   }
 };
@@ -482,7 +477,7 @@ export const autoAssignFiltersToCategory = async (categoryId: string, adminId?: 
  * Get appropriate filter types for a category based on its name
  */
 export const getFilterTypesForCategory = (categoryName: string, parentCategoryName?: string): FilterAssignmentRule => {
-  const contextString = `${categoryName.toLowerCase()} ${parentCategoryName?.toLowerCase() || ''}`;
+  const contextString = categoryName.toLowerCase() + ' ' + (parentCategoryName?.toLowerCase() || '');
   
   for (const rule of FILTER_ASSIGNMENT_RULES) {
     if (rule.keywords.some(keyword => contextString.includes(keyword))) {

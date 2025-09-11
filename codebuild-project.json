@@ -1,0 +1,18 @@
+{
+  "name": "shoppers9-build",
+  "description": "Build Docker images for Shoppers9 e-commerce platform",
+  "source": {
+    "type": "NO_SOURCE",
+    "buildspec": "version: 0.2\nphases:\n  pre_build:\n    commands:\n      - echo Logging in to Amazon ECR...\n      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 414691912398.dkr.ecr.us-east-1.amazonaws.com\n      - REPOSITORY_URI_BACKEND=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-backend\n      - REPOSITORY_URI_FRONTEND=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-frontend\n      - REPOSITORY_URI_ADMIN=414691912398.dkr.ecr.us-east-1.amazonaws.com/shoppers9-admin-frontend\n      - IMAGE_TAG=latest\n  build:\n    commands:\n      - echo Build started on `date`\n      - echo Building the Docker images...\n      - docker build -f aws-deployment/docker/Dockerfile.backend -t $REPOSITORY_URI_BACKEND:$IMAGE_TAG .\n      - docker build -f aws-deployment/docker/Dockerfile.frontend -t $REPOSITORY_URI_FRONTEND:$IMAGE_TAG .\n      - docker build -f aws-deployment/docker/Dockerfile.admin-frontend -t $REPOSITORY_URI_ADMIN:$IMAGE_TAG .\n  post_build:\n    commands:\n      - echo Build completed on `date`\n      - echo Pushing the Docker images...\n      - docker push $REPOSITORY_URI_BACKEND:$IMAGE_TAG\n      - docker push $REPOSITORY_URI_FRONTEND:$IMAGE_TAG\n      - docker push $REPOSITORY_URI_ADMIN:$IMAGE_TAG\n      - echo Updating ECS services...\n      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-backend --force-new-deployment\n      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-frontend --force-new-deployment\n      - aws ecs update-service --cluster shoppers9-cluster --service shoppers9-admin --force-new-deployment"
+  },
+  "artifacts": {
+    "type": "NO_ARTIFACTS"
+  },
+  "environment": {
+    "type": "LINUX_CONTAINER",
+    "image": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+    "computeType": "BUILD_GENERAL1_MEDIUM",
+    "privilegedMode": true
+  },
+  "serviceRole": "arn:aws:iam::414691912398:role/CodeBuildServiceRole"
+}

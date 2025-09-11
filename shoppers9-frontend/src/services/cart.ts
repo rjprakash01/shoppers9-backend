@@ -53,7 +53,7 @@ class CartService {
       size,
       quantity
     };
-    console.log('Cart service - sending payload:', payload);
+    
     const response = await api.post('/cart/add', payload);
     const cart = response.data.data.cart;
     
@@ -88,8 +88,7 @@ class CartService {
   async removeFromCart(itemId: string): Promise<Cart> {
     const response = await api.delete(`/cart/item/${itemId}`);
     const cart = response.data.data.cart;
-    
-    
+
     // Map populated product data to productData field
     if (cart && cart.items) {
       cart.items = cart.items.map((item: any) => ({
@@ -138,7 +137,7 @@ class CartService {
         typeof item.quantity === 'number'
       ) : [];
     } catch (error) {
-      console.error('Error parsing local cart:', error);
+      
       // Clear corrupted cart data
       localStorage.removeItem('localCart');
       return [];
@@ -241,7 +240,7 @@ class CartService {
     // Check if user is authenticated before attempting sync
     const token = localStorage.getItem('authToken');
     if (!token) {
-      console.log('User not authenticated, skipping cart sync');
+      
       return null;
     }
 
@@ -255,7 +254,7 @@ class CartService {
         if (productId && item.variantId && item.size) {
           await this.addToCart(productId, item.variantId, item.size, item.quantity);
         } else {
-          console.warn('Skipping invalid cart item during sync:', item);
+          
         }
       }
 
@@ -265,7 +264,7 @@ class CartService {
       // Return updated server cart
       return await this.getCart();
     } catch (error) {
-      console.error('Failed to sync local cart with server:', error);
+      
       return null;
     }
   }

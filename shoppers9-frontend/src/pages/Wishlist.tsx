@@ -30,7 +30,7 @@ const WishlistPage: React.FC = () => {
   const handleAddToCart = async (item: WishlistItem) => {
     try {
       if (!item.product || !item.product._id) {
-        console.error('Cannot add to cart: invalid product data', { product: item.product?._id });
+        
         setError('Invalid product data');
         return;
       }
@@ -43,7 +43,7 @@ const WishlistPage: React.FC = () => {
         // Optionally remove from wishlist after adding to cart
         await handleRemoveFromWishlist(item.product._id);
       } else {
-        console.error('Cannot add to cart: missing variant or size data', { variantId: firstVariant?._id, size: firstSize?.size });
+        
         setError('Product variant or size not available');
       }
     } catch (err: any) {

@@ -113,7 +113,7 @@ const CategoryManagement: React.FC = () => {
       const sortedCategories = sortCategoriesByStatus(categories);
       setCategories(sortedCategories);
     } catch (err) {
-      console.error('Error fetching categories:', err);
+      
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
       setCategories([]); // Ensure categories is always an array
     } finally {
@@ -213,7 +213,7 @@ const CategoryManagement: React.FC = () => {
       // Show success message
       setError(null);
     } catch (err) {
-      console.error('Delete error:', err);
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete category';
       setError(`Delete failed: ${errorMessage}`);
     } finally {

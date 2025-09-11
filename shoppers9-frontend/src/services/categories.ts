@@ -32,7 +32,7 @@ class CategoriesService {
       }
       return [];
     } catch (error) {
-      console.error('Failed to fetch category tree:', error);
+      
       return [];
     }
   }
@@ -48,7 +48,7 @@ class CategoriesService {
       }
       return [];
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
+      
       return [];
     }
   }
@@ -64,7 +64,7 @@ class CategoriesService {
       }
       return [];
     } catch (error) {
-      console.error(`Failed to fetch level ${level} categories:`, error);
+      
       return [];
     }
   }
@@ -80,7 +80,7 @@ class CategoriesService {
       }
       return null;
     } catch (error) {
-      console.error('Failed to fetch category:', error);
+      
       return null;
     }
   }

@@ -43,7 +43,7 @@ const Navbar: React.FC = () => {
       // Use the actual category tree structure from backend
       setCategories(categoryTree.filter(cat => cat.isActive));
     } catch (error) {
-      console.error('Failed to fetch categories:', error);
+      
     } finally {
       setCategoriesLoading(false);
     }
@@ -132,21 +132,20 @@ const Navbar: React.FC = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="relative">
-                <div className="w-12 h-12 bg-brand-gold rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-all duration-300 shadow-lg">
+                <div className="w-14 h-14 bg-gradient-to-br from-brand-gold to-brand-gold/80 rounded-3xl flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 shadow-xl border-2 border-brand-gold/20">
                   <div className="relative">
-                    <ShoppingCart className="h-7 w-7 text-brand-indigo" />
-                    <span className="absolute -bottom-1 -right-1 bg-brand-indigo text-brand-gold font-bold text-xs rounded-full h-5 w-5 flex items-center justify-center shadow-md">
+                    <ShoppingCart className="h-8 w-8 text-brand-indigo stroke-2" />
+                    <span className="absolute -bottom-1 -right-1 bg-brand-indigo text-brand-gold font-bold text-sm rounded-full h-6 w-6 flex items-center justify-center shadow-lg border-2 border-brand-gold">
                       9
                     </span>
                   </div>
                 </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-gold rounded-full animate-pulse opacity-75"></div>
               </div>
               <div className="hidden sm:block">
-                <span className="text-2xl font-bold font-playfair text-brand-gold group-hover:text-white transition-all duration-300">
+                <span className="text-3xl font-bold font-playfair text-brand-gold group-hover:text-white transition-all duration-300 tracking-tight">
                   Shoppers9
                 </span>
-                <div className="text-xs text-brand-slate font-medium font-poppins">Shop Easy, Live Happy</div>
+                <div className="text-xs text-brand-slate font-medium font-poppins tracking-wide">Shop Easy, Live Happy</div>
               </div>
             </Link>
 

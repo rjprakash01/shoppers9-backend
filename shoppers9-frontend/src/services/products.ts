@@ -181,7 +181,7 @@ class ProductService {
       }
       return [];
     } catch (error) {
-      console.error('Failed to fetch featured products:', error);
+      
       return [];
     }
   }
@@ -194,7 +194,7 @@ class ProductService {
       }
       return [];
     } catch (error) {
-      console.error('Failed to fetch trending products:', error);
+      
       return [];
     }
   }
@@ -219,7 +219,7 @@ class ProductService {
       const response = await api.get(`/products/filters?${params.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch filters:', error);
+      
       return {
         success: false,
         data: {

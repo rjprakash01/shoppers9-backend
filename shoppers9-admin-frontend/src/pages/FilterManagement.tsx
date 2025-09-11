@@ -133,12 +133,12 @@ const FilterManagement: React.FC = () => {
       setIsLoading(true);
       // Fetch all filters by setting a high limit to avoid pagination issues
       const response = await authService.get('/api/admin/filters?limit=1000');
-      console.log('Filters API response:', response);
+      
       setFilters(response.data.filters || []);
-      console.log('Total filters loaded:', response.data.filters?.length || 0);
+      
     } catch (error) {
       setError('Failed to fetch filters');
-      console.error('Error fetching filters:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -147,34 +147,30 @@ const FilterManagement: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await authService.get('/api/admin/categories/tree');
-      console.log('Categories response:', response);
-      console.log('Categories data:', response.data);
+
       setCategories(response.data || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      
     }
   };
 
   const fetchCategoryFilters = async (categoryId: string) => {
     try {
       setIsAssignmentLoading(true);
-      console.log('Fetching filters for category ID:', categoryId);
-      
+
       // Fetch assigned filters
       const assignedResponse = await authService.get(`/api/admin/categories/${categoryId}/filters`);
-      console.log('Assigned filters response:', assignedResponse);
+      
       setAssignedFilters(assignedResponse.data.categoryFilters || assignedResponse.data.filters || []);
       
       // Fetch available filters
       const availableResponse = await authService.get(`/api/admin/categories/${categoryId}/available-filters`);
-      console.log('Available filters response:', availableResponse);
-      console.log('Available filters data:', availableResponse.data);
+
       const availableFiltersData = availableResponse.data.availableFilters || [];
-      console.log('Available filters array:', availableFiltersData);
+      
       setAvailableFilters(availableFiltersData);
     } catch (error) {
-      console.error('Error fetching category filters:', error);
-      console.error('Category ID that failed:', categoryId);
+
     } finally {
       setIsAssignmentLoading(false);
     }
@@ -201,13 +197,9 @@ const FilterManagement: React.FC = () => {
         sortOrder: filterFormData.sortOrder,
         options: validOptions
       };
-      
-      console.log('Creating filter with data:', filterData);
-      console.log('Valid options count:', validOptions.length);
-      
+
       const response = await authService.post('/api/admin/filters', filterData);
-      console.log('Create filter response:', response);
-      
+
       if (response.success) {
         await fetchFilters();
         resetFilterForm();
@@ -227,15 +219,13 @@ const FilterManagement: React.FC = () => {
       
       const errorMessage = error?.response?.data?.message || 'Failed to create filter';
       setError(errorMessage);
-      console.error('Error creating filter:', error);
-      console.error('Filter form data:', filterFormData);
-      console.error('Error response:', error?.response?.data);
+
     }
   };
 
   const handleUpdateFilter = async () => {
     if (!editingFilter) {
-      console.error('No filter selected for editing');
+      
       return;
     }
     
@@ -259,13 +249,9 @@ const FilterManagement: React.FC = () => {
         sortOrder: filterFormData.sortOrder,
         options: validOptions
       };
-      
-      console.log('Updating filter:', editingFilter._id, 'with data:', filterData);
-      console.log('Valid options count:', validOptions.length);
-      
+
       const response = await authService.put(`/api/admin/filters/${editingFilter._id}`, filterData);
-      console.log('Update filter response:', response);
-      
+
       if (response.success) {
         await fetchFilters();
         resetFilterForm();
@@ -286,9 +272,7 @@ const FilterManagement: React.FC = () => {
       
       const errorMessage = error?.response?.data?.message || 'Failed to update filter';
       setError(errorMessage);
-      console.error('Error updating filter:', error);
-      console.error('Filter ID:', editingFilter._id, 'Filter form data:', filterFormData);
-      console.error('Error response:', error?.response?.data);
+
     }
   };
 
@@ -296,38 +280,34 @@ const FilterManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this filter?')) return;
     
     try {
-      console.log('Deleting filter with ID:', filterId);
+      
       const response = await authService.delete(`/api/admin/filters/${filterId}`);
-      console.log('Delete response:', response);
+      
       await fetchFilters();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Failed to delete filter';
       setError(errorMessage);
-      console.error('Error deleting filter:', error);
-      console.error('Filter ID that failed to delete:', filterId);
-      console.error('Error response:', error?.response?.data);
+
     }
   };
 
   const handleAssignFilter = async (filterId: string) => {
     if (!selectedCategory) {
-      console.error('No category selected for filter assignment');
+      
       return;
     }
     
     try {
-      console.log('Assigning filter:', filterId, 'to category:', selectedCategory);
+      
       const requestData = {
         filterId,
         isRequired: false,
         isActive: true,
         sortOrder: assignedFilters.length + 1
       };
-      console.log('Assignment request data:', requestData);
-      
+
       const response = await authService.post(`/api/admin/categories/${selectedCategory}/filters`, requestData);
-      console.log('Assignment response:', response);
-      
+
       if (response.success) {
         await fetchCategoryFilters(selectedCategory);
       } else {
@@ -336,9 +316,7 @@ const FilterManagement: React.FC = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Failed to assign filter';
       setError(errorMessage);
-      console.error('Error assigning filter:', error);
-      console.error('Filter ID:', filterId, 'Category ID:', selectedCategory);
-      console.error('Error response:', error?.response?.data);
+
     }
   };
 
@@ -350,7 +328,7 @@ const FilterManagement: React.FC = () => {
       }
     } catch (error) {
       setError('Failed to unassign filter');
-      console.error('Error unassigning filter:', error);
+      
     }
   };
 
@@ -367,7 +345,7 @@ const FilterManagement: React.FC = () => {
       }
     } catch (error) {
       setError('Failed to auto-assign filters');
-      console.error('Error auto-assigning filters:', error);
+      
     }
   };
 
@@ -814,10 +792,9 @@ const FilterManagement: React.FC = () => {
                         </div>
                         <button
                           onClick={() => {
-                            console.log('Assigning filter object:', filter);
-                            console.log('Filter ID:', filter._id, 'Filter id:', filter.id);
+
                             const filterId = filter._id || filter.id;
-                            console.log('Using filter ID:', filterId);
+                            
                             handleAssignFilter(filterId);
                           }}
                           className="text-green-600 hover:text-green-900"
@@ -936,7 +913,7 @@ const FilterManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      console.log('Adding new option. Current options count:', filterFormData.options.length);
+                      
                       const newOption = {
                         value: '',
                         displayValue: '',
@@ -944,13 +921,13 @@ const FilterManagement: React.FC = () => {
                         isActive: true,
                         sortOrder: filterFormData.options.length + 1
                       };
-                      console.log('New option:', newOption);
+                      
                       setFilterFormData(prev => {
                         const updated = {
                           ...prev,
                           options: [...prev.options, newOption]
                         };
-                        console.log('Updated filter form data:', updated);
+                        
                         return updated;
                       });
                     }}
@@ -1016,12 +993,12 @@ const FilterManagement: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            console.log('Deleting option at index:', index, 'Current options:', filterFormData.options);
+                            
                             const newOptions = filterFormData.options.filter((_, i) => i !== index);
-                            console.log('New options after deletion:', newOptions);
+                            
                             setFilterFormData(prev => {
                               const updated = { ...prev, options: newOptions };
-                              console.log('Updated filter form data after deletion:', updated);
+                              
                               return updated;
                             });
                           }}

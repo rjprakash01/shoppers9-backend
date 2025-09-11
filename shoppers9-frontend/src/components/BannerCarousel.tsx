@@ -43,7 +43,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
             // Image loaded successfully
           };
           img.onerror = () => {
-            console.warn('Failed to preload banner image:', banner.image);
+            
           };
           img.src = getImageUrl(banner.image);
         }
@@ -76,8 +76,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
       }
       
       const activeBanners = await bannerService.getActiveBanners(forceRefresh);
-      console.log('Carousel banners received:', activeBanners.length, activeBanners);
-      
+
       // Filter only carousel banners
       const carouselBanners = activeBanners.filter(banner => 
         !banner.displayType || banner.displayType === 'carousel' || banner.displayType === 'both'
@@ -85,11 +84,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
       
       // Sort banners by order field
       const sortedCarouselBanners = carouselBanners.sort((a, b) => (a.order || 0) - (b.order || 0));
-      
-      console.log('Filtered and sorted carousel banners:', sortedCarouselBanners.length, sortedCarouselBanners.map(b => ({ title: b.title, order: b.order })));
       setBanners(sortedCarouselBanners);
     } catch (error) {
-      console.error('Failed to load banners:', error);
+      
       // Service handles fallback, so this should rarely happen
       setBanners([]);
     } finally {
@@ -146,7 +143,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   
   // Safety check for currentBanner
   if (!currentBanner) {
-    console.error('Current banner is undefined', { currentIndex, safeCurrentIndex, banners });
+    
     return null;
   }
 

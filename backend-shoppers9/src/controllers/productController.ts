@@ -18,7 +18,6 @@ export const getProducts = async (req: Request, res: Response) => {
   try {
     // Check database connection
     if (mongoose.connection.readyState !== 1) {
-      console.log('Database readyState (products):', mongoose.connection.readyState);
       return res.status(503).json({
         success: false,
         message: 'Database connection not available'
@@ -55,7 +54,6 @@ export const getProducts = async (req: Request, res: Response) => {
         isActive: true
       });
       if (categoryDoc) {
-        console.log(`Found category: ${categoryDoc.name} (${categoryDoc.slug}) - Level ${categoryDoc.level}`);
         
         // Get all descendant categories recursively
         const getAllDescendants = async (parentId: any): Promise<any[]> => {
@@ -77,10 +75,9 @@ export const getProducts = async (req: Request, res: Response) => {
         
         // Find all subcategories (level 2 and 3) under this category
         const allSubcategories = await getAllDescendants(categoryDoc._id);
-        
-        console.log(`Found ${allSubcategories.length} total subcategories for ${categoryDoc.name}:`);
+
         allSubcategories.forEach(subcat => {
-          console.log(`  - ${subcat.name} (${subcat.slug}) - Level ${subcat.level}`);
+          // Process subcategory
         });
         
         // Create array of category IDs (parent + all subcategories) as strings
@@ -89,9 +86,7 @@ export const getProducts = async (req: Request, res: Response) => {
         allSubcategories.forEach(subcat => {
           categoryIds.push(subcat._id.toString());
         });
-        
-        console.log('Category String IDs for query:', categoryIds);
-        
+
         // Separate category IDs by level for proper field matching
         const mainCategoryId = categoryDoc._id;
         const subCategoryIds = allSubcategories
@@ -100,11 +95,7 @@ export const getProducts = async (req: Request, res: Response) => {
         const subSubCategoryIds = allSubcategories
           .filter(cat => cat.level === 3)
           .map(cat => cat._id);
-        
-        console.log('Main category ID:', mainCategoryId);
-        console.log('Sub category IDs:', subCategoryIds);
-        console.log('Sub-sub category IDs:', subSubCategoryIds);
-        
+
         // Build query conditions for proper field matching with ObjectIds
         const orConditions = [];
         
@@ -128,14 +119,12 @@ export const getProducts = async (req: Request, res: Response) => {
         }
         
         query.$or = orConditions;
-        
-        console.log('Final query $or conditions (ObjectIds):', JSON.stringify(orConditions, null, 2));
       } else {
         // Fallback to direct category matching (for backward compatibility)
         query.category = category;
       }
     } catch (error) {
-      console.error('Error finding category:', error);
+      
       // Fallback to direct category name matching
       query.category = category;
     }
@@ -191,27 +180,11 @@ export const getProducts = async (req: Request, res: Response) => {
       break;
   }
 
-
-  
-  console.log('Final query object (category):', query.category);
-  console.log('Query isActive:', query.isActive);
-  console.log('Complete query object:', query);
-  console.log('Sort query:', sortQuery);
-  console.log('Skip:', skip, 'Limit:', Number(limit));
-  
   // Test the exact query
-  console.log('Testing query directly...');
   const testCount = await Product.countDocuments(query);
-  console.log('Direct query count:', testCount);
-  
+
   // Test without sort
-  console.log('Testing query without sort...');
   const testProductsNoSort = await Product.find(query).limit(5);
-  console.log('Products found without sort:', testProductsNoSort.length);
-  
-  // Log the exact MongoDB query being executed
-  console.log('Executing Product.find with query:', JSON.stringify(query));
-  console.log('Executing Product.find with sort:', JSON.stringify(sortQuery));
   
   const [products, total] = await Promise.all([
     Product.find(query)
@@ -222,16 +195,9 @@ export const getProducts = async (req: Request, res: Response) => {
       .limit(Number(limit)),
     Product.countDocuments(query)
   ]);
-  
-  console.log('Found products count:', products.length);
-  console.log('Total products matching query:', total);
+
   if (products.length > 0) {
-    console.log('Sample product categories:', products.slice(0, 3).map(p => ({ name: p.name, category: p.category })));
-    console.log('First product found:', {
-      name: products[0].name,
-      category: products[0].category,
-      isActive: products[0].isActive
-    });
+    // Products found, continue processing
   }
 
   const totalPages = Math.ceil(total / limit);
@@ -271,7 +237,7 @@ export const getProducts = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error in getProducts:', error);
+    
     return res.status(500).json({
       success: false,
       message: 'Internal server error while fetching products'
@@ -382,8 +348,6 @@ export const getCategories = async (req: Request, res: Response) => {
   });
 };
 
-
-
 /**
  * Get available filters
  */
@@ -427,7 +391,7 @@ export const getFilters = async (req: Request, res: Response) => {
           ];
         }
       } catch (error) {
-        console.error('Error finding category for filters:', error);
+        
       }
     }
     
@@ -516,7 +480,7 @@ export const getFilters = async (req: Request, res: Response) => {
           }).select('name slug').lean();
         }
       } catch (error) {
-        console.error('Error finding subcategories:', error);
+        
       }
     }
     
@@ -537,7 +501,7 @@ export const getFilters = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error getting filters:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Failed to get filters',
@@ -652,7 +616,6 @@ export const getProductById = async (req: Request, res: Response) => {
 
   // Check database connection
   if (mongoose.connection.readyState !== 1) {
-    console.log('Database readyState (getProductById):', mongoose.connection.readyState);
     res.status(503).json({
       success: false,
       message: 'Database connection unavailable'

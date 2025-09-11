@@ -60,13 +60,13 @@ const Signup: React.FC = () => {
     setError('');
 
     try {
-      console.log('Sending OTP for signup to phone:', formData.phone);
+      
       const response = await authService.sendOTP(formData.phone);
-      console.log('OTP sent successfully for signup:', response);
+      
       setOtpSent(true);
       setStep('otp');
     } catch (error: any) {
-      console.error('OTP send error during signup:', error);
+      
       setError(error.response?.data?.message || 'Failed to send OTP');
     } finally {
       setIsLoading(false);

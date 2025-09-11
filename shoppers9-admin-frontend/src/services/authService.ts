@@ -3,9 +3,6 @@ import axios from 'axios';
 // Use relative URL in development to leverage Vite proxy, absolute URL in production
 // Fixed: Always use the environment variable or fallback to production URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://admin-api.shoppers9.com';
-console.log('🔧 AuthService initialized with API_BASE_URL:', API_BASE_URL);
-console.log('🔧 Environment mode:', import.meta.env.DEV ? 'development' : 'production');
-console.log('🔧 VITE_API_URL from env:', import.meta.env.VITE_API_URL);
 
 class AuthService {
   private getErrorMessage(error: unknown, defaultMessage: string): string {
@@ -303,7 +300,7 @@ class AuthService {
         throw new Error('Invalid response format from server');
       }
     } catch (error: unknown) {
-      console.error('Error in getAllCategories:', error);
+      
       throw new Error(this.getErrorMessage(error, 'Failed to fetch categories'));
     }
   }

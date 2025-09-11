@@ -14,11 +14,9 @@ class AuthController {
     const { phone } = req.body;
 
     try {
-      console.log(`🔓 BYPASSING OTP sending for: ${phone}`);
-      
+
       // BYPASS OTP GENERATION AND SENDING - Just return success
       const mockExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-      console.log(`✅ Mock OTP process completed for: ${phone}`);
 
       const response: ApiResponse = {
         success: true,
@@ -32,7 +30,7 @@ class AuthController {
 
       res.status(200).json(response);
     } catch (error) {
-      console.error('❌ Error in sendOTP:', error);
+      
       throw new AppError('Failed to send OTP', 500);
     }
   }
@@ -47,7 +45,7 @@ class AuthController {
         if (otp !== '1234') {
           throw new AppError('Invalid OTP', 400);
         }
-        console.log(`✅ Test phone number ${phone} verified with hardcoded OTP`);
+        
       } else {
         // For production, verify actual OTP from database
         const otpRecord = await OTP.findOne({
@@ -64,10 +62,8 @@ class AuthController {
         // Mark OTP as used
         otpRecord.isUsed = true;
         await otpRecord.save();
-        console.log(`✅ OTP verified for phone: ${phone}`);
+        
       }
-
-      console.log(`🔓 OTP verification completed for phone: ${phone}, OTP: ${otp}`);
 
       // Find or create user
       let user: any;
@@ -365,10 +361,6 @@ class AuthController {
       const jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
       // Debug logging
-      console.log('🔍 Debug - JWT_SECRET exists:', !!jwtSecret);
-      console.log('🔍 Debug - JWT_REFRESH_SECRET exists:', !!jwtRefreshSecret);
-      console.log('🔍 Debug - JWT_SECRET length:', jwtSecret ? jwtSecret.length : 0);
-      console.log('🔍 Debug - JWT_REFRESH_SECRET length:', jwtRefreshSecret ? jwtRefreshSecret.length : 0);
 
       if (!jwtSecret || !jwtRefreshSecret) {
         throw new AppError('JWT secrets not configured', 500);
@@ -395,7 +387,7 @@ class AuthController {
 
       res.status(200).json(response);
     } catch (error) {
-      console.error('❌ Error in adminLogin:', error);
+      
       throw new AppError('Admin login failed', 500);
     }
   }

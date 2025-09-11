@@ -176,9 +176,7 @@ export const getProduct = async (req: Request, res: Response): Promise<Response 
 
 export const createProduct = async (req: AuthRequest, res: Response): Promise<Response> => {
   try {
-    console.log('Creating product with data:', req.body);
-    console.log('Uploaded files:', req.files);
-    
+
     // Check database connection
     if (Product.db.readyState !== 1) {
       return res.status(503).json({
@@ -247,30 +245,28 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           }
         }
       } catch (error) {
-        console.warn('Error parsing filterValues:', error);
+        
       }
     }
     
     // Handle uploaded images and convert to SVG
     let images: string[] = [];
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      console.log('Converting uploaded images to SVG format...');
+      
       const outputDir = path.join(process.cwd(), 'uploads', 'products');
       const conversionResult = await convertMultipleImagesToSVG(req.files, outputDir);
       
       if (conversionResult.errors.length > 0) {
-        console.warn('Some images failed to convert:', conversionResult.errors);
+        
       }
       
       images = conversionResult.svgPaths;
-      console.log('Converted images to SVG:', images);
+      
     } else if (req.body.images) {
       // Fallback to URL-based images if provided
       images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
     }
-    
-    console.log('Processed images:', images);
-    
+
     // SKU generation removed to fix duplicate key error
     
     // Handle variants data from the new form structure
@@ -294,7 +290,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           }));
         }
       } catch (error) {
-        console.warn('Error parsing variants:', error);
+        
       }
     }
     
@@ -325,11 +321,9 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           ? JSON.parse(req.body.displayFilters) 
           : req.body.displayFilters;
       } catch (error) {
-        console.warn('Error parsing displayFilters:', error);
+        
       }
     }
-    
-    console.log('Variants:', JSON.stringify(variants, null, 2));
     
     // Convert string values to appropriate types
     const productData: any = {
@@ -359,15 +353,8 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
     // Explicitly ensure no top-level sku field is added
     delete productData.sku;
 
-    console.log('Final product data:', productData);
-    console.log('🔍 Debug - Request body isTrending:', req.body.isTrending);
-    console.log('🔍 Debug - Request body isFeatured:', req.body.isFeatured);
-    console.log('🔍 Debug - Processed isTrending:', productData.isTrending);
-    console.log('🔍 Debug - Processed isFeatured:', productData.isFeatured);
-    
     const product = await Product.create(productData);
-    console.log('Product created successfully:', product._id);
-    
+
     // Create filter values if provided
     if (processedFilterValues.length > 0) {
       const filterValuePromises = processedFilterValues.map(fv => 
@@ -402,8 +389,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
       data: populatedProduct
     });
   } catch (error: any) {
-    console.error('Error creating product:', error);
-    
+
     // Handle specific MongoDB errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0] || 'field';
@@ -424,9 +410,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
 
 export const updateProduct = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
-    console.log('Updating product with data:', req.body);
-    console.log('Uploaded files:', req.files);
-    
+
     // Get existing product to preserve variant structure
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) {
@@ -439,16 +423,16 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<Re
     // Handle uploaded images and convert to SVG
     let images: string[] = existingProduct.images || [];
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      console.log('Converting uploaded images to SVG format for update...');
+      
       const outputDir = path.join(process.cwd(), 'uploads', 'products');
       const conversionResult = await convertMultipleImagesToSVG(req.files, outputDir);
       
       if (conversionResult.errors.length > 0) {
-        console.warn('Some images failed to convert during update:', conversionResult.errors);
+        
       }
       
       images = conversionResult.svgPaths;
-      console.log('Updated images converted to SVG:', images);
+      
     } else if (req.body.images) {
       images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
     }

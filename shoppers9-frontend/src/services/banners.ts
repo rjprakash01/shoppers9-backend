@@ -80,9 +80,8 @@ class BannerService {
       });
       
       const banners = response.data.data || [];
-      
-      console.log('🎯 Banner API response:', banners.length, 'banners received');
-      console.log('🎯 Banner details:', banners.map(b => ({ title: b.title, displayType: b.displayType, image: b.image })));
+
+
       
       // Cache successful response - always use API data, even if empty
       this.cache = {
@@ -91,18 +90,16 @@ class BannerService {
       };
       
       // Always return API data, even if empty - don't use fallback
-      console.log('🎯 Returning banners from API:', banners.length, 'banners');
+      
       return banners;
     } catch (error: any) {
-      console.error('🚨 Banner API error:', error.message);
-      
+
       // Try to return cached data first
       if (this.cache && this.cache.data.length > 0 && !this.cache.data[0].id.startsWith('fallback')) {
-        console.log('🔄 Returning cached real banners due to API error:', this.cache.data.length);
+        
         return this.cache.data;
       }
-      
-      console.warn('🚨 API failed and no real cached data, returning empty array instead of fallback');
+
       // Return empty array instead of fallback to force proper loading
       return [];
     }
@@ -116,7 +113,7 @@ class BannerService {
       localStorage.removeItem('bannerCache');
       localStorage.removeItem('banners');
     } catch (error) {
-      console.warn('Could not clear localStorage:', error);
+      
     }
   }
 
@@ -132,7 +129,7 @@ class BannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching banners:', error);
+      
       throw error;
     }
   }
@@ -147,7 +144,7 @@ class BannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching banner:', error);
+      
       throw error;
     }
   }
@@ -163,7 +160,7 @@ class BannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error creating banner:', error);
+      
       throw error;
     }
   }
@@ -179,7 +176,7 @@ class BannerService {
       });
       return response.data.data;
     } catch (error) {
-      console.error('Error updating banner:', error);
+      
       throw error;
     }
   }
@@ -193,7 +190,7 @@ class BannerService {
         }
       });
     } catch (error) {
-      console.error('Error deleting banner:', error);
+      
       throw error;
     }
   }
@@ -212,7 +209,7 @@ class BannerService {
       );
       return response.data.data;
     } catch (error) {
-      console.error('Error updating banner status:', error);
+      
       throw error;
     }
   }
@@ -230,7 +227,7 @@ class BannerService {
         }
       );
     } catch (error) {
-      console.error('Error reordering banners:', error);
+      
       throw error;
     }
   }
