@@ -39,7 +39,13 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  originalPrice: number;
   discountedPrice?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minOriginalPrice?: number;
+  maxOriginalPrice?: number;
+  maxDiscount?: number;
   category: {
     id: string;
     name: string;
@@ -496,75 +502,115 @@ const ProductManagement: React.FC = () => {
     return (
       <div 
         key={product.id} 
-        className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200 hover:border-gray-300 cursor-pointer"
+        className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:border-blue-300 cursor-pointer hover:-translate-y-1 relative overflow-hidden"
         onClick={() => handleProductClick(product)}
       >
-        <div className="mb-4">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-base truncate">
-              {product.name}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">{product.description}</p>
-            {product.brand && (
-              <p className="text-xs text-gray-500 mt-2 flex items-center">
-                <Tag className="h-3 w-3 mr-1" />
-                {product.brand}
-              </p>
-            )}
-          </div>
-        </div>
-        
         {/* Product Image */}
-        {product.images && product.images.length > 0 && (
-          <div className="mb-4">
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="w-full h-32 object-cover rounded-lg"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
+        {product.images && product.images.length > 0 ? (
+          <div className="mb-6 relative">
+            <div className="aspect-square w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden">
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDOTQuNDc3MiA3MCA5MCA3NC40NzcyIDkwIDgwVjEyMEM5MCA5NC40NzcyIDk0LjQ3NzIgOTAgMTAwIDkwSDEyMEMxMjUuNTIzIDkwIDEzMCA5NC40NzcyIDEzMCAxMDBWMTIwQzEzMCAxMjUuNTIzIDEyNS41MjMgMTMwIDEyMCAxMzBIMTAwQzk0LjQ3NzIgMTMwIDkwIDEyNS41MjMgOTAgMTIwVjgwWiIgZmlsbD0iI0Q5RDlEOSIvPgo8L3N2Zz4K';
+                }}
+              />
+            </div>
+            {/* Status Badge */}
+            <div className="absolute top-3 right-3">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${stockStatus.color}`}>
+                {stockStatus.label}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6">
+            <div className="aspect-square w-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
+              <Package className="h-12 w-12 text-gray-400" />
+            </div>
           </div>
         )}
         
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <span className="text-xl font-bold text-gray-900">
-              ₹{product.discountedPrice || product.price}
-            </span>
-            {product.discountedPrice && (
-              <span className="text-sm text-gray-500 line-through">
-                ₹{product.price}
-              </span>
+        {/* Product Info */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-lg leading-tight line-clamp-2">
+              {product.name}
+            </h3>
+            {product.brand && (
+              <div className="flex items-center mt-2 text-sm text-gray-500">
+                <Tag className="h-4 w-4 mr-1.5" />
+                <span className="font-medium">{product.brand}</span>
+              </div>
             )}
           </div>
-          <div className="flex items-center space-x-1">
-            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm text-gray-600 font-medium">
-              {product.rating} ({product.reviewCount})
-            </span>
+          
+          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+            {product.description}
+          </p>
+        </div>
+        
+        {/* Pricing Section */}
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl font-bold text-gray-900">
+                  {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
+                    `₹${product.minPrice} - ₹${product.maxPrice}` : 
+                    `₹${product.price}`
+                  }
+                </span>
+                {product.maxDiscount && product.maxDiscount > 0 && (
+                  <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    {product.maxDiscount}% OFF
+                  </span>
+                )}
+              </div>
+              {product.maxDiscount && product.maxDiscount > 0 && (
+                <span className="text-sm text-gray-500 line-through">
+                  {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                    `₹${product.minOriginalPrice} - ₹${product.maxOriginalPrice}` : 
+                    `₹${product.originalPrice}`
+                  }
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-lg">
+              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              <span className="text-sm text-yellow-700 font-medium">
+                {product.rating} ({product.reviewCount})
+              </span>
+            </div>
           </div>
         </div>
         
-        <div className="flex items-center justify-between text-sm mb-4">
-          <span className={`px-3 py-1.5 rounded-full font-medium ${stockStatus.color}`}>
-            {stockStatus.label} ({product.stock})
-          </span>
-          <span className={`px-3 py-1.5 rounded-full font-medium ${
+        {/* Status and Stock */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${stockStatus.color}`}>
+              {product.stock} in stock
+            </span>
+          </div>
+          <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
             product.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
           }`}>
             {product.isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
         
-        <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-          <span className="flex items-center">
-            <Calendar className="h-3 w-3 mr-1" />
+        {/* Footer */}
+        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+          <span className="flex items-center text-xs text-gray-500">
+            <Calendar className="h-3 w-3 mr-1.5" />
             {new Date(product.createdAt).toLocaleDateString()}
           </span>
-          <span className="font-mono">ID: {product.id.slice(-6)}</span>
+          <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
+            #{product.id.slice(-6)}
+          </span>
         </div>
       </div>
     );
@@ -749,7 +795,7 @@ const ProductManagement: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
                 {(searchQuery.trim() ? filteredProducts : products).map(product => renderProductCard(product))}
               </div>
               

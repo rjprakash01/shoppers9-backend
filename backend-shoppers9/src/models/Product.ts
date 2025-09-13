@@ -1,7 +1,18 @@
 import mongoose, { Schema } from 'mongoose';
-import { IProduct, IProductVariant, IProductSize, IProductSpecification } from '../types';
+import { IProduct, IProductVariant, IProductSpecification } from '../types';
 
-const productSizeSchema = new Schema<IProductSize>({
+// Product Variant Schema - Each variant is a unique color-size combination
+const productVariantSchema = new Schema<IProductVariant>({
+  color: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  colorCode: {
+    type: String,
+    trim: true,
+    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+  },
   size: {
     type: String,
     required: true,
@@ -17,37 +28,18 @@ const productSizeSchema = new Schema<IProductSize>({
     required: true,
     min: 0
   },
-  discount: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
-  },
   stock: {
     type: Number,
     required: true,
     min: 0,
     default: 0
   },
-  // sku: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // }
-});
-
-const productVariantSchema = new Schema<IProductVariant>({
-  color: {
+  sku: {
     type: String,
     required: true,
+    unique: true,
     trim: true
   },
-  colorCode: {
-    type: String,
-    trim: true,
-    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
-  },
-  sizes: [productSizeSchema],
   images: [{
     type: String,
     required: true
@@ -65,7 +57,9 @@ const productSpecificationSchema = new Schema<IProductSpecification>({
   weight: String
 });
 
+// Master Product Schema
 const productSchema = new Schema<IProduct>({
+  // Master Product Fields
   name: {
     type: String,
     required: true,
@@ -98,11 +92,38 @@ const productSchema = new Schema<IProduct>({
     required: true,
     trim: true
   },
+  // Master Product Images (default/primary images)
   images: [{
     type: String,
     required: true
   }],
+  // Product Variants (color-size combinations)
   variants: [productVariantSchema],
+  // Available Colors for this product (master list)
+  availableColors: [{
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    code: {
+      type: String,
+      required: true,
+      trim: true,
+      match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
+    },
+    images: [{
+      type: String
+    }]
+  }],
+  // Available Sizes for this product (master list)
+  availableSizes: [{
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  }],
   specifications: productSpecificationSchema,
   tags: [{
     type: String,
@@ -147,12 +168,8 @@ productSchema.virtual('minPrice').get(function(this: any) {
   }
   let minPrice = Infinity;
   this.variants.forEach((variant: any) => {
-    if (variant.sizes && Array.isArray(variant.sizes)) {
-      variant.sizes.forEach((size: any) => {
-        if (size.price < minPrice) {
-          minPrice = size.price;
-        }
-      });
+    if (variant.price && variant.price < minPrice) {
+      minPrice = variant.price;
     }
   });
   return minPrice === Infinity ? 0 : minPrice;
@@ -165,15 +182,56 @@ productSchema.virtual('maxPrice').get(function(this: any) {
   }
   let maxPrice = 0;
   this.variants.forEach((variant: any) => {
-    if (variant.sizes && Array.isArray(variant.sizes)) {
-      variant.sizes.forEach((size: any) => {
-        if (size.price > maxPrice) {
-          maxPrice = size.price;
-        }
-      });
+    if (variant.price && variant.price > maxPrice) {
+      maxPrice = variant.price;
     }
   });
   return maxPrice;
+});
+
+// Virtual for minimum original price
+productSchema.virtual('minOriginalPrice').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
+  let minOriginalPrice = Infinity;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.originalPrice < minOriginalPrice) {
+      minOriginalPrice = variant.originalPrice;
+    }
+  });
+  return minOriginalPrice === Infinity ? 0 : minOriginalPrice;
+});
+
+// Virtual for maximum original price
+productSchema.virtual('maxOriginalPrice').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
+  let maxOriginalPrice = 0;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.originalPrice > maxOriginalPrice) {
+      maxOriginalPrice = variant.originalPrice;
+    }
+  });
+  return maxOriginalPrice;
+});
+
+// Virtual for maximum discount percentage across all variants
+productSchema.virtual('maxDiscount').get(function(this: any) {
+  if (!this.variants || !Array.isArray(this.variants)) {
+    return 0;
+  }
+  let maxDiscount = 0;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.price && variant.originalPrice > variant.price) {
+      const discount = Math.round(((variant.originalPrice - variant.price) / variant.originalPrice) * 100);
+      if (discount > maxDiscount) {
+        maxDiscount = discount;
+      }
+    }
+  });
+  return maxDiscount;
 });
 
 // Virtual for total stock
@@ -183,10 +241,8 @@ productSchema.virtual('totalStock').get(function(this: any) {
   }
   let totalStock = 0;
   this.variants.forEach((variant: any) => {
-    if (variant.sizes && Array.isArray(variant.sizes)) {
-      variant.sizes.forEach((size: any) => {
-        totalStock += size.stock;
-      });
+    if (variant.stock && typeof variant.stock === 'number') {
+      totalStock += variant.stock;
     }
   });
   return totalStock;

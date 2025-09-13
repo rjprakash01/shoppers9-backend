@@ -74,24 +74,57 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
     throw new AppError('Product variant not found', 404);
   }
 
-  // Check if size is required and valid
-  if (variant.sizes && variant.sizes.length > 0) {
-    if (!size) {
-      throw new AppError('Size is required for this product', 400);
-    }
-    const sizeOption = variant.sizes.find(s => s.size === size);
-    if (!sizeOption) {
-      throw new AppError('Invalid size selected', 400);
-    }
-    if (sizeOption.stock < quantity) {
-      throw new AppError('Insufficient stock for selected size', 400);
-    }
+  // Verify the size matches the variant and check stock
+  const variantObj = variant as any;
+  if (variantObj.size !== size) {
+    throw new AppError('Size does not match the selected variant', 400);
+  }
+  
+  if (variantObj.stock < quantity) {
+    throw new AppError('Insufficient stock for selected variant', 400);
   }
 
   let cart = await Cart.findOne({ userId: userId });
   if (!cart) {
     cart = new Cart({ userId: userId, items: [] });
   }
+  
+  // Clean up existing items with invalid pricing (price > originalPrice)
+  const originalItemCount = cart.items.length;
+  cart.items = cart.items.filter(item => {
+    const isValid = item.price <= item.originalPrice;
+    if (!isValid) {
+      console.log('Removing invalid cart item:', {
+        product: item.product,
+        variantId: item.variantId,
+        size: item.size,
+        price: item.price,
+        originalPrice: item.originalPrice,
+        reason: 'price > originalPrice'
+      });
+    }
+    return isValid;
+  });
+  
+  const removedCount = originalItemCount - cart.items.length;
+  if (removedCount > 0) {
+    console.log(`Cleaned cart: removed ${removedCount} invalid items`);
+    await cart.save();
+  }
+  
+  console.log('Cart Controller - Current cart state:', {
+    userId,
+    existingItemsCount: cart.items.length,
+    removedInvalidItems: removedCount,
+    existingItems: cart.items.map(item => ({
+      product: item.product,
+      variantId: item.variantId,
+      size: item.size,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      quantity: item.quantity
+    }))
+  });
 
   // Check if item already exists in cart
   const existingItemIndex = cart.items.findIndex(item => 
@@ -102,30 +135,33 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
 
   if (existingItemIndex > -1) {
     // Update quantity
+    console.log('Cart Controller - Updating existing item:', {
+      existingItem: cart.items[existingItemIndex],
+      newQuantity: cart.items[existingItemIndex].quantity + quantity
+    });
     cart.items[existingItemIndex].quantity += quantity;
   } else {
-    // Add new item
-    let price = 0;
-    let originalPrice = 0;
-    let discount = 0;
+    // Add new item - get pricing directly from variant
+    const variantObj = variant as any;
+    const price = variantObj.price || 0;
+    const originalPrice = variantObj.originalPrice || variantObj.price || 0;
     
-    // Try to get price from size-specific pricing first, then variant pricing
-    if (variant.sizes && variant.sizes.length > 0) {
-      const sizeOption = variant.sizes.find(s => s.size === size);
-      if (sizeOption) {
-        price = sizeOption.price || 0;
-        originalPrice = sizeOption.originalPrice || 0;
-        discount = sizeOption.discount || 0;
-      }
+    // Validate pricing relationship
+    if (price > originalPrice) {
+      throw new AppError(`Invalid pricing: selling price (${price}) cannot be greater than original price (${originalPrice})`, 400);
     }
     
-    // Fallback to variant-level pricing if size-specific pricing is not available
-    if (price === 0) {
-      const variantObj = variant as any;
-      price = variantObj.price || 0;
-      originalPrice = variantObj.originalPrice || variantObj.price || 0;
-      discount = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
-    }
+    const discount = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    
+    console.log('Cart Controller - Adding item with pricing:', {
+      productId,
+      variantId,
+      size,
+      price,
+      originalPrice,
+      discount,
+      calculation: `(${originalPrice} - ${price}) = ${originalPrice - price}`
+    });
     
     cart.items.push({
       product: productId,
@@ -236,13 +272,9 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
     throw new AppError('Product variant not found', 404);
   }
 
-  let availableStock = 0;
-  if (item.size && variant.sizes) {
-    const sizeOption = variant.sizes.find(s => s.size === item.size);
-    if (sizeOption) {
-      availableStock = sizeOption.stock;
-    }
-  }
+  // Get stock directly from variant
+  const variantObj = variant as any;
+  const availableStock = variantObj.stock || 0;
 
   if (quantity > availableStock) {
     throw new AppError('Insufficient stock', 400);
@@ -303,58 +335,77 @@ export const removeFromCart = async (req: AuthenticatedRequest, res: Response) =
  * Move item from cart to wishlist
  */
 export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user!.userId;
-  const { itemId } = req.params;
+  try {
+    const userId = req.user!.userId;
+    const { itemId } = req.params;
 
-  const cart = await Cart.findOne({ userId: userId });
-  if (!cart) {
-    throw new AppError('Cart not found', 404);
-  }
-
-  const itemIndex = cart.items.findIndex(item => item._id?.toString() === itemId);
-  if (itemIndex === -1) {
-    throw new AppError('Item not found in cart', 404);
-  }
-
-  const item = cart.items[itemIndex];
-
-  // Add to wishlist
-  let wishlist = await Wishlist.findOne({ userId: userId });
-  if (!wishlist) {
-    wishlist = new Wishlist({ userId: userId, items: [] });
-  }
-
-  // Check if item already exists in wishlist
-  const existsInWishlist = wishlist.items.some(wishItem => 
-    wishItem.product.toString() === item.product.toString() &&
-    wishItem.variantId?.toString() === item.variantId.toString()
-  );
-
-  if (!existsInWishlist) {
-    wishlist.items.push({
-      product: item.product,
-      variantId: item.variantId,
-      addedAt: new Date()
+    console.log('moveToWishlist request:', {
+      userId,
+      itemId,
+      userObject: req.user
     });
-    await wishlist.save();
-  }
 
-  // Remove from cart
-  cart.items.splice(itemIndex, 1);
-  await cart.save();
-
-  await cart.populate({
-    path: 'items.product',
-    select: 'name images price discountPrice brand category subCategory isActive'
-  });
-
-  res.json({
-    success: true,
-    message: 'Item moved to wishlist successfully',
-    data: {
-      cart
+    const cart = await Cart.findOne({ userId: userId });
+    if (!cart) {
+      throw new AppError('Cart not found', 404);
     }
-  });
+
+    const itemIndex = cart.items.findIndex(item => item._id?.toString() === itemId);
+    if (itemIndex === -1) {
+      throw new AppError('Item not found in cart', 404);
+    }
+
+    const item = cart.items[itemIndex];
+
+    // Validate item has required fields
+    if (!item.product) {
+      throw new AppError('Invalid cart item: missing product reference', 400);
+    }
+
+    if (!item.variantId) {
+      throw new AppError('Invalid cart item: missing variant reference', 400);
+    }
+
+    // Add to wishlist
+    let wishlist = await Wishlist.findOne({ userId: userId });
+    if (!wishlist) {
+      wishlist = new Wishlist({ userId: userId, items: [] });
+    }
+
+    // Check if item already exists in wishlist
+    const existsInWishlist = wishlist.items.some(wishItem => 
+      wishItem.product.toString() === item.product.toString() &&
+      wishItem.variantId?.toString() === item.variantId.toString()
+    );
+
+    if (!existsInWishlist) {
+      wishlist.items.push({
+        product: item.product,
+        variantId: item.variantId,
+        addedAt: new Date()
+      });
+      await wishlist.save();
+    }
+
+    // Remove from cart
+    cart.items.splice(itemIndex, 1);
+    await cart.save();
+
+    await cart.populate({
+      path: 'items.product',
+      select: 'name images price discountPrice brand category subCategory isActive'
+    });
+
+    res.json({
+      success: true,
+      message: 'Item moved to wishlist successfully',
+      data: {
+        cart
+      }
+    });
+  } catch (error) {
+    throw error;
+  }
 };
 
 /**
@@ -495,6 +546,67 @@ export const getCartSummary = async (req: AuthenticatedRequest, res: Response) =
   });
 };
 
+// /**
+//  * Clean cart by removing items with invalid pricing
+//  */
+// export const cleanCart = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+//   const userId = req.user!.userId;
+
+//   try {
+//     const cart = await Cart.findOne({ userId });
+//     if (!cart) {
+//       return res.json({
+//         success: true,
+//         message: 'No cart found to clean',
+//         data: { cart: null }
+//       });
+//     }
+
+//     // Remove items where price > originalPrice (invalid pricing)
+//     const originalItemCount = cart.items.length;
+//     cart.items = cart.items.filter(item => {
+//       const isValid = item.price <= item.originalPrice;
+//       if (!isValid) {
+//         console.log('Removing invalid cart item:', {
+//           product: item.product,
+//           variantId: item.variantId,
+//           size: item.size,
+//           price: item.price,
+//           originalPrice: item.originalPrice,
+//           reason: 'price > originalPrice'
+//         });
+//       }
+//       return isValid;
+//     });
+
+//     const removedCount = originalItemCount - cart.items.length;
+//     await cart.save();
+
+//     // Populate and return cleaned cart
+//     await cart.populate({
+//       path: 'items.product',
+//       select: 'name images price discountPrice brand category subCategory isActive variants availableColors'
+//     });
+
+//     res.json({
+//       success: true,
+//       message: `Cart cleaned successfully. Removed ${removedCount} invalid items.`,
+//       data: {
+//         cart,
+//         removedCount,
+//         remainingItems: cart.items.length
+//       }
+//     });
+//   } catch (error) {
+//      console.error('Error cleaning cart:', error);
+//      res.status(500).json({
+//        success: false,
+//        message: 'Failed to clean cart',
+//        error: error instanceof Error ? error.message : 'Unknown error'
+//      });
+//    }
+//  };
+
 export const cartController = {
   getCart,
   addToCart,
@@ -502,6 +614,7 @@ export const cartController = {
   removeFromCart,
   moveToWishlist,
   clearCart,
+  // cleanCart,
   applyCoupon,
   removeCoupon,
   getCartSummary

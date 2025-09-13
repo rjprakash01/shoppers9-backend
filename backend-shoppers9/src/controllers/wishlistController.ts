@@ -21,6 +21,18 @@ export const getWishlist = async (req: AuthenticatedRequest, res: Response) => {
   if (!wishlist) {
     const newWishlist = new Wishlist({ userId: userId, items: [] });
     wishlist = await newWishlist.save();
+  } else {
+    // Filter out items with deleted products (where populate returned null)
+    const validItems = wishlist.items.filter((item: any) => item.product !== null);
+    
+    // If we found orphaned items, update the wishlist to remove them
+    if (validItems.length !== wishlist.items.length) {
+      await Wishlist.findOneAndUpdate(
+        { userId: userId },
+        { items: validItems.map((item: any) => ({ product: item.product._id, variantId: item.variantId })) }
+      );
+      wishlist.items = validItems;
+    }
   }
 
   res.json({
@@ -114,16 +126,26 @@ export const removeFromWishlist = async (req: AuthenticatedRequest, res: Respons
   wishlist.items.splice(itemIndex, 1);
   await wishlist.save();
 
+  // Safely populate and filter out any null products
   await wishlist.populate({
     path: 'items.product',
     select: 'name images price discountPrice brand category subCategory isActive variants'
   });
 
+  // Filter out items with deleted products after population
+  const validItems = wishlist.items.filter((item: any) => item.product !== null);
+  
+  // Update the response to only include valid items
+  const responseWishlist = {
+    ...wishlist.toObject(),
+    items: validItems
+  };
+
   res.json({
     success: true,
     message: 'Item removed from wishlist successfully',
     data: {
-      wishlist
+      wishlist: responseWishlist
     }
   });
 };
@@ -165,15 +187,19 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // Check stock availability
-  if (variant.sizes && variant.sizes.length > 0) {
-    if (!size) {
-      throw new AppError('Size is required for this product', 400);
-    }
-    const sizeOption = variant.sizes.find((s: any) => s.size === size);
-    if (!sizeOption) {
-      throw new AppError('Invalid size selected', 400);
-    }
-    // Stock check removed as quantity property doesn't exist on IProductVariant
+  if (!size) {
+    throw new AppError('Size is required for this product', 400);
+  }
+  
+  // Check if variant size matches the requested size
+  const variantObj = variant as any;
+  if (variantObj.size !== size) {
+    throw new AppError('Invalid size selected', 400);
+  }
+  
+  // Check stock availability
+  if (variantObj.stock === 0) {
+    throw new AppError('Product is out of stock', 400);
   }
 
   // Add to cart
@@ -213,16 +239,26 @@ export const moveToCart = async (req: AuthenticatedRequest, res: Response) => {
   wishlist.items.splice(itemIndex, 1);
   await wishlist.save();
 
+  // Safely populate and filter out any null products
   await wishlist.populate({
     path: 'items.product',
     select: 'name images price discountPrice brand category subCategory isActive variants'
   });
 
+  // Filter out items with deleted products after population
+  const validItems = wishlist.items.filter((item: any) => item.product !== null);
+  
+  // Update the response to only include valid items
+  const responseWishlist = {
+    ...wishlist.toObject(),
+    items: validItems
+  };
+
   res.json({
     success: true,
     message: 'Item moved to cart successfully',
     data: {
-      wishlist
+      wishlist: responseWishlist
     }
   });
 };

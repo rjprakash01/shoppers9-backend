@@ -11,17 +11,48 @@ import { OrderStatus, PaymentStatus, RefundStatus } from '../types';
 export const createOrder = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { shippingAddress, paymentMethod, couponCode } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
+
+    console.log('Order creation request:', {
+      userId,
+      shippingAddress,
+      paymentMethod,
+      couponCode,
+      userObject: req.user
+    });
 
     if (!userId) {
+      console.log('User not authenticated - no userId found');
       return next(new AppError('User not authenticated', 401));
+    }
+
+    // Validate required fields
+    if (!shippingAddress) {
+      console.log('Shipping address missing');
+      return next(new AppError('Shipping address is required', 400));
+    }
+
+    if (!paymentMethod) {
+      console.log('Payment method missing');
+      return next(new AppError('Payment method is required', 400));
+    }
+
+    // Validate shipping address fields
+    const requiredAddressFields = ['name', 'phone', 'addressLine1', 'city', 'state', 'pincode'];
+    for (const field of requiredAddressFields) {
+      if (!shippingAddress[field]) {
+        return next(new AppError(`Shipping address ${field} is required`, 400));
+      }
     }
 
     // Get user's cart
     const cart = await Cart.findOne({ userId });
+    
     if (!cart || cart.items.length === 0) {
       return next(new AppError('Cart is empty', 400));
     }
+
+
 
     // Validate stock availability
     for (const item of cart.items) {
@@ -35,8 +66,12 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
         return next(new AppError(`Product variant not found`, 404));
       }
 
-      const size = variant.sizes.find(s => s.size === item.size);
-      if (!size || size.stock < item.quantity) {
+      const variantObj = variant as any;
+      if (variantObj.size !== item.size) {
+        return next(new AppError(`Size mismatch for ${product.name}`, 400));
+      }
+      
+      if (!variantObj.stock || variantObj.stock < item.quantity) {
         return next(new AppError(`Insufficient stock for ${product.name} - ${item.size}`, 400));
       }
     }
@@ -45,14 +80,23 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     const orderCount = await Order.countDocuments();
     const orderNumber = `ORD${Date.now()}${(orderCount + 1).toString().padStart(4, '0')}`;
 
-    // Calculate totals
-    const totalAmount = cart.totalAmount;
-    const discount = cart.totalDiscount + (cart.couponDiscount || 0);
-    const platformFee = totalAmount > 500 ? 0 : 20; // Match cart summary calculation
-    const deliveryCharge = totalAmount > 500 ? 0 : 50; // Match cart summary calculation
+    // Calculate totals correctly
+    // totalAmount should be the original amount before any discounts
+    // cart.totalAmount is already discounted, so we need to calculate the original amount
+    const originalAmount = cart.items.reduce((sum, item) => {
+      return sum + (item.originalPrice * item.quantity);
+    }, 0);
     
-    // Ensure finalAmount is never negative
-    let finalAmount = totalAmount - discount + platformFee + deliveryCharge;
+    const totalAmount = originalAmount; // Original amount before discounts
+    const discount = cart.totalDiscount + (cart.couponDiscount || 0);
+    const discountedAmount = cart.totalAmount; // This is the amount after item-level discounts
+    
+    // Calculate fees based on discounted amount
+    const platformFee = discountedAmount > 500 ? 0 : 20;
+    const deliveryCharge = discountedAmount > 500 ? 0 : 50;
+    
+    // finalAmount should be the discounted amount plus fees
+    let finalAmount = discountedAmount + platformFee + deliveryCharge;
     if (finalAmount < 0) {
       finalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
     }
@@ -82,14 +126,10 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
       await Product.updateOne(
         {
           _id: item.product,
-          'variants._id': item.variantId,
-          'variants.sizes.size': item.size
+          'variants._id': item.variantId
         },
         {
-          $inc: { 'variants.$.sizes.$[size].stock': -item.quantity }
-        },
-        {
-          arrayFilters: [{ 'size.size': item.size }]
+          $inc: { 'variants.$.stock': -item.quantity }
         }
       );
     }
@@ -134,7 +174,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response, ne
       .sort({ createdAt: -1 })
       .limit(Number(limit) * 1)
       .skip((Number(page) - 1) * Number(limit))
-      .populate('items.product', 'name images');
+      .populate('items.product', 'name images brand variants');
 
     const total = await Order.countDocuments(query);
 
@@ -166,7 +206,7 @@ export const getOrderById = async (req: AuthenticatedRequest, res: Response, nex
     }
 
     const order = await Order.findOne({ orderNumber, userId })
-      .populate('items.product', 'name images brand');
+      .populate('items.product', 'name images brand variants');
 
     if (!order) {
       return next(new AppError('Order not found', 404));
@@ -220,14 +260,10 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
       await Product.updateOne(
         {
           _id: item.product,
-          'variants._id': item.variantId,
-          'variants.sizes.size': item.size
+          'variants._id': item.variantId
         },
         {
-          $inc: { 'variants.$.sizes.$[size].stock': item.quantity }
-        },
-        {
-          arrayFilters: [{ 'size.size': item.size }]
+          $inc: { 'variants.$.stock': item.quantity }
         }
       );
     }
@@ -317,17 +353,79 @@ export const processPayment = async (req: AuthenticatedRequest, res: Response, n
   }
 };
 
+// Request return for an order
+export const requestReturn = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { orderNumber } = req.params;
+    const { reason } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    const order = await Order.findOne({ orderNumber, userId });
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    // Check if order can be returned
+    if (order.orderStatus !== 'delivered') {
+      return next(new AppError('Only delivered orders can be returned', 400));
+    }
+
+    // Check if return window is still open (30 days)
+    const deliveredDate = order.deliveredAt;
+    if (!deliveredDate) {
+      return next(new AppError('Order delivery date not found', 400));
+    }
+
+    const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceDelivery > 30) {
+      return next(new AppError('Return window has expired (30 days)', 400));
+    }
+
+    // Check if return already requested
+    if (order.returnRequestedAt) {
+      return next(new AppError('Return already requested for this order', 400));
+    }
+
+    // Update order with return request
+    order.returnRequestedAt = new Date();
+    order.returnReason = reason;
+    order.orderStatus = 'return_requested' as any;
+    
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Return request submitted successfully',
+      data: {
+        orderNumber: order.orderNumber,
+        returnRequestedAt: order.returnRequestedAt,
+        returnReason: order.returnReason
+      }
+    });
+  } catch (error: any) {
+    next(new AppError(error.message || 'Failed to request return', 500));
+  }
+};
+
 // Get order analytics (for admin)
 export const getOrderAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { startDate, endDate } = req.query;
-    
+    const { startDate, endDate, status } = req.query;
+
     const matchStage: any = {};
-    if (startDate && endDate) {
-      matchStage.createdAt = {
-        $gte: new Date(startDate as string),
-        $lte: new Date(endDate as string)
-      };
+    
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) matchStage.createdAt.$gte = new Date(startDate as string);
+      if (endDate) matchStage.createdAt.$lte = new Date(endDate as string);
+    }
+    
+    if (status) {
+      matchStage.orderStatus = status;
     }
 
     const analytics = await Order.aggregate([
@@ -338,16 +436,7 @@ export const getOrderAnalytics = async (req: Request, res: Response, next: NextF
           totalOrders: { $sum: 1 },
           totalRevenue: { $sum: '$finalAmount' },
           averageOrderValue: { $avg: '$finalAmount' },
-          completedOrders: {
-            $sum: {
-              $cond: [{ $eq: ['$orderStatus', OrderStatus.DELIVERED] }, 1, 0]
-            }
-          },
-          cancelledOrders: {
-            $sum: {
-              $cond: [{ $eq: ['$orderStatus', OrderStatus.CANCELLED] }, 1, 0]
-            }
-          }
+          totalItems: { $sum: { $size: '$items' } }
         }
       }
     ]);
@@ -363,20 +452,35 @@ export const getOrderAnalytics = async (req: Request, res: Response, next: NextF
       }
     ]);
 
+    const monthlyTrend = await Order.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          orders: { $sum: 1 },
+          revenue: { $sum: '$finalAmount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
     res.json({
       success: true,
       data: {
-        analytics: analytics[0] || {
+        summary: analytics[0] || {
           totalOrders: 0,
           totalRevenue: 0,
           averageOrderValue: 0,
-          completedOrders: 0,
-          cancelledOrders: 0
+          totalItems: 0
         },
-        statusBreakdown
+        statusBreakdown,
+        monthlyTrend
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    next(new AppError(error.message || 'Failed to get order analytics', 500));
   }
 };

@@ -3,35 +3,59 @@ import { IOrder } from '../types';
 
 const orderItemSchema = new Schema({
   product: {
-    type: Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
+    type: String,
+    required: true,
+    ref: 'Product'
   },
-  name: {
+  variantId: {
     type: String,
     required: true
   },
-  price: {
-    type: Number,
+  size: {
+    type: String,
     required: true,
-    min: 0
+    trim: true
   },
   quantity: {
     type: Number,
     required: true,
     min: 1
   },
-  total: {
+  price: {
     type: Number,
     required: true,
+    min: 0
+  },
+  originalPrice: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  discount: {
+    type: Number,
+    default: 0,
     min: 0
   }
 });
 
 const addressSchema = new Schema({
-  street: {
+  name: {
     type: String,
     required: true,
+    trim: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    match: /^[6-9]\d{9}$/
+  },
+  addressLine1: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  addressLine2: {
+    type: String,
     trim: true
   },
   city: {
@@ -44,16 +68,18 @@ const addressSchema = new Schema({
     required: true,
     trim: true
   },
-  zipCode: {
+  pincode: {
     type: String,
     required: true,
+    match: /^[1-9][0-9]{5}$/
+  },
+  landmark: {
+    type: String,
     trim: true
   },
-  country: {
-    type: String,
-    required: true,
-    trim: true,
-    default: 'India'
+  isDefault: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -64,25 +90,35 @@ const orderSchema = new Schema<IOrder>({
     unique: true,
     trim: true
   },
-  user: {
+  userId: {
     type: String,
-    ref: 'User',
-    required: true
+    required: true,
+    ref: 'User'
   },
   items: [orderItemSchema],
-  subtotal: {
+  shippingAddress: {
+    type: addressSchema,
+    required: true
+  },
+  billingAddress: addressSchema,
+  paymentMethod: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  orderStatus: {
+    type: String,
+    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+    default: 'pending'
+  },
+  totalAmount: {
     type: Number,
     required: true,
-    min: 0
-  },
-  tax: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  shipping: {
-    type: Number,
-    default: 0,
     min: 0
   },
   discount: {
@@ -90,39 +126,35 @@ const orderSchema = new Schema<IOrder>({
     default: 0,
     min: 0
   },
-  total: {
+  platformFee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  deliveryCharge: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  finalAmount: {
     type: Number,
     required: true,
     min: 0
   },
-  status: {
-    type: String,
-    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
-    default: 'pending'
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['pending', 'paid', 'failed', 'refunded'],
-    default: 'pending'
-  },
-  paymentMethod: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  shippingAddress: {
-    type: addressSchema,
-    required: true
-  },
-  billingAddress: {
-    type: addressSchema,
-    required: true
-  },
-  trackingNumber: {
+  couponCode: {
     type: String,
     trim: true
   },
-  notes: {
+  couponDiscount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  estimatedDelivery: Date,
+  deliveredAt: Date,
+  cancelledAt: Date,
+  returnedAt: Date,
+  trackingId: {
     type: String,
     trim: true
   }
@@ -140,10 +172,11 @@ const orderSchema = new Schema<IOrder>({
 
 // Indexes
 orderSchema.index({ orderNumber: 1 });
-orderSchema.index({ user: 1 });
-orderSchema.index({ status: 1 });
+orderSchema.index({ userId: 1 });
+orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ trackingId: 1 });
 
 // Pre-save middleware to generate order number
 orderSchema.pre('save', function(next) {

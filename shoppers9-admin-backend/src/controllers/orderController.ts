@@ -1,9 +1,12 @@
 import { Request, Response } from 'express';
 import Order from '../models/Order';
-import { AuthRequest, OrderQueryParams } from '../types';
+import { AuthRequest } from '../types';
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
+    console.log('=== ADMIN ORDER API CALLED ===');
+    console.log('Query params:', req.query);
+    
     const {
       page = 1,
       limit = 10,
@@ -15,19 +18,18 @@ export const getAllOrders = async (req: Request, res: Response) => {
       endDate,
       sortBy = 'createdAt',
       sortOrder = 'desc'
-    } = req.query as OrderQueryParams & { [key: string]: any };
+    } = req.query;
 
     const query: any = {};
 
     if (search) {
       query.$or = [
-        { orderNumber: { $regex: search, $options: 'i' } },
-        { 'items.name': { $regex: search, $options: 'i' } }
+        { orderNumber: { $regex: search, $options: 'i' } }
       ];
     }
 
     if (status) {
-      query.status = status;
+      query.orderStatus = status;
     }
 
     if (paymentStatus) {
@@ -35,29 +37,43 @@ export const getAllOrders = async (req: Request, res: Response) => {
     }
 
     if (userId) {
-      query.user = userId;
+      query.userId = userId;
     }
 
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) query.createdAt.$lte = new Date(endDate);
+      if (startDate) query.createdAt.$gte = new Date(startDate as string);
+      if (endDate) query.createdAt.$lte = new Date(endDate as string);
     }
 
     const skip = (Number(page) - 1) * Number(limit);
     const sortOptions: any = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
     const orders = await Order.find(query)
-      .populate('user', 'firstName lastName email phone')
-      .populate('items.product', 'name images')
+      .populate('userId', 'firstName lastName email phone')
+      .populate('items.product', 'name images brand variants')
       .sort(sortOptions)
       .skip(skip)
       .limit(Number(limit));
 
     const total = await Order.countDocuments(query);
 
-    res.json({
+    // Debug: Log order data
+    console.log('Orders found:', orders.length);
+    if (orders.length > 0) {
+      const firstOrder = orders[0] as any;
+      console.log('First order totalAmount:', firstOrder.totalAmount);
+      console.log('First order finalAmount:', firstOrder.finalAmount);
+      console.log('First order items:', firstOrder.items?.map((item: any) => ({
+        price: item.price,
+        originalPrice: item.originalPrice,
+        quantity: item.quantity
+      })));
+    }
+    console.log('=== END ADMIN ORDER API ===');
+ 
+    return res.json({
       success: true,
       data: {
         orders,
@@ -69,11 +85,11 @@ export const getAllOrders = async (req: Request, res: Response) => {
         }
       }
     });
-  } catch (error) {
-    res.status(500).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
       message: 'Error fetching orders',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message || 'Unknown error'
     });
   }
 };
@@ -81,8 +97,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
 export const getOrder = async (req: Request, res: Response) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('user', 'firstName lastName email phone')
-      .populate('items.product', 'name images');
+      .populate('userId', 'firstName lastName email phone')
+      .populate('items.product', 'name images brand variants');
 
     if (!order) {
       return res.status(404).json({
@@ -95,57 +111,104 @@ export const getOrder = async (req: Request, res: Response) => {
       success: true,
       data: order
     });
-  } catch (error) {
+  } catch (error: any) {
     return res.status(500).json({
       success: false,
       message: 'Error fetching order',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message || 'Unknown error'
     });
   }
 };
 
 export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const { status, trackingNumber, notes } = req.body;
+    console.log('=== UPDATE ORDER STATUS API CALLED ===');
+    console.log('Request params:', req.params);
+    console.log('Request body:', req.body);
+    
+    const { status, trackingId } = req.body;
+    const orderId = req.params.id;
 
-    const order = await Order.findById(req.params.id);
+    // Validate required fields
+    if (!status) {
+      console.log('ERROR: Status is required');
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      });
+    }
 
+    // Validate status values
+    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
+    console.log('Valid statuses:', validStatuses);
+    console.log('Received status:', status);
+    
+    if (!validStatuses.includes(status)) {
+      console.log('ERROR: Invalid status value:', status);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value'
+      });
+    }
+    
+    console.log('Status validation passed');
+
+    const order = await Order.findById(orderId);
+    console.log('Order found:', !!order);
+    
     if (!order) {
+      console.log('ERROR: Order not found for ID:', orderId);
       return res.status(404).json({
         success: false,
         message: 'Order not found'
       });
     }
 
+    console.log('Current order status:', (order as any).orderStatus);
+    console.log('Updating to status:', status);
+
     // Update order status
-    if (status) {
-      order.status = status;
+    (order as any).orderStatus = status;
+    
+    if (status === 'delivered') {
+      (order as any).deliveredAt = new Date();
+      console.log('Set deliveredAt timestamp');
+    }
+    
+    if (status === 'cancelled') {
+      (order as any).cancelledAt = new Date();
+      console.log('Set cancelledAt timestamp');
+    }
+    
+    if (status === 'returned') {
+      (order as any).returnedAt = new Date();
+      console.log('Set returnedAt timestamp');
     }
 
-    if (trackingNumber) {
-      order.trackingNumber = trackingNumber;
+    if (trackingId) {
+      (order as any).trackingId = trackingId;
+      console.log('Set trackingId:', trackingId);
     }
 
-    if (notes) {
-      order.notes = notes;
-    }
-
+    console.log('Saving order...');
     await order.save();
+    console.log('Order saved successfully');
 
-    // Populate the updated order
-    await order.populate('user', 'firstName lastName email phone');
-    await order.populate('items.product', 'name images');
-
+    // Return simplified response
     return res.json({
       success: true,
-      message: 'Order updated successfully',
-      data: order
+      message: 'Order status updated successfully',
+      data: {
+        id: order._id,
+        orderStatus: (order as any).orderStatus,
+        trackingId: (order as any).trackingId
+      }
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
-      message: 'Error updating order',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      message: 'Error updating order status',
+      error: error.message || 'Unknown error'
     });
   }
 };
@@ -153,7 +216,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
 export const getOrderAnalytics = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
-
+    
     const dateFilter: any = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
@@ -161,123 +224,56 @@ export const getOrderAnalytics = async (req: Request, res: Response) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
     }
 
-    // Order status distribution
-    const statusStats = await Order.aggregate([
-      { $match: dateFilter },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalValue: { $sum: '$total' }
-        }
-      }
-    ]);
-
-    // Payment status distribution
-    const paymentStats = await Order.aggregate([
-      { $match: dateFilter },
-      {
-        $group: {
-          _id: '$paymentStatus',
-          count: { $sum: 1 },
-          totalValue: { $sum: '$total' }
-        }
-      }
-    ]);
-
-    // Daily sales trend
-    const salesTrend = await Order.aggregate([
-      { $match: { ...dateFilter, status: { $ne: 'cancelled' } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' }
-          },
-          orders: { $sum: 1 },
-          revenue: { $sum: '$total' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
-    ]);
-
-    // Top selling products
-    const topProducts = await Order.aggregate([
-      { $match: { ...dateFilter, status: { $ne: 'cancelled' } } },
-      { $unwind: '$items' },
-      {
-        $group: {
-          _id: '$items.product',
-          totalQuantity: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: '$items.total' },
-          orderCount: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'productInfo'
-        }
-      },
-      {
-        $project: {
-          productName: { $arrayElemAt: ['$productInfo.name', 0] },
-          totalQuantity: 1,
-          totalRevenue: 1,
-          orderCount: 1
-        }
-      },
-      { $sort: { totalQuantity: -1 } },
-      { $limit: 10 }
-    ]);
-
-    // Overall metrics
     const totalOrders = await Order.countDocuments(dateFilter);
-    const totalRevenue = await Order.aggregate([
-      { $match: { ...dateFilter, status: { $ne: 'cancelled' } } },
-      { $group: { _id: null, total: { $sum: '$total' } } }
+    const revenueResult = await Order.aggregate([
+      { $match: dateFilter },
+      { $group: { _id: null, totalRevenue: { $sum: '$finalAmount' } } }
+    ]);
+    const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    const ordersByStatus = await Order.aggregate([
+      { $match: dateFilter },
+      { $group: { _id: '$orderStatus', count: { $sum: 1 } } }
     ]);
 
-    const averageOrderValue = totalRevenue.length > 0 && totalOrders > 0 
-      ? totalRevenue[0].total / totalOrders 
-      : 0;
+    const ordersByPaymentStatus = await Order.aggregate([
+      { $match: dateFilter },
+      { $group: { _id: '$paymentStatus', count: { $sum: 1 } } }
+    ]);
 
-    res.json({
+    const recentOrders = await Order.find(dateFilter)
+      .populate('userId', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('orderNumber userId finalAmount orderStatus createdAt');
+
+    return res.json({
       success: true,
       data: {
-        overview: {
-          totalOrders,
-          totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
-          averageOrderValue
-        },
-        statusStats,
-        paymentStats,
-        salesTrend,
-        topProducts
+        totalOrders,
+        totalRevenue,
+        averageOrderValue,
+        ordersByStatus,
+        ordersByPaymentStatus,
+        recentOrders
       }
     });
-  } catch (error) {
-    res.status(500).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
       message: 'Error fetching order analytics',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message || 'Unknown error'
     });
   }
 };
 
 export const exportOrders = async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate, status, format = 'json' } = req.query;
-
+    const { format = 'json', startDate, endDate } = req.query;
+    
     const query: any = {};
-
-    if (status) {
-      query.status = status;
-    }
-
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) query.createdAt.$gte = new Date(startDate as string);
@@ -285,20 +281,21 @@ export const exportOrders = async (req: Request, res: Response) => {
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'firstName lastName email phone')
+      .populate('userId', 'firstName lastName email phone')
       .populate('items.product', 'name')
       .sort({ createdAt: -1 });
 
     if (format === 'csv') {
-      // Convert to CSV format
-      const csvData = orders.map(order => {
-        const user = order.user as any;
+      const csvData = orders.map((order: any) => {
+        const user = order.userId;
         return {
           orderNumber: order.orderNumber,
-          customerName: `${user?.firstName || ''} ${user?.lastName || ''}`,
+          customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Unknown User',
           customerEmail: user?.email || '',
-          total: order.total,
-          status: order.status,
+          customerPhone: user?.phone || '',
+          totalAmount: order.totalAmount,
+          finalAmount: order.finalAmount,
+          orderStatus: order.orderStatus,
           paymentStatus: order.paymentStatus,
           createdAt: order.createdAt
         };
@@ -307,30 +304,32 @@ export const exportOrders = async (req: Request, res: Response) => {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
       
-      // Simple CSV conversion (in production, use a proper CSV library)
-      const csvHeaders = Object.keys(csvData[0] || {}).join(',');
-      const csvRows = csvData.map(row => Object.values(row).join(','));
-      const csvContent = [csvHeaders, ...csvRows].join('\n');
-      
-      res.send(csvContent);
-    } else {
-      res.json({
-        success: true,
-        data: orders
-      });
+      if (csvData.length > 0 && csvData[0]) {
+        const csvHeaders = Object.keys(csvData[0]).join(',');
+        const csvRows = csvData.map(row => Object.values(row).join(','));
+        const csvContent = [csvHeaders, ...csvRows].join('\n');
+        return res.send(csvContent);
+      } else {
+        return res.send('No data available');
+      }
     }
-  } catch (error) {
-    res.status(500).json({
+
+    return res.json({
+      success: true,
+      data: orders
+    });
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
       message: 'Error exporting orders',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message || 'Unknown error'
     });
   }
 };
 
 export const bulkUpdateOrders = async (req: Request, res: Response) => {
   try {
-    const { orderIds, updateData } = req.body;
+    const { orderIds, status, trackingId } = req.body;
 
     if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
       return res.status(400).json({
@@ -339,10 +338,26 @@ export const bulkUpdateOrders = async (req: Request, res: Response) => {
       });
     }
 
+    const updateData: any = {};
+    if (status) {
+      updateData.orderStatus = status;
+      
+      if (status === 'delivered') {
+        updateData.deliveredAt = new Date();
+      }
+      
+      if (status === 'cancelled') {
+        updateData.cancelledAt = new Date();
+      }
+    }
+    
+    if (trackingId) {
+      updateData.trackingId = trackingId;
+    }
+
     const result = await Order.updateMany(
       { _id: { $in: orderIds } },
-      updateData,
-      { runValidators: true }
+      { $set: updateData }
     );
 
     return res.json({
@@ -353,11 +368,79 @@ export const bulkUpdateOrders = async (req: Request, res: Response) => {
         modifiedCount: result.modifiedCount
       }
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (error: any) {
+    return res.status(500).json({
       success: false,
       message: 'Error updating orders',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
+export const fixOrderAmounts = async (req: Request, res: Response) => {
+  try {
+    console.log('Starting order amounts fix...');
+    
+    // Find all orders
+    const orders = await Order.find({});
+    console.log(`Found ${orders.length} orders to check`);
+
+    let fixedCount = 0;
+
+    for (const order of orders) {
+      try {
+        // Calculate the correct original amount from items
+        const originalAmount = order.items.reduce((sum, item: any) => {
+          return sum + (item.originalPrice * item.quantity);
+        }, 0);
+
+        // Calculate the correct discounted amount from items
+        const discountedAmount = order.items.reduce((sum, item: any) => {
+          return sum + (item.price * item.quantity);
+        }, 0);
+
+        // Calculate fees based on discounted amount
+        const platformFee = discountedAmount > 500 ? 0 : 20;
+        const deliveryCharge = discountedAmount > 500 ? 0 : 50;
+
+        // Calculate correct finalAmount
+        const correctFinalAmount = discountedAmount + platformFee + deliveryCharge;
+        const correctTotalAmount = originalAmount;
+
+        // Update the order if amounts are different
+        if (order.totalAmount !== correctTotalAmount || order.finalAmount !== correctFinalAmount) {
+          await Order.updateOne(
+            { _id: order._id },
+            {
+              totalAmount: correctTotalAmount,
+              finalAmount: correctFinalAmount
+            }
+          );
+
+          console.log(`Fixed order ${order.orderNumber}:`);
+          console.log(`  Old totalAmount: ${order.totalAmount} -> New: ${correctTotalAmount}`);
+          console.log(`  Old finalAmount: ${order.finalAmount} -> New: ${correctFinalAmount}`);
+          fixedCount++;
+        }
+      } catch (error) {
+        console.error(`Error fixing order ${order.orderNumber}:`, error);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Fixed ${fixedCount} orders successfully`,
+      data: {
+        totalOrders: orders.length,
+        fixedOrders: fixedCount
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fixing order amounts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fixing order amounts',
+      error: error.message || 'Unknown error'
     });
   }
 };

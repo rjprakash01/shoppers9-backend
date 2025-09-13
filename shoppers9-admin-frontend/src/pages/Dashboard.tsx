@@ -42,10 +42,10 @@ interface DashboardStats {
     latestOrders: Array<{
       _id: string;
       orderNumber: string;
-      total: number;
-      status: string;
+      totalAmount: number;
+      orderStatus: string;
       createdAt: string;
-      user: {
+      userId: {
         firstName: string;
         lastName: string;
         email: string;
@@ -355,22 +355,22 @@ const Dashboard: React.FC = () => {
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <div className="text-xs sm:text-sm font-medium text-gray-900">{order.orderNumber}</div>
                     <div className="text-xs text-gray-500 sm:hidden">
-                      {order.user?.firstName || 'N/A'} {order.user?.lastName || ''}
+                      {order.userId?.firstName || 'N/A'} {order.userId?.lastName || ''}
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{order.user?.firstName || 'N/A'} {order.user?.lastName || ''}</div>
-                      <div className="text-sm text-gray-500">{order.user?.email || 'N/A'}</div>
+                      <div className="text-sm font-medium text-gray-900">{order.userId?.firstName || 'N/A'} {order.userId?.lastName || ''}</div>
+                      <div className="text-sm text-gray-500">{order.userId?.email || 'N/A'}</div>
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                      {order.status}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.orderStatus)}`}>
+                      {order.orderStatus}
                     </span>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                    <div className="text-xs sm:text-sm text-gray-900 font-medium">{formatCurrency(order.total)}</div>
+                    <div className="text-xs sm:text-sm text-gray-900 font-medium">{formatCurrency(order.totalAmount)}</div>
                     <div className="text-xs text-gray-500 md:hidden">{formatDate(order.createdAt)}</div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">

@@ -4,6 +4,7 @@ import type { Product } from './products';
 export interface WishlistItem {
   _id: string;
   product: Product;
+  variantId?: string;
   addedAt: string;
 }
 

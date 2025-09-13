@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X, Camera, Settings, Shield, CreditCard, Bell, LogOut } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X, Camera, Settings, Shield, CreditCard, Bell, LogOut, ShoppingCart, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, type Address } from '../services/auth';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface EditableUser {
   name: string;
@@ -21,7 +22,9 @@ interface AddressForm {
 }
 
 const Profile: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -246,24 +249,46 @@ const Profile: React.FC = () => {
   };
   
   const [activeTab, setActiveTab] = useState('profile');
+  const [mobileCurrentPage, setMobileCurrentPage] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const menuItems = [
     { id: 'profile', label: 'Profile Info', icon: User },
+    { id: 'orders', label: 'My Orders', icon: ShoppingCart, mobileOnly: true },
     { id: 'addresses', label: 'Addresses', icon: MapPin },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'logout', label: 'Logout', icon: LogOut, mobileOnly: true, isAction: true },
   ];
+
+  const handleMobileNavigation = (itemId: string) => {
+    if (itemId === 'logout') {
+      setShowLogoutConfirm(true);
+      return;
+    }
+    setMobileCurrentPage(itemId);
+    setActiveTab(itemId);
+  };
+
+  const handleLogoutConfirm = () => {
+    logout();
+    setShowLogoutConfirm(false);
+  };
+
+  const goBackToMenu = () => {
+    setMobileCurrentPage(null);
+  };
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full border border-brand-gold/20">
-          <div className="w-16 h-16 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="h-8 w-8 text-brand-indigo" />
+      <div className="min-h-screen bg-elite-light-grey flex items-center justify-center p-4">
+        <div className="postcard-box p-8 text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-elite-cta-purple flex items-center justify-center mx-auto mb-4">
+            <User className="h-8 w-8 text-elite-base-white" />
           </div>
-          <h2 className="text-2xl font-bold font-playfair text-brand-indigo mb-2">Access Required</h2>
-          <p className="text-brand-indigo/70 font-poppins mb-6">Please log in to view your profile and manage your account.</p>
-          <button className="w-full bg-brand-gold text-brand-indigo py-3 px-6 rounded-xl font-semibold font-poppins hover:bg-white hover:text-brand-indigo border border-brand-gold transition-all duration-300">
+          <h2 className="font-playfair text-subsection font-semibold text-elite-charcoal-black mb-2">Access Required</h2>
+          <p className="font-inter text-body text-elite-medium-grey mb-6">Please log in to view your profile and manage your account.</p>
+          <button className="btn-primary w-full py-3 px-6 font-semibold font-inter transition-all duration-300">
             Sign In
           </button>
         </div>
@@ -272,61 +297,102 @@ const Profile: React.FC = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
-      {/* Header */}
-      <div className="bg-brand-indigo shadow-sm border-b border-brand-gold/20">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-2xl font-bold font-playfair text-brand-gold">
-              My Account
+    <div className="min-h-screen bg-elite-base-white">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-black shadow-sm">
+        <div className="w-full px-4">
+          <div className="flex items-center h-14">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 text-white hover:text-gray-300 transition-colors mr-3"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-white flex-1">
+              Profile
             </h1>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-brand-gold hover:text-white transition-colors">
-                <Settings className="h-5 w-5" />
-              </button>
-            </div>
           </div>
         </div>
       </div>
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-          {/* Sidebar */}
+          {/* Sidebar - Clean Design */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-brand-gold/20">
+            <div className="postcard-box bg-white overflow-hidden">
               {/* Profile Header */}
-              <div className="bg-brand-indigo px-6 py-8 text-center">
+              <div className="bg-white px-6 py-8 text-center border-b border-brand-light-grey hidden lg:block">
                 <div className="relative inline-block">
-                  <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <User className="h-10 w-10 text-brand-indigo" />
+                  <div className="w-20 h-20 bg-brand-light-grey flex items-center justify-center mx-auto mb-4">
+                    <User className="h-10 w-10 text-brand-medium-grey" />
                   </div>
-                  <button className="absolute bottom-3 right-0 bg-brand-gold rounded-full p-2 shadow-lg hover:shadow-xl transition-shadow">
-                    <Camera className="h-4 w-4 text-brand-indigo" />
+                  <button className="absolute bottom-3 right-0 bg-brand-medium-grey rounded-full p-2 shadow-sm hover:bg-brand-charcoal-black hover:text-white transition-all duration-200">
+                    <Camera className="h-4 w-4 text-white" />
                   </button>
                 </div>
-                <h3 className="text-xl font-bold font-playfair text-brand-gold">{user.name || 'User'}</h3>
-                <p className="text-brand-slate text-sm font-poppins">{user.email}</p>
+                <h3 className="text-xl font-bold font-montserrat text-brand-charcoal-black">{user.name || 'User'}</h3>
+                <p className="text-brand-medium-grey text-sm font-inter">{user.email}</p>
               </div>
 
-              {/* Navigation Menu */}
-              <nav className="p-2">
-                {menuItems.map((item) => {
+              {/* Navigation Menu - Desktop */}
+              <nav className="p-2 hidden lg:block">
+                {menuItems.filter(item => !item.mobileOnly).map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-left transition-all duration-200 ${
                         activeTab === item.id
-                          ? 'bg-brand-gold text-brand-indigo shadow-lg'
-                          : 'text-brand-indigo hover:bg-brand-gold/10'
+                          ? 'bg-brand-light-grey text-brand-charcoal-black border-l-4 border-brand-charcoal-black'
+                          : 'text-brand-medium-grey hover:bg-brand-light-grey hover:text-brand-charcoal-black'
                       }`}
                     >
                       <Icon className="h-5 w-5" />
-                      <span className="font-medium font-poppins">{item.label}</span>
+                      <span className="font-medium font-inter">{item.label}</span>
                     </button>
                   );
                 })}
+              </nav>
+
+              {/* Navigation Menu - Mobile Page-based */}
+              <nav className="p-2 lg:hidden">
+                {mobileCurrentPage ? (
+                  // Show selected page content with back button
+                  <div>
+                    <button
+                      onClick={goBackToMenu}
+                      className="flex items-center space-x-2 px-4 py-3 text-brand-charcoal-black hover:bg-brand-light-grey rounded-lg transition-all duration-200 mb-4"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                      <span className="font-medium font-inter">Back to Menu</span>
+                    </button>
+                    
+
+                  </div>
+                ) : (
+                  // Show menu items
+                  <div>
+                    {menuItems.map((item) => {
+                      const Icon = item.icon;
+                      
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleMobileNavigation(item.id)}
+                          className={`w-full flex items-center space-x-3 px-4 py-3 text-left transition-all duration-200 mb-2 ${
+                            item.isAction
+                              ? 'text-red-600 hover:bg-red-50'
+                              : 'text-brand-medium-grey hover:bg-brand-light-grey hover:text-brand-charcoal-black'
+                          } rounded-lg`}
+                        >
+                          <Icon className="h-5 w-5" />
+                          <span className="font-medium font-inter">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </nav>
             </div>
           </div>
@@ -334,14 +400,16 @@ const Profile: React.FC = () => {
           {/* Main Content */}
           <div className="mt-8 lg:mt-0 lg:col-span-9">
             {activeTab === 'profile' && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-brand-gold/20">
-                <div className="bg-brand-indigo px-6 py-4">
+              <div className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-brand-light-grey ${
+                mobileCurrentPage === 'profile' || !mobileCurrentPage ? 'block' : 'hidden'
+              } lg:block`}>
+                <div className="bg-brand-charcoal-black px-6 py-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold font-playfair text-brand-gold">Profile Information</h2>
+                    <h2 className="text-xl font-bold font-montserrat text-white">Profile Information</h2>
                     {!isEditingProfile && (
                       <button
                         onClick={() => setIsEditingProfile(true)}
-                        className="flex items-center bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold px-4 py-2 rounded-xl transition-all duration-200 backdrop-blur-sm font-poppins"
+                        className="flex items-center bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl transition-all duration-200 backdrop-blur-sm font-inter"
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
@@ -359,12 +427,12 @@ const Profile: React.FC = () => {
                     Full Name
                   </label>
                   <div className="relative">
-                    <User className="absolute left-4 top-4 h-5 w-5 text-purple-400" />
+                    <User className="absolute left-4 top-4 h-5 w-5 text-brand-medium-grey" />
                     <input
                       type="text"
                       value={profileForm?.name || ''}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      className="input-field w-full pl-12 pr-4 py-4 border-2 border-brand-light-grey focus:outline-none bg-white hover:border-brand-medium-grey"
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -375,12 +443,12 @@ const Profile: React.FC = () => {
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-4 h-5 w-5 text-purple-400" />
+                    <Mail className="absolute left-4 top-4 h-5 w-5 text-brand-medium-grey" />
                     <input
                       type="email"
                       value={profileForm?.email || ''}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                      className="input-field w-full pl-12 pr-4 py-4 border-2 border-brand-light-grey focus:outline-none bg-white hover:border-brand-medium-grey"
                       placeholder="Enter your email address"
                     />
                   </div>
@@ -391,7 +459,7 @@ const Profile: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="btn-primary flex items-center justify-center px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
                   <Check className="h-5 w-5 mr-2" />
                   {isLoading ? 'Saving...' : 'Save Changes'}
@@ -399,7 +467,7 @@ const Profile: React.FC = () => {
                 <button
                   type="button"
                   onClick={cancelEditing}
-                  className="flex items-center justify-center bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all duration-200 font-semibold"
+                  className="btn-secondary flex items-center justify-center px-6 py-3 font-semibold"
                 >
                   <X className="h-5 w-5 mr-2" />
                   Cancel
@@ -408,38 +476,38 @@ const Profile: React.FC = () => {
             </form>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+              <div className="bg-white p-6 border border-brand-light-grey">
                 <div className="flex items-center mb-3">
-                  <div className="bg-purple-100 p-2 rounded-lg mr-4">
-                    <User className="h-6 w-6 text-purple-600" />
+                  <div className="bg-brand-light-grey p-2 mr-4">
+                    <User className="h-6 w-6 text-brand-medium-grey" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-purple-600">Full Name</p>
-                    <p className="text-lg font-semibold text-gray-900">{user.name || 'Not provided'}</p>
+                    <p className="text-sm font-medium text-brand-medium-grey font-inter">Full Name</p>
+                    <p className="text-lg font-semibold text-brand-charcoal-black font-montserrat">{user.name || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+              <div className="bg-white p-6 border border-brand-light-grey">
                 <div className="flex items-center mb-3">
-                  <div className="bg-blue-100 p-2 rounded-lg mr-4">
-                    <Mail className="h-6 w-6 text-blue-600" />
+                  <div className="bg-brand-light-grey p-2 mr-4">
+                    <Mail className="h-6 w-6 text-brand-medium-grey" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-blue-600">Email Address</p>
-                    <p className="text-lg font-semibold text-gray-900">{user.email || 'Not provided'}</p>
+                    <p className="text-sm font-medium text-brand-medium-grey font-inter">Email Address</p>
+                    <p className="text-lg font-semibold text-brand-charcoal-black font-montserrat">{user.email || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100 md:col-span-2">
+              <div className="bg-white p-6 border border-brand-light-grey md:col-span-2">
                 <div className="flex items-center mb-3">
-                  <div className="bg-green-100 p-2 rounded-lg mr-4">
-                    <Phone className="h-6 w-6 text-green-600" />
+                  <div className="bg-brand-light-grey p-2 mr-4">
+                    <Phone className="h-6 w-6 text-brand-medium-grey" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-green-600">Mobile Number</p>
-                    <p className="text-lg font-semibold text-gray-900">+91 {user.phone}</p>
+                    <p className="text-sm font-medium text-brand-medium-grey font-inter">Mobile Number</p>
+                    <p className="text-lg font-semibold text-brand-charcoal-black font-montserrat">+91 {user.phone}</p>
                   </div>
                 </div>
               </div>
@@ -449,15 +517,43 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'addresses' && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+            {activeTab === 'orders' && (
+              <div className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-brand-light-grey ${
+                mobileCurrentPage === 'orders' ? 'block' : 'hidden'
+              } lg:hidden`}>
+                <div className="bg-brand-charcoal-black px-6 py-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-white">Saved Addresses</h2>
+                    <h2 className="text-xl font-bold font-montserrat text-white">My Orders</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-brand-light-grey flex items-center justify-center mx-auto mb-4">
+                      <ShoppingCart className="h-8 w-8 text-brand-medium-grey" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-brand-charcoal-black mb-2 font-montserrat">No Orders Yet</h3>
+                    <p className="text-brand-medium-grey mb-6 font-inter">Start shopping to see your orders here</p>
+                    <button className="btn-primary px-6 py-3 font-semibold transition-all duration-300">
+                      Browse Products
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+
+            {activeTab === 'addresses' && (
+              <div className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-brand-light-grey ${
+                mobileCurrentPage === 'addresses' || !mobileCurrentPage ? 'block' : 'hidden'
+              } lg:block`}>
+                <div className="bg-brand-charcoal-black px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold font-montserrat text-white">Saved Addresses</h2>
                     {!isAddingAddress && (
                       <button
                         onClick={() => setIsAddingAddress(true)}
-                        className="flex items-center bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm"
+                        className="flex items-center bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-200 backdrop-blur-sm font-inter"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Address
@@ -839,9 +935,11 @@ const Profile: React.FC = () => {
             )}
 
             {activeTab === 'security' && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white">Security Settings</h2>
+              <div className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-brand-light-grey ${
+                mobileCurrentPage === 'security' || !mobileCurrentPage ? 'block' : 'hidden'
+              } lg:block`}>
+                <div className="bg-brand-charcoal-black px-6 py-4">
+                  <h2 className="text-xl font-bold font-montserrat text-white">Security Settings</h2>
                 </div>
                 <div className="p-6">
                   <div className="space-y-6">
@@ -880,9 +978,11 @@ const Profile: React.FC = () => {
             )}
 
             {activeTab === 'notifications' && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white">Notification Preferences</h2>
+              <div className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-brand-light-grey ${
+                mobileCurrentPage === 'notifications' || !mobileCurrentPage ? 'block' : 'hidden'
+              } lg:block`}>
+                <div className="bg-brand-charcoal-black px-6 py-4">
+                  <h2 className="text-xl font-bold font-montserrat text-white">Notification Preferences</h2>
                 </div>
                 <div className="p-6">
                   <div className="space-y-6">
@@ -946,8 +1046,38 @@ const Profile: React.FC = () => {
           </div>
          </div>
        </div>
+
+       {/* Logout Confirmation Modal - Mobile Only */}
+       {showLogoutConfirm && (
+         <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+             <div className="text-center">
+               <div className="w-16 h-16 bg-red-100 flex items-center justify-center mx-auto mb-4 rounded-full">
+                 <LogOut className="h-8 w-8 text-red-600" />
+               </div>
+               <h3 className="text-lg font-semibold text-brand-charcoal-black mb-2 font-montserrat">Logout Confirmation</h3>
+               <p className="text-brand-medium-grey mb-6 font-inter">Are you sure you want to logout?</p>
+               
+               <div className="flex space-x-3">
+                 <button
+                   onClick={() => setShowLogoutConfirm(false)}
+                   className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 font-medium font-inter"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={handleLogoutConfirm}
+                   className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 font-medium font-inter"
+                 >
+                   Logout
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
      </div>
-   );
+ );
 };
 
 export default Profile;

@@ -6,6 +6,7 @@ import {
   cancelOrder,
   updateOrderStatus,
   processPayment,
+  requestReturn,
   getOrderAnalytics
 } from '../controllers/orderController';
 import { authenticateToken, requireVerification } from '../middleware/auth';
@@ -45,6 +46,19 @@ const cancelOrderSchema = Joi.object({
   reason: Joi.string().required().trim().min(10).max(500)
 });
 
+const returnOrderSchema = Joi.object({
+  reason: Joi.string().required().valid(
+    'Defective product',
+    'Wrong item received',
+    'Size/fit issues',
+    'Product not as described',
+    'Damaged during shipping',
+    'Changed my mind',
+    'Quality issues',
+    'Other'
+  )
+});
+
 const updateOrderStatusSchema = Joi.object({
   status: Joi.string().required().valid(
     'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 
@@ -58,12 +72,27 @@ const processPaymentSchema = Joi.object({
   paymentMethod: Joi.string().required().valid('ONLINE', 'UPI', 'CARD')
 });
 
-// User routes (require authentication and verification)
+// User routes (require authentication and verification)// Routes
+// Create order - both /create and root / endpoints for compatibility
+router.post('/', 
+  authenticateToken, 
+  requireVerification, 
+  validateRequest(createOrderSchema), 
+  createOrder
+);
+
 router.post('/create', 
   authenticateToken, 
   requireVerification, 
   validateRequest(createOrderSchema), 
   createOrder
+);
+
+// Get user orders - both /my-orders and root / endpoints for compatibility
+router.get('/', 
+  authenticateToken, 
+  requireVerification, 
+  getUserOrders
 );
 
 router.get('/my-orders', 
@@ -83,6 +112,13 @@ router.patch('/:orderNumber/cancel',
   requireVerification, 
   validateRequest(cancelOrderSchema), 
   cancelOrder
+);
+
+router.patch('/:orderNumber/return', 
+  authenticateToken, 
+  requireVerification, 
+  validateRequest(returnOrderSchema), 
+  requestReturn
 );
 
 router.patch('/:orderNumber/payment', 

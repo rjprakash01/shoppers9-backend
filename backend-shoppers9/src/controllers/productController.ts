@@ -44,89 +44,99 @@ export const getProducts = async (req: Request, res: Response) => {
 
   // Build filter query
   if (category) {
-    // Handle category filtering by slug or name
+    // Handle hierarchical category filtering (category-subcategory-subsubcategory)
+    const categoryParts = category.split('-');
+    const categoryName = categoryParts[0];
+    const subcategoryName = categoryParts[1];
+    const subsubcategoryName = categoryParts[2];
+    
     try {
-      const categoryDoc = await Category.findOne({ 
-        $or: [
-          { slug: category },
-          { name: { $regex: new RegExp(`^${category}$`, 'i') } }
-        ],
-        isActive: true
-      });
-      if (categoryDoc) {
-        
-        // Get all descendant categories recursively
-        const getAllDescendants = async (parentId: any): Promise<any[]> => {
-          const children = await Category.find({
-            parentCategory: parentId,
+      if (subsubcategoryName) {
+        // Filter by specific subsubcategory (level 3)
+        const subsubcategoryDoc = await Category.findOne({
+          $or: [
+            { slug: subsubcategoryName },
+            { name: { $regex: new RegExp(`^${subsubcategoryName}$`, 'i') } }
+          ],
+          isActive: true,
+          level: 3
+        });
+        if (subsubcategoryDoc) {
+          query.$or = [
+            { category: subsubcategoryDoc._id },
+            { subCategory: subsubcategoryDoc._id },
+            { subSubCategory: subsubcategoryDoc._id }
+          ];
+        }
+      } else if (subcategoryName) {
+        // Filter by subcategory (level 2) and all its children
+        const subcategoryDoc = await Category.findOne({
+          $or: [
+            { slug: subcategoryName },
+            { name: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
+          ],
+          isActive: true,
+          level: 2
+        });
+        if (subcategoryDoc) {
+          // Get all subsubcategories under this subcategory
+          const subsubcategories = await Category.find({
+            parentCategory: subcategoryDoc._id,
             isActive: true
           }).lean();
           
-          let allDescendants = [...children];
+          const subsubcategoryIds = subsubcategories.map(s => s._id);
           
-          // Recursively get descendants of each child
-          for (const child of children) {
-            const grandChildren = await getAllDescendants(child._id);
-            allDescendants = allDescendants.concat(grandChildren);
-          }
-          
-          return allDescendants;
-        };
-        
-        // Find all subcategories (level 2 and 3) under this category
-        const allSubcategories = await getAllDescendants(categoryDoc._id);
-
-        allSubcategories.forEach(subcat => {
-          // Process subcategory
-        });
-        
-        // Create array of category IDs (parent + all subcategories) as strings
-        // Since the Product schema defines category as String type
-        const categoryIds = [categoryDoc._id.toString()];
-        allSubcategories.forEach(subcat => {
-          categoryIds.push(subcat._id.toString());
-        });
-
-        // Separate category IDs by level for proper field matching
-        const mainCategoryId = categoryDoc._id;
-        const subCategoryIds = allSubcategories
-          .filter(cat => cat.level === 2)
-          .map(cat => cat._id);
-        const subSubCategoryIds = allSubcategories
-          .filter(cat => cat.level === 3)
-          .map(cat => cat._id);
-
-        // Build query conditions for proper field matching with ObjectIds
-        const orConditions = [];
-        
-        // Match main category (ObjectId)
-        orConditions.push({ category: mainCategoryId });
-        
-        // Match subcategories in subCategory field (ObjectIds)
-        if (subCategoryIds.length > 0) {
-          orConditions.push({ subCategory: { $in: subCategoryIds } });
+          // More specific query: products that have this subcategory as their subCategory
+          // OR products that have any of the subsubcategories as their subSubCategory
+          query.$or = [
+            { subCategory: subcategoryDoc._id },
+            { subSubCategory: { $in: subsubcategoryIds } }
+          ];
         }
-        
-        // Match sub-subcategories in subSubCategory field (ObjectIds)
-        if (subSubCategoryIds.length > 0) {
-          orConditions.push({ subSubCategory: { $in: subSubCategoryIds } });
-        }
-        
-        // Also allow products that have any of the subcategory IDs as their main category
-        // (for flexibility in data structure)
-        if (subCategoryIds.length > 0) {
-          orConditions.push({ category: { $in: subCategoryIds } });
-        }
-        
-        query.$or = orConditions;
       } else {
-        // Fallback to direct category matching (for backward compatibility)
-        query.category = category;
+        // Filter by main category (level 1) and all its descendants
+        const categoryDoc = await Category.findOne({ 
+          $or: [
+            { slug: categoryName },
+            { name: { $regex: new RegExp(`^${categoryName}$`, 'i') } }
+          ],
+          isActive: true,
+          level: 1
+        });
+        if (categoryDoc) {
+          // Get all descendant categories recursively
+          const getAllDescendants = async (parentId: any): Promise<any[]> => {
+            const children = await Category.find({
+              parentCategory: parentId,
+              isActive: true
+            }).lean();
+            
+            let allDescendants = [...children];
+            
+            // Recursively get descendants of each child
+            for (const child of children) {
+              const grandChildren = await getAllDescendants(child._id);
+              allDescendants = allDescendants.concat(grandChildren);
+            }
+            
+            return allDescendants;
+          };
+          
+          // Find all subcategories (level 2 and 3) under this category
+          const allSubcategories = await getAllDescendants(categoryDoc._id);
+          const categoryIds = [categoryDoc._id, ...allSubcategories.map(s => s._id)];
+          
+          query.$or = [
+            { category: { $in: categoryIds } },
+            { subCategory: { $in: categoryIds } },
+            { subSubCategory: { $in: categoryIds } }
+          ];
+        }
       }
     } catch (error) {
-      
-      // Fallback to direct category name matching
-      query.category = category;
+      console.error('Category filtering error:', error);
+      // Continue without category filter if there's an error
     }
   }
 
@@ -399,12 +409,11 @@ export const getFilters = async (req: Request, res: Response) => {
     const priceRange = await Product.aggregate([
       { $match: matchQuery },
       { $unwind: '$variants' },
-      { $unwind: '$variants.sizes' },
       {
         $group: {
           _id: null,
-          minPrice: { $min: '$variants.sizes.price' },
-          maxPrice: { $max: '$variants.sizes.price' }
+          minPrice: { $min: '$variants.price' },
+          maxPrice: { $max: '$variants.price' }
         }
       }
     ]);
@@ -420,8 +429,7 @@ export const getFilters = async (req: Request, res: Response) => {
     const sizes = await Product.aggregate([
       { $match: matchQuery },
       { $unwind: '$variants' },
-      { $unwind: '$variants.sizes' },
-      { $group: { _id: '$variants.sizes.size', count: { $sum: 1 } } },
+      { $group: { _id: '$variants.size', count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
     

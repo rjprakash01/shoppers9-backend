@@ -5,8 +5,12 @@ import type { Address } from './auth';
 export interface OrderItem {
   _id: string;
   product: Product;
+  variantId: string;
+  size: string;
   quantity: number;
   price: number;
+  originalPrice: number;
+  discount?: number;
 }
 
 export interface Order {
@@ -16,12 +20,23 @@ export interface Order {
   user: string;
   items: OrderItem[];
   totalAmount: number;
+  discount: number;
+  platformFee: number;
+  deliveryCharge: number;
+  finalAmount: number;
+  couponCode?: string;
+  couponDiscount: number;
   shippingAddress: Address;
   paymentMethod: string;
   paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
-  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'return_requested' | 'returned';
   trackingNumber?: string;
+  trackingId?: string;
   estimatedDelivery?: string;
+  deliveredAt?: string;
+  returnRequestedAt?: string;
+  returnedAt?: string;
+  returnReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,7 +72,7 @@ export interface OrderFilters {
 }
 
 class OrderService {
-  async createOrder(orderData: CreateOrderData): Promise<Order> {
+  async createOrder(orderData: CreateOrderData): Promise<any> {
     const response = await api.post('/orders/create', orderData);
     return response.data.data.order;
   }
@@ -109,6 +124,15 @@ class OrderService {
     
     // Fallback for direct response structure
     return response.data.order;
+  }
+
+  async requestReturn(orderId: string, reason: string): Promise<{ message: string }> {
+    try {
+      const response = await api.patch(`/orders/${orderId}/return`, { reason });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to request return');
+    }
   }
 
   async trackOrder(orderId: string): Promise<{

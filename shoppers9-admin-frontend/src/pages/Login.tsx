@@ -18,13 +18,26 @@ const Login: React.FC = () => {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
       
-      await login('superadmin@shoppers9.com', 'superadmin123', 'email');
+      await login('admin@shoppers9.com', 'admin123', 'email');
       navigate('/dashboard');
     } catch (error: any) {
-      
+      console.error('Login error:', error);
       alert(`Login failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      console.log('Testing backend connection...');
+      const response = await fetch('/api/test-connection');
+      const data = await response.json();
+      console.log('Connection test result:', data);
+      alert(`Connection test: ${data.message}`);
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      alert(`Connection test failed: ${error}`);
     }
   };
 
@@ -42,6 +55,13 @@ const Login: React.FC = () => {
         
         <div className="mt-8 space-y-6">
           <div>
+            <button
+              onClick={testConnection}
+              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 mb-4"
+            >
+              Test Backend Connection
+            </button>
+            
             <button
               onClick={handleAdminLogin}
               disabled={isLoading}

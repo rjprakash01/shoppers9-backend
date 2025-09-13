@@ -12,8 +12,14 @@ interface BannerData {
   buttonText?: string;
   isActive: boolean;
   order: number;
-  displayType: 'carousel' | 'category-card' | 'both';
+  displayType: 'carousel' | 'price-range';
   categorySlug?: string;
+  priceRange?: {
+    minPrice?: number;
+    maxPrice?: number;
+    label: string;
+    color?: string;
+  };
 }
 
 // Mock banner data for different categories
@@ -63,7 +69,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Men',
     isActive: true,
     order: 4,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'men'
   },
   {
@@ -75,7 +81,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Women',
     isActive: true,
     order: 5,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'women'
   },
   {
@@ -87,7 +93,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Electronics',
     isActive: true,
     order: 6,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'electronics'
   },
   {
@@ -99,7 +105,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Home',
     isActive: true,
     order: 7,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'household'
   },
   {
@@ -111,7 +117,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Kids',
     isActive: true,
     order: 8,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'kids'
   },
   {
@@ -123,7 +129,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Beauty',
     isActive: true,
     order: 9,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'beauty-personal-care'
   },
   {
@@ -135,7 +141,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Sports',
     isActive: true,
     order: 10,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'sports-fitness'
   },
   {
@@ -147,7 +153,7 @@ const bannerData: BannerData[] = [
     buttonText: 'Shop Books',
     isActive: true,
     order: 11,
-    displayType: 'category-card',
+    displayType: 'carousel',
     categorySlug: 'books-stationery'
   }
 ];
@@ -182,10 +188,10 @@ const seedBanners = async (): Promise<void> => {
         displayType: banner.displayType
       };
 
-      // Add categoryId if it's a category-card banner
-      if (banner.categorySlug && categoryMap.has(banner.categorySlug)) {
-        bannerDoc.categoryId = categoryMap.get(banner.categorySlug);
-      }
+      // Add categoryId if it's a carousel banner with category
+    if (banner.categorySlug && categoryMap.has(banner.categorySlug)) {
+      bannerDoc.categoryId = categoryMap.get(banner.categorySlug);
+    }
 
       return bannerDoc;
     });

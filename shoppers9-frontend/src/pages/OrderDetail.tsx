@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Package, Calendar, MapPin, Truck, CheckCircle, Clock, XCircle, X } from 'lucide-react';
+import { Package, Calendar, MapPin, Truck, CheckCircle, Clock, XCircle, X, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { orderService, type Order } from '../services/orders';
 import { formatPrice } from '../utils/currency';
@@ -13,12 +13,16 @@ const OrderDetail: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [trackingInfo, setTrackingInfo] = useState<any>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [showTrackModal, setShowTrackModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCancelReturnModal, setShowCancelReturnModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [comment, setComment] = useState('');
-  const [cancelling, setCancelling] = useState(false);
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+  const [isSubmittingCancelReturn, setIsSubmittingCancelReturn] = useState(false);
+  const [trackingInfo, setTrackingInfo] = useState<any>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
 
   useEffect(() => {
@@ -28,25 +32,21 @@ const OrderDetail: React.FC = () => {
     }
 
     const fetchOrderDetails = async () => {
-    if (!id) {
-      setError('Order ID not provided');
-      setIsLoading(false);
-      return;
-    }
+        try {
+          setIsLoading(true);
+          const orderData = await orderService.getOrder(id!);
+          setOrder(orderData);
+        } catch (err: any) {
+          setError(err.message || 'Failed to load order details');
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
-    try {
-      setIsLoading(true);
-      const orderData = await orderService.getOrder(id);
-      setOrder(orderData);
-    } catch (err) {
-      setError('Failed to load order details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-    fetchOrderDetails();
-  }, [id, isAuthenticated, navigate]);
+      if (id) {
+        fetchOrderDetails();
+      }
+    }, [id, isAuthenticated, navigate]);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
@@ -62,6 +62,10 @@ const OrderDetail: React.FC = () => {
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'cancelled':
         return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'return_requested':
+        return <RotateCcw className="h-5 w-5 text-orange-500" />;
+      case 'returned':
+        return <RotateCcw className="h-5 w-5 text-orange-600" />;
       default:
         return <Package className="h-5 w-5 text-gray-500" />;
     }
@@ -81,6 +85,10 @@ const OrderDetail: React.FC = () => {
         return 'text-green-600 bg-green-50';
       case 'cancelled':
         return 'text-red-600 bg-red-50';
+      case 'return_requested':
+        return 'text-orange-600 bg-orange-50';
+      case 'returned':
+        return 'text-orange-700 bg-orange-100';
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -96,68 +104,50 @@ const OrderDetail: React.FC = () => {
     });
   };
 
-  const cancelReasons = [
-    'Changed my mind',
-    'Found a better price elsewhere',
-    'Ordered by mistake',
-    'Product no longer needed',
-    'Delivery taking too long',
-    'Want to change size/color',
-    'Financial reasons',
-    'Other'
-  ];
-
-  const getRefundAmount = (orderStatus: string) => {
-    if (!order) return 0;
-    // Full refund for pending, confirmed, processing orders
-    if (['pending', 'confirmed', 'processing'].includes(orderStatus.toLowerCase())) {
-      return order.totalAmount;
+  const canRequestReturn = () => {
+    if (!order) return false;
+    
+    // Only delivered orders can be returned
+    if (order.orderStatus !== 'delivered') return false;
+    
+    // Check if return already requested
+    if (order.returnRequestedAt) return false;
+    
+    // Check if within 30-day return window
+    if (order.deliveredAt) {
+      const deliveredDate = new Date(order.deliveredAt);
+      const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceDelivery <= 30;
     }
-    // Partial refund for shipped orders (minus shipping)
-    if (orderStatus.toLowerCase() === 'shipped') {
-      return order.totalAmount * 0.9; // 90% refund
-    }
-    return 0;
+    
+    return false;
   };
 
-  const getRefundTimeframe = (paymentMethod: string) => {
-    switch (paymentMethod.toLowerCase()) {
-      case 'cod':
-        return 'N/A (Cash on Delivery)';
-      case 'upi':
-      case 'online':
-        return '3-5 business days';
-      case 'card':
-        return '5-7 business days';
-      default:
-        return '3-7 business days';
-    }
-  };
-
-  const handleCancelOrder = async () => {
-    if (!cancelReason.trim()) {
-      alert('Please select a cancellation reason');
+  const handleReturnRequest = async () => {
+    if (!returnReason.trim()) {
+      alert('Please select a return reason');
       return;
     }
 
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      try {
-        setCancelling(true);
-        await orderService.cancelOrder(order!.orderId, cancelReason);
-        setOrder({ ...order!, orderStatus: 'cancelled' });
-        setShowCancelModal(false);
-        
-        // Calculate refund amount and timeframe
-        const refundAmount = getRefundAmount(order!.orderStatus);
-        const refundTimeframe = getRefundTimeframe(order!.paymentMethod);
-        
-        alert(`Order cancelled successfully! You will receive a refund of ₹${refundAmount.toFixed(2)} within ${refundTimeframe}.`);
-      } catch (error) {
-        
-        alert('Failed to cancel order. Please try again.');
-      } finally {
-        setCancelling(false);
-      }
+    setIsSubmittingReturn(true);
+    try {
+      await orderService.requestReturn(order!.orderId, returnReason);
+      
+      // Update order status locally
+      setOrder(prev => prev ? {
+        ...prev,
+        orderStatus: 'return_requested' as any,
+        returnRequestedAt: new Date().toISOString(),
+        returnReason
+      } : null);
+      
+      setShowReturnModal(false);
+      setReturnReason('');
+      alert('Return request submitted successfully');
+    } catch (error: any) {
+      alert(error.message || 'Failed to submit return request');
+    } finally {
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -181,22 +171,83 @@ const OrderDetail: React.FC = () => {
             location: 'Mumbai, Maharashtra', 
             timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
             description: 'Your order has been confirmed and is being prepared'
-          },
-          {
-            status: 'Shipped',
-            location: 'Delhi, Delhi',
-            timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-            description: 'Your order has been shipped and is on the way'
           }
         ]
       };
       
+      if (['shipped', 'delivered'].includes(order!.orderStatus.toLowerCase())) {
+        mockTrackingInfo.trackingInfo.push({
+          status: 'Shipped',
+          location: 'Delhi, Delhi',
+          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+          description: 'Your order has been shipped and is on the way'
+        });
+      }
+      
       setTrackingInfo(mockTrackingInfo);
     } catch (error) {
-      
       alert('Failed to track order. Please try again.');
     } finally {
       setTrackingLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      alert('Please select a cancellation reason');
+      return;
+    }
+
+    setIsSubmittingCancel(true);
+    try {
+      await orderService.cancelOrder(order!.orderId, cancelReason);
+      
+      // Update order status locally
+      setOrder(prev => prev ? {
+        ...prev,
+        orderStatus: 'cancelled' as any
+      } : null);
+      
+      setShowCancelModal(false);
+      setCancelReason('');
+      alert('Order cancelled successfully');
+    } catch (error: any) {
+      alert(error.message || 'Failed to cancel order');
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
+  const handleCancelReturnRequest = async () => {
+    setIsSubmittingCancelReturn(true);
+    try {
+      // This would need a backend endpoint to cancel return request
+      // For now, just update the status locally
+      setOrder(prev => prev ? {
+        ...prev,
+        orderStatus: 'delivered' as any,
+        returnRequestedAt: undefined,
+        returnReason: undefined
+      } : null);
+      
+      setShowCancelReturnModal(false);
+      alert('Return request cancelled successfully');
+    } catch (error: any) {
+      alert(error.message || 'Failed to cancel return request');
+    } finally {
+      setIsSubmittingCancelReturn(false);
+    }
+  };
+
+  const handleReorder = () => {
+    // Navigate to the first product's detail page
+    if (order && order.items.length > 0) {
+      const firstItem = order.items[0];
+      if (firstItem.product && firstItem.product._id) {
+        navigate(`/products/${firstItem.product._id}`);
+      } else {
+        alert('Product information not available');
+      }
     }
   };
 
@@ -220,7 +271,7 @@ const OrderDetail: React.FC = () => {
           <p className="text-gray-600 mb-4">{error || 'The order you are looking for does not exist.'}</p>
           <button
             onClick={() => navigate('/orders')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
           >
             Back to Orders
           </button>
@@ -238,13 +289,13 @@ const OrderDetail: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Order Details</h1>
             <button
               onClick={() => navigate('/orders')}
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-blue-600 hover:text-blue-800 flex items-center"
             >
               ← Back to Orders
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm text-gray-500">Order ID</p>
               <p className="font-semibold">{order.orderId}</p>
@@ -257,7 +308,7 @@ const OrderDetail: React.FC = () => {
               <p className="text-sm text-gray-500">Status</p>
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.orderStatus)}`}>
                 {getStatusIcon(order.orderStatus)}
-                <span className="ml-2 capitalize">{order.orderStatus}</span>
+                <span className="ml-2 capitalize">{order.orderStatus.replace('_', ' ')}</span>
               </div>
             </div>
           </div>
@@ -266,7 +317,8 @@ const OrderDetail: React.FC = () => {
         {/* Action Buttons */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex flex-wrap gap-4">
-            {['shipped', 'delivered'].includes(order.orderStatus.toLowerCase()) && (
+            {/* Track Button - Show for all statuses except delivered, returned, and cancelled */}
+            {!['delivered', 'returned', 'cancelled'].includes(order.orderStatus.toLowerCase()) && (
               <button
                 onClick={handleTrackOrder}
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 flex items-center"
@@ -276,13 +328,47 @@ const OrderDetail: React.FC = () => {
               </button>
             )}
             
-            {['pending', 'confirmed', 'processing'].includes(order.orderStatus.toLowerCase()) && (
+            {/* Cancel Button - Show for all statuses except delivered, returned, return_requested, and cancelled */}
+            {!['delivered', 'returned', 'return_requested', 'cancelled'].includes(order.orderStatus.toLowerCase()) && (
               <button
                 onClick={() => setShowCancelModal(true)}
                 className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 flex items-center"
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Cancel Order
+              </button>
+            )}
+            
+            {/* Reorder Button - Show only for cancelled orders */}
+            {order.orderStatus.toLowerCase() === 'cancelled' && (
+              <button
+                onClick={handleReorder}
+                className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 flex items-center"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Reorder
+              </button>
+            )}
+            
+            {/* Cancel Return Request Button - Show only for return_requested status */}
+            {order.orderStatus.toLowerCase() === 'return_requested' && (
+              <button
+                onClick={() => setShowCancelReturnModal(true)}
+                className="bg-yellow-600 text-white px-6 py-2 rounded-md hover:bg-yellow-700 flex items-center"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel Return Request
+              </button>
+            )}
+            
+            {/* Return Button - Show only for delivered orders */}
+            {canRequestReturn() && (
+              <button
+                onClick={() => setShowReturnModal(true)}
+                className="bg-orange-600 text-white px-6 py-2 rounded-md hover:bg-orange-700 flex items-center"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Return Order
               </button>
             )}
           </div>
@@ -292,23 +378,31 @@ const OrderDetail: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h2>
           <div className="space-y-4">
-            {order.items.map((item, index) => (
-              <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
-                <img
-                  src={getImageUrl(item.product.images?.[0] || '')}
-                  alt={item.product.name}
-                  className="w-16 h-16 object-cover rounded-md"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">{item.product.name}</h3>
-                  <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+            {order.items.map((item, index) => {
+              const variant = item.product?.variants?.find(v => v._id === item.variantId);
+              const imageUrl = variant?.images?.[0] || item.product?.images?.[0] || '';
+              
+              return (
+                <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                  <img
+                    src={getImageUrl(imageUrl)}
+                    alt={item.product?.name || 'Product'}
+                    className="w-16 h-16 object-cover rounded-md"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{item.product?.name || 'Product'}</h3>
+                    <p className="text-sm text-gray-500">
+                      {variant?.color && `${variant.color} • `}Size: {item.size}
+                    </p>
+                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
+                    <p className="text-sm text-gray-500">{formatPrice(item.price)} each</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
-                  <p className="text-sm text-gray-500">{formatPrice(item.price)} each</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -318,128 +412,36 @@ const OrderDetail: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-semibold">{formatPrice(order.totalAmount)}</span>
+              <span className="font-semibold">{formatPrice(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount</span>
+                <span>-{formatPrice(order.discount)}</span>
+              </div>
+            )}
+            {order.couponDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Coupon Discount ({order.couponCode})</span>
+                <span>-{formatPrice(order.couponDiscount)}</span>
+              </div>
+            )}
+            {order.platformFee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Platform Fee</span>
+                <span className="font-semibold">{formatPrice(order.platformFee)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-600">Shipping</span>
-              <span className="font-semibold">Free</span>
+              <span className="font-semibold">{order.deliveryCharge > 0 ? formatPrice(order.deliveryCharge) : 'Free'}</span>
             </div>
             <div className="border-t pt-2 flex justify-between">
               <span className="text-lg font-semibold">Total</span>
-              <span className="text-lg font-semibold">{formatPrice(order.totalAmount)}</span>
+              <span className="text-lg font-semibold">{formatPrice(order.finalAmount || order.totalAmount)}</span>
             </div>
           </div>
         </div>
-
-        {/* Shipping Address */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <MapPin className="h-5 w-5 mr-2" />
-            Shipping Address
-          </h2>
-          <div className="text-gray-600">
-            <p className="font-medium">{order.shippingAddress.name}</p>
-            <p>{order.shippingAddress.addressLine1}</p>
-            {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
-            <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}</p>
-            <p className="mt-2">Phone: {order.shippingAddress.phone}</p>
-          </div>
-        </div>
-
-        {/* Payment Details */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Payment Method</p>
-              <p className="font-semibold capitalize">{order.paymentMethod}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Payment Status</p>
-              <p className={`font-semibold capitalize ${
-                order.paymentStatus === 'completed' ? 'text-green-600' : 
-                order.paymentStatus === 'pending' ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {order.paymentStatus}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Cancel Order Modal */}
-        {showCancelModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Cancel Order</h3>
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              
-              {/* Refund Information */}
-              <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                <h4 className="font-medium text-blue-900 mb-2">Refund Information</h4>
-                <p className="text-sm text-blue-800">
-                  Refund Amount: <span className="font-semibold">{formatPrice(getRefundAmount(order.orderStatus))}</span>
-                </p>
-                <p className="text-sm text-blue-800">
-                  Refund Timeline: <span className="font-semibold">{getRefundTimeframe(order.paymentMethod)}</span>
-                </p>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for cancellation *
-                </label>
-                <select
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select a reason</option>
-                  {cancelReasons.map((reason) => (
-                    <option key={reason} value={reason}>{reason}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Comments (Optional)
-                </label>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Any additional details..."
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                  disabled={cancelling}
-                >
-                  Keep Order
-                </button>
-                <button
-                  onClick={handleCancelOrder}
-                  disabled={cancelling || !cancelReason.trim()}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {cancelling ? 'Cancelling...' : 'Cancel Order'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Track Order Modal */}
         {showTrackModal && (
@@ -462,13 +464,11 @@ const OrderDetail: React.FC = () => {
                 </div>
               ) : trackingInfo ? (
                 <div>
-                  {/* Order Info */}
                   <div className="bg-gray-50 p-4 rounded-lg mb-6">
                     <h4 className="font-medium mb-2">Order #{order.orderId}</h4>
                     <p className="text-sm text-gray-600">Expected Delivery: {order.estimatedDelivery || 'TBD'}</p>
                   </div>
                   
-                  {/* Tracking Timeline */}
                   <div className="mb-6">
                     <h4 className="font-medium mb-4">Tracking History</h4>
                     <div className="space-y-4">
@@ -487,17 +487,6 @@ const OrderDetail: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                  
-                  {/* Delivery Address */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Delivery Address</h4>
-                    <div className="text-sm text-gray-600">
-                      <p className="font-medium">{order.shippingAddress.name}</p>
-                      <p>{order.shippingAddress.addressLine1}</p>
-                      {order.shippingAddress.addressLine2 && <p>{order.shippingAddress.addressLine2}</p>}
-                      <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}</p>
-                    </div>
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -511,6 +500,167 @@ const OrderDetail: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Order Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Cancel Order</h3>
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-gray-600 mb-4">
+                  Please select a reason for cancelling this order:
+                </p>
+                
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="">Select a reason</option>
+                  <option value="Changed my mind">Changed my mind</option>
+                  <option value="Found a better price elsewhere">Found a better price elsewhere</option>
+                  <option value="Ordered by mistake">Ordered by mistake</option>
+                  <option value="Product no longer needed">Product no longer needed</option>
+                  <option value="Delivery taking too long">Delivery taking too long</option>
+                  <option value="Want to change size/color">Want to change size/color</option>
+                  <option value="Financial reasons">Financial reasons</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  disabled={isSubmittingCancel}
+                >
+                  Keep Order
+                </button>
+                <button
+                  onClick={handleCancelOrder}
+                  disabled={isSubmittingCancel || !cancelReason.trim()}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingCancel ? 'Cancelling...' : 'Cancel Order'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Return Request Modal */}
+        {showCancelReturnModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Cancel Return Request</h3>
+                <button
+                  onClick={() => setShowCancelReturnModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600">
+                  Are you sure you want to cancel your return request? This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCancelReturnModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  disabled={isSubmittingCancelReturn}
+                >
+                  Keep Return Request
+                </button>
+                <button
+                  onClick={handleCancelReturnRequest}
+                  disabled={isSubmittingCancelReturn}
+                  className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingCancelReturn ? 'Cancelling...' : 'Cancel Return Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Return Order Modal */}
+        {showReturnModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Return Order</h3>
+                <button
+                  onClick={() => setShowReturnModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-gray-600 mb-4">
+                  Please select a reason for returning this order:
+                </p>
+                
+                <div className="space-y-2">
+                  {[
+                    'Defective product',
+                    'Wrong item received',
+                    'Size/fit issues',
+                    'Product not as described',
+                    'Damaged during shipping',
+                    'Changed my mind',
+                    'Quality issues',
+                    'Other'
+                  ].map((reason) => (
+                    <label key={reason} className="flex items-center">
+                      <input
+                        type="radio"
+                        name="returnReason"
+                        value={reason}
+                        checked={returnReason === reason}
+                        onChange={(e) => setReturnReason(e.target.value)}
+                        className="mr-3 text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-gray-700">{reason}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowReturnModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  disabled={isSubmittingReturn}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReturnRequest}
+                  disabled={isSubmittingReturn || !returnReason.trim()}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingReturn ? 'Submitting...' : 'Submit Return'}
                 </button>
               </div>
             </div>

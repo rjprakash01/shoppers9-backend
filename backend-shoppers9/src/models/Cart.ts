@@ -97,13 +97,33 @@ cartSchema.pre('save', function(next: any) {
   let totalAmount = 0;
   let totalDiscount = 0;
 
-  this.items.forEach((item: any) => {
+  console.log('Cart Model - Pre-save calculation starting...');
+  
+  this.items.forEach((item: any, index: number) => {
     if (item.isSelected) {
       const itemTotal = item.price * item.quantity;
       const itemOriginalTotal = item.originalPrice * item.quantity;
+      const itemDiscount = itemOriginalTotal - itemTotal;
+      
+      console.log(`Cart Model - Item ${index}:`, {
+        price: item.price,
+        originalPrice: item.originalPrice,
+        quantity: item.quantity,
+        itemTotal,
+        itemOriginalTotal,
+        itemDiscount,
+        calculation: `(${item.originalPrice} * ${item.quantity}) - (${item.price} * ${item.quantity}) = ${itemDiscount}`
+      });
+      
       totalAmount += itemTotal;
-      totalDiscount += (itemOriginalTotal - itemTotal);
+      totalDiscount += itemDiscount;
     }
+  });
+
+  console.log('Cart Model - Final totals:', {
+    totalAmount,
+    totalDiscount,
+    validation: totalDiscount >= 0 ? 'PASS' : 'FAIL - Negative discount!'
   });
 
   this.totalAmount = totalAmount;

@@ -70,6 +70,7 @@ interface ProductVariant {
   price: number;
   originalPrice: number;
   stock: number;
+  sku: string; // Unique SKU for this variant
   images: string[];
 }
 
@@ -586,6 +587,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       price: 0,
       originalPrice: 0,
       stock: 0,
+      sku: '', // Auto-generate or let user input
       images: []
     };
     setFormData(prev => ({
@@ -639,8 +641,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
     if (!formData.category) newErrors.category = 'Category is required';
     if (!formData.subCategory) newErrors.subCategory = 'Sub category is required';
     if (!formData.brand.trim()) newErrors.brand = 'Brand is required';
-    if (formData.price <= 0) newErrors.price = 'Price must be greater than 0';
+    if (formData.price <= 0) newErrors.price = 'Selling price must be greater than 0';
     if (formData.originalPrice <= 0) newErrors.originalPrice = 'Original price must be greater than 0';
+    if (formData.originalPrice < formData.price) newErrors.originalPrice = 'Original price must be greater than or equal to selling price';
     if (formData.stock < 0) newErrors.stock = 'Stock cannot be negative';
 
     // Validate variants if they exist
@@ -652,15 +655,32 @@ const ProductForm: React.FC<ProductFormProps> = ({
         newErrors[`variant_${vIndex}_size`] = 'Size is required';
       }
       if (variant.price <= 0) {
-        newErrors[`variant_${vIndex}_price`] = 'Price must be greater than 0';
+        newErrors[`variant_${vIndex}_price`] = 'Selling price must be greater than 0';
       }
       if (variant.originalPrice <= 0) {
         newErrors[`variant_${vIndex}_originalPrice`] = 'Original price must be greater than 0';
       }
+      if (variant.originalPrice < variant.price) {
+        newErrors[`variant_${vIndex}_originalPrice`] = 'Original price must be greater than or equal to selling price';
+      }
       if (variant.stock < 0) {
         newErrors[`variant_${vIndex}_stock`] = 'Stock cannot be negative';
       }
+      if (!variant.sku || !variant.sku.trim()) {
+        newErrors[`variant_${vIndex}_sku`] = 'SKU is required';
+      }
     });
+    
+    // Check for duplicate SKUs
+    const skus = formData.variants.map(v => v.sku).filter(sku => sku.trim());
+    const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
+    if (duplicateSkus.length > 0) {
+      formData.variants.forEach((variant, vIndex) => {
+        if (duplicateSkus.includes(variant.sku)) {
+          newErrors[`variant_${vIndex}_sku`] = 'SKU must be unique';
+        }
+      });
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -880,7 +900,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Original Price *
+                        Original Price * <span className="text-xs text-gray-500">(Before Discount - Higher Price)</span>
                       </label>
                       <input
                         type="number"
@@ -893,12 +913,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         min="0"
                         step="0.01"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Enter the original price before any discount</p>
                       {errors.originalPrice && <p className="text-red-500 text-sm mt-1">{errors.originalPrice}</p>}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Selling Price *
+                        Selling Price * <span className="text-xs text-gray-500">(After Discount - Lower Price)</span>
                       </label>
                       <input
                         type="number"
@@ -911,6 +932,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         min="0"
                         step="0.01"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Enter the current selling price (discounted price)</p>
                       {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
                     </div>
 
@@ -1149,7 +1171,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             </button>
                           </div>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Color *
@@ -1194,7 +1216,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Price *
+                                Selling Price * <span className="text-xs text-gray-500">(Discounted)</span>
                               </label>
                               <input
                                 type="number"
@@ -1207,6 +1229,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                 min="0"
                                 step="0.01"
                               />
+                              <p className="text-xs text-gray-500 mt-1">Current selling price for this variant</p>
                               {errors[`variant_${vIndex}_price`] && (
                                 <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_price`]}</p>
                               )}
@@ -1214,7 +1237,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Original Price *
+                                Original Price * <span className="text-xs text-gray-500">(Before Discount)</span>
                               </label>
                               <input
                                 type="number"
@@ -1227,6 +1250,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                 min="0"
                                 step="0.01"
                               />
+                              <p className="text-xs text-gray-500 mt-1">Original price before discount for this variant</p>
                               {errors[`variant_${vIndex}_originalPrice`] && (
                                 <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_originalPrice`]}</p>
                               )}
@@ -1248,6 +1272,24 @@ const ProductForm: React.FC<ProductFormProps> = ({
                               />
                               {errors[`variant_${vIndex}_stock`] && (
                                 <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_stock`]}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                SKU *
+                              </label>
+                              <input
+                                type="text"
+                                value={variant.sku || ''}
+                                onChange={(e) => updateVariant(vIndex, 'sku', e.target.value)}
+                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  errors[`variant_${vIndex}_sku`] ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                placeholder="SKU-001"
+                              />
+                              {errors[`variant_${vIndex}_sku`] && (
+                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_sku`]}</p>
                               )}
                             </div>
                             

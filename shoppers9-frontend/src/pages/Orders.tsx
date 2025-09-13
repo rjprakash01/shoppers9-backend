@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Calendar, MapPin, Eye, Truck, CheckCircle, Clock, XCircle, Filter, Search, RefreshCw, ShoppingBag, Star } from 'lucide-react';
+import { Package, Calendar, MapPin, Eye, Truck, CheckCircle, Clock, XCircle, Filter, Search, RefreshCw, ShoppingBag, Star, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { orderService, type Order } from '../services/orders';
 import { formatPrice } from '../utils/currency';
@@ -67,9 +67,9 @@ const Orders: React.FC = () => {
         case 'oldest':
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case 'amount-high':
-          return b.totalAmount - a.totalAmount;
+          return (b.finalAmount || b.totalAmount) - (a.finalAmount || a.totalAmount);
         case 'amount-low':
-          return a.totalAmount - b.totalAmount;
+          return (a.finalAmount || a.totalAmount) - (b.finalAmount || b.totalAmount);
         default:
           return 0;
       }
@@ -176,7 +176,7 @@ const Orders: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
       {/* Header */}
-      <div className="bg-brand-indigo shadow-sm border-b border-brand-gold/20">
+      <div className="bg-brand-indigo lg:bg-brand-indigo lg:shadow-sm lg:border-b lg:border-brand-gold/20 lg:block hidden">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <h1 className="text-2xl font-bold font-playfair text-brand-gold">
@@ -185,6 +185,29 @@ const Orders: React.FC = () => {
             <button
               onClick={handleRefresh}
               className="p-2 text-brand-gold hover:text-white transition-colors"
+            >
+              <RefreshCw className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-black shadow-sm">
+        <div className="w-full px-4">
+          <div className="flex items-center h-14">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 text-white hover:text-gray-300 transition-colors mr-3"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-white flex-1">
+              My Orders
+            </h1>
+            <button
+              onClick={handleRefresh}
+              className="p-2 text-white hover:text-gray-300 transition-colors"
             >
               <RefreshCw className="h-5 w-5" />
             </button>
@@ -324,25 +347,34 @@ const Orders: React.FC = () => {
                            Items ({order.items?.length || 0})
                          </h4>
                          <div className="space-y-3">
-                           {(order.items || []).slice(0, 2).map((item, index) => (
-                             <div key={`${order._id}-item-${index}`} className="flex items-center space-x-4 bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl">
-                               {item.product?.images?.[0] && (
-                                 <img
-                                   src={getImageUrl(item.product.images[0])}
-                                   alt={item.product.name}
-                                   className="w-16 h-16 object-cover rounded-xl shadow-md"
-                                 />
-                               )}
-                               <div className="flex-1 min-w-0">
-                                 <p className="text-sm font-semibold text-gray-900 truncate">
-                                  {item.product?.name || 'Product'}
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                  Qty: {item.quantity} × {formatPrice(item.price)}
-                                </p>
+                           {(order.items || []).slice(0, 2).map((item, index) => {
+                             // Find the variant for this order item
+                             const variant = item.product?.variants?.find(v => v._id === item.variantId);
+                             const imageUrl = variant?.images?.[0] || item.product?.images?.[0];
+                             
+                             return (
+                               <div key={`${order._id}-item-${index}`} className="flex items-center space-x-4 bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl">
+                                 {imageUrl && (
+                                   <img
+                                     src={getImageUrl(imageUrl)}
+                                     alt={item.product?.name || 'Product'}
+                                     className="w-16 h-16 object-cover rounded-xl shadow-md"
+                                   />
+                                 )}
+                                 <div className="flex-1 min-w-0">
+                                   <p className="text-sm font-semibold text-gray-900 truncate">
+                                    {item.product?.name || 'Product'}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    {variant?.color && `${variant.color} • `}Size: {item.size}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    Qty: {item.quantity} × {formatPrice(item.price)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                             );
+                           })}
                           {(order.items?.length || 0) > 2 && (
                             <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-xl text-center">
                               <p className="text-sm text-purple-600 font-medium">+{(order.items?.length || 0) - 2} more items</p>
@@ -360,7 +392,7 @@ const Orders: React.FC = () => {
                           <div className="space-y-4">
                             <div className="flex justify-between items-center">
                               <span className="text-gray-600 font-medium">Total Amount</span>
-                              <span className="text-2xl font-bold text-gray-900">{formatPrice(order.totalAmount)}</span>
+                              <span className="text-2xl font-bold text-gray-900">{formatPrice(order.finalAmount || order.totalAmount)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-gray-600 font-medium">Payment Status</span>

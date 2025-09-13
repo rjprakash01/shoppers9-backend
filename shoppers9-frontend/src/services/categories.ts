@@ -1,7 +1,8 @@
 import { api } from './api';
 
 export interface Category {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   slug: string;
   description?: string;
@@ -26,13 +27,40 @@ class CategoriesService {
    */
   async getCategoryTree(): Promise<Category[]> {
     try {
-      const response = await api.get<CategoriesResponse>('/categories/tree');
-      if (response.data.success && response.data.data.categories) {
+      console.log('Making API call to /categories/tree');
+      // Add cache-busting parameter to force fresh data
+      const response = await api.get<CategoriesResponse>(`/categories/tree?t=${Date.now()}`);
+      console.log('API response:', response);
+      console.log('Response data:', response.data);
+      
+      // Handle different possible response structures
+      if (response.data.success && response.data.data && response.data.data.categories) {
+        console.log('Categories found in nested structure:', response.data.data.categories.length);
         return response.data.data.categories;
       }
+      
+      // Try direct data.categories structure
+      if (response.data.data && Array.isArray(response.data.data)) {
+        console.log('Categories found in data array:', response.data.data.length);
+        return response.data.data;
+      }
+      
+      // Try direct array response
+      if (Array.isArray(response.data)) {
+        console.log('Direct array response:', response.data.length);
+        return response.data;
+      }
+      
+      // Try response.data.categories directly
+      if (response.data.categories && Array.isArray(response.data.categories)) {
+        console.log('Categories found in direct categories:', response.data.categories.length);
+        return response.data.categories;
+      }
+      
+      console.log('No categories found in response');
       return [];
     } catch (error) {
-      
+      console.error('Error in getCategoryTree:', error);
       return [];
     }
   }

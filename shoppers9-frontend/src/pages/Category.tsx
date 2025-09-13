@@ -16,13 +16,34 @@ const Category: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [categoryName, setCategoryName] = useState('');
-  const [showFilters, setShowFilters] = useState(true); // Show filters by default on desktop
+  const [showFilters, setShowFilters] = useState(false); // Hide filters by default, show only when clicked
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
     limit: 12,
     sortBy: 'createdAt',
     sortOrder: 'desc'
   });
+
+  // Handle responsive filter display
+  useEffect(() => {
+    const handleResize = () => {
+      // Show filters by default on desktop (lg and above), hide on mobile
+      if (window.innerWidth >= 1024) {
+        setShowFilters(true);
+      } else {
+        setShowFilters(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (categorySlug) {
@@ -98,15 +119,21 @@ const Category: React.FC = () => {
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.price || 0)}
+                      {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
+                        `From ${formatPrice(product.minPrice)}` : 
+                        formatPrice(product.minPrice || 0)
+                      }
                     </span>
-                    {product.originalPrice && product.originalPrice > (product.price || 0) && (
+                    {product.maxDiscount && product.maxDiscount > 0 && (
                       <>
                         <span className="text-sm text-gray-500 line-through">
-                          {formatPrice(product.originalPrice)}
+                          {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                            `From ${formatPrice(product.minOriginalPrice)}` : 
+                            formatPrice(product.minOriginalPrice || 0)
+                          }
                         </span>
                         <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
-                          {Math.round(((product.originalPrice - (product.price || 0)) / product.originalPrice) * 100)}% OFF
+                          Up to {product.maxDiscount}% OFF
                         </span>
                       </>
                     )}
@@ -132,7 +159,7 @@ const Category: React.FC = () => {
             <img
               src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
               alt={product.name}
-              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+              className="w-full h-48 object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder-image.svg';

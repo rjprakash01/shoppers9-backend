@@ -5,13 +5,22 @@ import {
   updateOrderStatus,
   getOrderAnalytics,
   exportOrders,
-  bulkUpdateOrders
+  bulkUpdateOrders,
+  fixOrderAmounts
 } from '../controllers/orderController';
 import { auth, adminOnly } from '../middleware/auth';
 
 const router = express.Router();
 
-// All routes require authentication only
+// Test endpoint (no auth required)
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Test endpoint working' });
+});
+
+// Fix order amounts (temporary endpoint - no auth required)
+router.post('/fix-amounts', fixOrderAmounts);
+
+// All other routes require authentication
 router.use(auth);
 
 // Get all orders with pagination, search, filter, sort

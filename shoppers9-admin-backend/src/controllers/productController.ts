@@ -66,12 +66,29 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
       const defaultImage = firstColorImages.length > 0 ? firstColorImages[0] : 
                           (firstVariant?.images?.[0] || product.images?.[0] || '');
       
+      // Use virtual fields for pricing calculations
+      const minPrice = (product as any).minPrice || 0;
+      const maxPrice = (product as any).maxPrice || minPrice;
+      const minOriginalPrice = (product as any).minOriginalPrice || minPrice;
+      const maxOriginalPrice = (product as any).maxOriginalPrice || minOriginalPrice;
+      const maxDiscount = (product as any).maxDiscount || 0;
+      
+      // Determine display price and original price
+      const displayPrice = minPrice === maxPrice ? minPrice : minPrice;
+      const displayOriginalPrice = minOriginalPrice === maxOriginalPrice ? minOriginalPrice : minOriginalPrice;
+      
       return {
         id: product._id,
         name: product.name,
         description: product.description,
-        price: firstVariant?.originalPrice || 0,
-        discountedPrice: firstVariant?.price !== firstVariant?.originalPrice ? firstVariant?.price : undefined,
+        price: displayPrice,
+        originalPrice: displayOriginalPrice,
+        discountedPrice: maxDiscount > 0 ? displayPrice : undefined,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        minOriginalPrice: minOriginalPrice,
+        maxOriginalPrice: maxOriginalPrice,
+        maxDiscount: maxDiscount,
         category: product.category,
         subCategory: product.subCategory,
         filterValues: Array.isArray(product.filterValues) ? product.filterValues : [],
@@ -279,13 +296,14 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           : req.body.variants;
         
         if (Array.isArray(variantsData) && variantsData.length > 0) {
-          variants = variantsData.map((variant: any) => ({
+          variants = variantsData.map((variant: any, index: number) => ({
             color: variant.color,
             colorCode: variant.colorCode,
             size: variant.size || 'One Size',
             price: parseFloat(variant.price || 0),
             originalPrice: parseFloat(variant.originalPrice || variant.price || 0),
             stock: parseInt(variant.stock || 0),
+            sku: variant.sku || `${req.body.name?.replace(/\s+/g, '-').toUpperCase()}-${variant.color}-${variant.size}-${index + 1}`,
             images: variant.images || images
           }));
         }
@@ -303,6 +321,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
         price: parseFloat(req.body.price),
         originalPrice: parseFloat(req.body.originalPrice || req.body.price),
         stock: parseInt(req.body.stock),
+        sku: req.body.sku || `${req.body.name?.replace(/\s+/g, '-').toUpperCase()}-DEFAULT-1`,
         images: images // Ensure main product images are assigned to the default variant
       }];
     }

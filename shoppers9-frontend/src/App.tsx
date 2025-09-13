@@ -1,10 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
+import MobileBottomNav from './components/MobileBottomNav';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
@@ -18,7 +19,92 @@ import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
 import OrderConfirmation from './pages/OrderConfirmation';
+import OrderSuccess from './pages/OrderSuccess';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+
+function AppContent() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  const isCartOrCheckoutPage = location.pathname === '/cart' || location.pathname === '/checkout';
+  const isProductDetailPage = location.pathname.startsWith('/products/') && location.pathname !== '/products';
+  const isWishlistPage = location.pathname === '/wishlist';
+  const isOrdersPage = location.pathname === '/orders' || location.pathname.startsWith('/orders/');
+  const isProfilePage = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
+  const isOrderConfirmationPage = location.pathname === '/order-confirmation' || location.pathname === '/order-success';
+  const hideNavbarOnMobile = isCartOrCheckoutPage || isProductDetailPage || isWishlistPage || isOrdersPage || isProfilePage || isOrderConfirmationPage;
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Hide Navbar on mobile for cart, checkout, and product detail pages */}
+      <div className={hideNavbarOnMobile ? 'hidden lg:block' : ''}>
+        <Navbar />
+      </div>
+      <main className={`flex-1 ${hideNavbarOnMobile ? 'pb-20 lg:pb-0' : 'pb-20 lg:pb-0'}`}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/categories/:categorySlug" element={<Category />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/checkout"
+            element={
+              <ProtectedRoute>
+                <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders/:id"
+            element={
+              <ProtectedRoute>
+                <OrderDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/order-confirmation"
+            element={
+              <ProtectedRoute>
+                <OrderConfirmation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/order-success"
+            element={
+              <ProtectedRoute>
+                <OrderSuccess />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </main>
+      {isHomePage && <Footer />}
+      {/* Mobile Bottom Navigation - Always visible on mobile */}
+      <MobileBottomNav />
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -26,62 +112,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <WishlistProvider>
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/categories/:categorySlug" element={<Category />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/wishlist" element={<Wishlist />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route
-                  path="/checkout"
-                  element={
-                    <ProtectedRoute>
-                      <Checkout />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders"
-                  element={
-                    <ProtectedRoute>
-                      <Orders />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/orders/:id"
-                  element={
-                    <ProtectedRoute>
-                      <OrderDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/order-confirmation"
-                  element={
-                    <ProtectedRoute>
-                      <OrderConfirmation />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </main>
-            <Footer />
-            </div>
+            <AppContent />
           </WishlistProvider>
         </CartProvider>
       </AuthProvider>

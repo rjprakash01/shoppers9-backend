@@ -59,6 +59,7 @@ export interface IProductVariant extends Document {
   price: number;
   originalPrice: number;
   stock: number;
+  sku: string;
   images: string[];
 }
 
@@ -141,41 +142,50 @@ export interface IUser extends Document {
 }
 
 // Order interface
+export interface IOrderItem {
+  product: string;
+  variantId: string;
+  size: string;
+  quantity: number;
+  price: number;
+  originalPrice: number;
+  discount: number;
+}
+
+export interface IAddress {
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  isDefault: boolean;
+}
+
 export interface IOrder extends Document {
   _id: string;
   orderNumber: string;
-  user: string;
-  items: {
-    product: string;
-    name: string;
-    price: number;
-    quantity: number;
-    total: number;
-  }[];
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  discount: number;
-  total: number;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  userId: string;
+  items: IOrderItem[];
+  shippingAddress: IAddress;
+  billingAddress?: IAddress;
   paymentMethod: string;
-  shippingAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
-  billingAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
-  trackingNumber?: string;
-  notes?: string;
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
+  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  totalAmount: number;
+  discount: number;
+  platformFee: number;
+  deliveryCharge: number;
+  finalAmount: number;
+  couponCode?: string;
+  couponDiscount: number;
+  estimatedDelivery?: Date;
+  deliveredAt?: Date;
+  cancelledAt?: Date;
+  returnedAt?: Date;
+  trackingId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

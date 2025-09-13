@@ -62,6 +62,12 @@ const productVariantSchema = new Schema<IProductVariant>({
     min: 0,
     default: 0
   },
+  sku: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   images: [{
     type: String,
     required: false
@@ -208,6 +214,51 @@ productSchema.virtual('maxPrice').get(function() {
   });
   
   return maxPrice;
+});
+
+// Virtual for minimum original price calculation
+productSchema.virtual('minOriginalPrice').get(function() {
+  if (!this.variants || this.variants.length === 0) return 0;
+  
+  let minOriginalPrice = Infinity;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.originalPrice < minOriginalPrice) {
+      minOriginalPrice = variant.originalPrice;
+    }
+  });
+  
+  return minOriginalPrice === Infinity ? 0 : minOriginalPrice;
+});
+
+// Virtual for maximum original price calculation
+productSchema.virtual('maxOriginalPrice').get(function() {
+  if (!this.variants || this.variants.length === 0) return 0;
+  
+  let maxOriginalPrice = 0;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.originalPrice > maxOriginalPrice) {
+      maxOriginalPrice = variant.originalPrice;
+    }
+  });
+  
+  return maxOriginalPrice;
+});
+
+// Virtual for maximum discount percentage calculation
+productSchema.virtual('maxDiscount').get(function() {
+  if (!this.variants || this.variants.length === 0) return 0;
+  
+  let maxDiscount = 0;
+  this.variants.forEach((variant: any) => {
+    if (variant.originalPrice && variant.price && variant.originalPrice > variant.price) {
+      const discount = Math.round(((variant.originalPrice - variant.price) / variant.originalPrice) * 100);
+      if (discount > maxDiscount) {
+        maxDiscount = discount;
+      }
+    }
+  });
+  
+  return maxDiscount;
 });
 
 // Virtual for total stock calculation

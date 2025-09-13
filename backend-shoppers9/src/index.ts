@@ -28,7 +28,7 @@ dotenv.config();
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 // Trust proxy for load balancer
 app.set('trust proxy', true);
@@ -41,21 +41,23 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting - increased for development
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // increased limit for development
-  message: {
-    error: 'Too many requests from this IP, please try again later.'
-  },
-  standardHeaders: true,
-  keyGenerator: (req) => {
-    // Use X-Forwarded-For header from load balancer or fallback to connection IP
-    return req.headers['x-forwarded-for'] as string || req.ip || req.connection.remoteAddress || 'unknown';
-  },
-  legacyHeaders: false
-});
-app.use('/api/', limiter);
+// Rate limiting - disabled for development
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // increased limit for development
+    message: {
+      error: 'Too many requests from this IP, please try again later.'
+    },
+    standardHeaders: true,
+    keyGenerator: (req) => {
+      // Use X-Forwarded-For header from load balancer or fallback to connection IP
+      return req.headers['x-forwarded-for'] as string || req.ip || req.connection.remoteAddress || 'unknown';
+    },
+    legacyHeaders: false
+  });
+  app.use('/api/', limiter);
+}
 
 // CORS configuration
 app.use(cors({
@@ -66,7 +68,7 @@ app.use(cors({
         'https://shoppers9.com',
         'https://admin.shoppers9.com'
       ].filter(url => url !== '')
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://192.168.1.5:5174', 'http://192.168.1.5:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -159,8 +161,9 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
-
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`📱 Network access: http://192.168.1.5:${PORT}`);
 });
 
 // Graceful shutdown

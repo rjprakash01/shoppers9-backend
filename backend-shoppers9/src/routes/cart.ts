@@ -94,6 +94,15 @@ router.delete('/clear',
   asyncHandler(cartController.clearCart)
 );
 
+// /**
+//  * @route POST /cart/clean
+//  * @desc Clean cart by removing items with invalid pricing
+//  * @access Private
+//  */
+// router.post('/clean',
+//   asyncHandler(cartController.cleanCart)
+// );
+
 /**
  * @route POST /cart/coupon/apply
  * @desc Apply coupon to cart

@@ -21,6 +21,7 @@ export interface ProductVariant {
   price: number;
   originalPrice: number;
   stock: number;
+  sku: string; // Unique SKU for this variant
   images: string[];
 }
 
@@ -52,11 +53,11 @@ export interface Product {
   category: string;
   subCategory: string;
   brand: string;
-  price?: number;
+  price?: number; // Legacy field, now populated with minPrice
   originalPrice?: number;
-  images: string[];
-  availableColors?: AvailableColor[]; // Colors from admin panel
-  availableSizes?: AvailableSize[]; // Sizes from admin panel
+  images: string[]; // Master/Default images
+  availableColors?: AvailableColor[]; // Master color list from admin panel
+  availableSizes?: AvailableSize[]; // Master size list from admin panel
   variants: ProductVariant[]; // Color-size combinations
   specifications: ProductSpecification;
   tags: string[];
@@ -66,10 +67,13 @@ export interface Product {
   displayFilters: string[];
   createdAt: string;
   updatedAt: string;
-  // Virtual fields
-  minPrice?: number;
-  maxPrice?: number;
-  totalStock?: number;
+  // Virtual fields calculated from variants
+  minPrice?: number; // Minimum price across all variants
+  maxPrice?: number; // Maximum price across all variants
+  minOriginalPrice?: number; // Minimum original price across all variants
+  maxOriginalPrice?: number; // Maximum original price across all variants
+  maxDiscount?: number; // Maximum discount percentage across all variants
+  totalStock?: number; // Total stock across all variants
 }
 
 export interface ProductsResponse {

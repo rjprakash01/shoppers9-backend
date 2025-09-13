@@ -37,8 +37,10 @@ export interface IProduct extends Document {
   subCategory: mongoose.Types.ObjectId;
   subSubCategory?: mongoose.Types.ObjectId;
   brand: string;
-  images: string[];
-  variants: IProductVariant[];
+  images: string[]; // Master/Default images
+  variants: IProductVariant[]; // Color-size combinations
+  availableColors: IAvailableColor[]; // Master color list
+  availableSizes: IAvailableSize[]; // Master size list
   specifications: IProductSpecification;
   tags: string[];
   isActive: boolean;
@@ -47,16 +49,38 @@ export interface IProduct extends Document {
   displayFilters: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
+  // Virtual fields
+  minPrice?: number;
+  maxPrice?: number;
+  totalStock?: number;
 }
 
+// Each variant represents a unique color-size combination
 export interface IProductVariant {
   _id?: string;
   color: string;
   colorCode?: string;
-  sizes: IProductSize[];
+  size: string;
+  price: number;
+  originalPrice: number;
+  stock: number;
+  sku: string; // Unique SKU for this variant
+  images: string[]; // Variant-specific images
+}
+
+// Available colors for the master product
+export interface IAvailableColor {
+  name: string;
+  code: string;
   images: string[];
 }
 
+// Available sizes for the master product
+export interface IAvailableSize {
+  name: string;
+}
+
+// Legacy interface for backward compatibility
 export interface IProductSize {
   size: string;
   price: number;

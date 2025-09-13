@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Trash2, ArrowLeft } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { formatPrice, formatPriceRange } from '../utils/currency';
 import type { WishlistItem } from '../services/wishlist';
 
 const WishlistPage: React.FC = () => {
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
@@ -36,10 +37,9 @@ const WishlistPage: React.FC = () => {
       }
       
       const firstVariant = item.product.variants?.[0];
-      const firstSize = firstVariant?.sizes?.[0];
       
-      if (firstVariant && firstVariant._id && firstSize) {
-        await addToCart(item.product, firstVariant._id, firstSize.size, 1);
+      if (firstVariant && firstVariant._id && firstVariant.size) {
+        await addToCart(item.product, firstVariant._id, firstVariant.size, 1);
         // Optionally remove from wishlist after adding to cart
         await handleRemoveFromWishlist(item.product._id);
       } else {
@@ -104,37 +104,68 @@ const WishlistPage: React.FC = () => {
   const items = wishlist?.items || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5 py-8">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Link
-              to="/"
-              className="flex items-center text-brand-indigo/70 hover:text-brand-gold transition-colors font-poppins"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Home
-            </Link>
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+      {/* Desktop Header */}
+      <div className="hidden lg:block py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/"
+                className="flex items-center text-brand-indigo/70 hover:text-brand-gold transition-colors font-poppins"
+              >
+                <ArrowLeft className="h-5 w-5 mr-2" />
+                Back to Home
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold font-playfair text-brand-indigo">My Wishlist</h1>
-            <p className="text-brand-indigo/70 font-poppins mt-2">
-              {items.length} {items.length === 1 ? 'item' : 'items'} saved
-            </p>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold font-playfair text-brand-indigo">My Wishlist</h1>
+              <p className="text-brand-indigo/70 font-poppins mt-2">
+                {items.length} {items.length === 1 ? 'item' : 'items'} saved
+              </p>
+            </div>
+            {items.length > 0 && (
+              <button
+                onClick={handleClearWishlist}
+                className="text-brand-indigo hover:text-brand-gold font-medium font-poppins transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
-          {items.length > 0 && (
-            <button
-              onClick={handleClearWishlist}
-              className="text-brand-indigo hover:text-brand-gold font-medium font-poppins transition-colors"
-            >
-              Clear All
-            </button>
-          )}
         </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-black shadow-sm">
+        <div className="w-full px-4">
+          <div className="flex items-center h-14">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 text-white hover:text-gray-300 transition-colors mr-3"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-white flex-1">
+              My Wishlist
+            </h1>
+            {items.length > 0 && (
+              <button
+                onClick={handleClearWishlist}
+                className="text-white hover:text-gray-300 font-medium transition-colors text-sm"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 lg:py-0">
 
         {items.length === 0 ? (
           <div className="text-center py-16">
@@ -152,8 +183,7 @@ const WishlistPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {items.map((item) => {
               const firstVariant = item.product.variants?.[0];
-              const firstSize = firstVariant?.sizes?.[0];
-              const isOutOfStock = !firstSize || firstSize.stock === 0;
+              const isOutOfStock = !firstVariant || firstVariant.stock === 0;
               
               return (
                 <div key={item._id} className="bg-white rounded-2xl shadow-md overflow-hidden group hover:shadow-lg transition-shadow border border-brand-gold/20 hover:border-brand-gold">
@@ -169,9 +199,9 @@ const WishlistPage: React.FC = () => {
                     {/* Remove from wishlist button */}
                     <button
                       onClick={() => handleRemoveFromWishlist(item.product._id)}
-                      className="absolute top-3 right-3 p-2 bg-brand-gold/90 rounded-full shadow-md hover:bg-brand-gold transition-colors"
+                      className="absolute top-3 right-3 p-2 bg-elite-base-white/90 shadow-card"
                     >
-                      <Heart className="h-5 w-5 text-brand-indigo fill-current" />
+                      <Heart className="h-5 w-5 text-red-500 fill-current" />
                     </button>
                     
                     {isOutOfStock && (
@@ -195,7 +225,7 @@ const WishlistPage: React.FC = () => {
                         {item.product.minPrice !== item.product.maxPrice ? (
                           formatPriceRange(item.product.minPrice || 0, item.product.maxPrice || 0)
                         ) : (
-                          formatPrice(firstSize?.price || item.product.minPrice || 0)
+                          formatPrice(firstVariant?.price || item.product.minPrice || 0)
                         )}
                       </div>
                     </div>
@@ -204,7 +234,7 @@ const WishlistPage: React.FC = () => {
                       <button
                         onClick={() => handleAddToCart(item)}
                         disabled={isOutOfStock}
-                        className="flex-1 bg-brand-gold text-brand-indigo py-2 px-4 rounded-xl font-medium font-poppins hover:bg-white hover:text-brand-indigo border border-brand-gold transition-colors disabled:bg-brand-slate/30 disabled:text-brand-indigo/50 disabled:cursor-not-allowed flex items-center justify-center"
+                        className="flex-1 bg-brand-gold text-brand-indigo py-2 px-4 font-medium font-poppins border border-brand-gold disabled:bg-brand-slate/30 disabled:text-brand-indigo/50 disabled:cursor-not-allowed flex items-center justify-center"
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
@@ -212,7 +242,7 @@ const WishlistPage: React.FC = () => {
                       
                       <button
                         onClick={() => handleRemoveFromWishlist(item.product._id)}
-                        className="p-2 border border-brand-gold/30 rounded-xl hover:bg-brand-gold/10 transition-colors"
+                        className="p-2 border border-brand-gold/30"
                       >
                         <Trash2 className="h-4 w-4 text-brand-indigo" />
                       </button>

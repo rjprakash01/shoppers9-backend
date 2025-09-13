@@ -19,6 +19,7 @@ interface WishlistContextType {
   clearWishlist: () => Promise<void>;
   isInWishlist: (productId: string) => boolean;
   syncWishlistOnLogin: () => Promise<void>;
+  refreshWishlist: () => Promise<void>;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -218,6 +219,25 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshWishlist = async () => {
+    try {
+      setIsLoading(true);
+      
+      if (isAuthenticated) {
+        // Reload server wishlist
+        const serverWishlist = await wishlistService.getWishlist();
+        setWishlist(serverWishlist);
+      } else {
+        // Reload local wishlist
+        loadLocalWishlist();
+      }
+    } catch (error) {
+      console.error('Error refreshing wishlist:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isInWishlist = (productId: string): boolean => {
     if (isAuthenticated && wishlist) {
       return wishlist.items.some(item => item.product && item.product._id === productId);
@@ -239,7 +259,8 @@ const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) => {
     removeFromWishlist,
     clearWishlist,
     isInWishlist,
-    syncWishlistOnLogin
+    syncWishlistOnLogin,
+    refreshWishlist
   };
 
   return (

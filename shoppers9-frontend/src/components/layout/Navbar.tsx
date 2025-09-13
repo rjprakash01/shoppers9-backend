@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Search, Menu, X, Heart, ChevronDown, Bell, Gift, Star, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
 import { categoriesService, type Category } from '../../services/categories';
+import shoppers9Logo from '../../assets/shoppers9-logo.svg';
 
 // Type declaration for NodeJS
 declare global {
@@ -17,7 +19,9 @@ declare global {
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -48,11 +52,37 @@ const Navbar: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setCategoriesLoading(true);
+      console.log('Fetching categories...');
       const categoryTree = await categoriesService.getCategoryTree();
-      // Use the actual category tree structure from backend
-      setCategories(categoryTree.filter(cat => cat.isActive));
-    } catch (error) {
+      console.log('Raw category tree response:', categoryTree);
       
+      if (!categoryTree || !Array.isArray(categoryTree)) {
+        console.error('Invalid category tree response:', categoryTree);
+        setCategories([]);
+        return;
+      }
+      
+      // Use the actual category tree structure from backend
+      const activeCategories = categoryTree.filter(cat => cat.isActive);
+      
+      console.log('Total categories loaded:', categoryTree.length);
+      console.log('Active categories:', activeCategories.length);
+      console.log('Sample categories:', activeCategories.slice(0, 3));
+      
+      // Filter out categories with undefined or null IDs to prevent rendering issues
+      const validCategories = activeCategories.filter(cat => (cat._id != null && cat._id !== undefined) || (cat.id != null && cat.id !== undefined));
+      console.log('Valid categories after filtering:', validCategories.length);
+      
+      // Normalize categories to use _id field for consistency
+      const normalizedCategories = validCategories.map(cat => ({
+        ...cat,
+        _id: cat._id || cat.id
+      }));
+      
+      setCategories(normalizedCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([]);
     } finally {
       setCategoriesLoading(false);
     }
@@ -106,59 +136,100 @@ const Navbar: React.FC = () => {
 
   return (
     <>
-      {/* Delivery Information Bar */}
-      <div className="bg-brand-indigo text-white">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center space-x-4 md:space-x-6 lg:space-x-8 xl:space-x-12 py-3 text-sm overflow-x-auto">
-            <div className="flex items-center space-x-2 whitespace-nowrap">
-              <Gift className="h-4 w-4 text-brand-gold" />
-              <span className="font-semibold font-poppins">Fast Delivery</span>
-              <span className="text-brand-slate opacity-90">Quick & Reliable</span>
-            </div>
-            <div className="flex items-center space-x-2 whitespace-nowrap">
-              <Shield className="h-4 w-4 text-brand-gold" />
-              <span className="font-semibold font-poppins">Secure Shopping</span>
-              <span className="text-brand-slate opacity-90">100% Protected</span>
-            </div>
-            <div className="flex items-center space-x-2 whitespace-nowrap">
-              <Star className="h-4 w-4 text-brand-gold" />
-              <span className="font-semibold font-poppins">Quality Products</span>
-              <span className="text-brand-slate opacity-90">Best Selection</span>
-            </div>
-            <div className="flex items-center space-x-2 whitespace-nowrap">
-              <Bell className="h-4 w-4 text-brand-gold" />
-              <span className="font-semibold font-poppins">Customer Support</span>
-              <span className="text-brand-slate opacity-90">24/7 Help</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Main Navbar */}
-      <nav className="bg-gradient-to-r from-brand-indigo via-brand-indigo/95 to-brand-indigo shadow-lg sticky top-0 z-50 border-b border-brand-gold/30">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-br from-brand-gold to-brand-gold/80 rounded-3xl flex items-center justify-center transform group-hover:scale-105 transition-all duration-300 shadow-xl border-2 border-brand-gold/20">
-                  <div className="relative">
-                    <ShoppingCart className="h-8 w-8 text-brand-indigo stroke-2" />
-                    <span className="absolute -bottom-1 -right-1 bg-brand-indigo text-brand-gold font-bold text-sm rounded-full h-6 w-6 flex items-center justify-center shadow-lg border-2 border-brand-gold">
-                      9
-                    </span>
+      {/* Elite Announcement Bar - Only on Home Page */}
+      {location.pathname === '/' && (
+        <div className="bg-elite-cta-purple text-elite-base-white">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center space-x-4 md:space-x-6 lg:space-x-8 xl:space-x-12 py-2 text-sm overflow-hidden lg:overflow-visible">
+              {/* Mobile Auto-Scrolling Container */}
+              <div className="lg:hidden flex animate-scroll">
+                <div className="flex items-center space-x-8 whitespace-nowrap">
+                  <div className="flex items-center space-x-2">
+                    <Gift className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Fast Delivery</span>
+                    <span className="text-elite-base-white/80">Quick & Reliable</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Secure Shopping</span>
+                    <span className="text-elite-base-white/80">100% Protected</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Star className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Quality Products</span>
+                    <span className="text-elite-base-white/80">Best Selection</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Bell className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Customer Support</span>
+                    <span className="text-elite-base-white/80">24/7 Help</span>
+                  </div>
+                  {/* Duplicate for seamless loop */}
+                  <div className="flex items-center space-x-2">
+                    <Gift className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Fast Delivery</span>
+                    <span className="text-elite-base-white/80">Quick & Reliable</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Secure Shopping</span>
+                    <span className="text-elite-base-white/80">100% Protected</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Star className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Quality Products</span>
+                    <span className="text-elite-base-white/80">Best Selection</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Bell className="h-4 w-4 text-elite-gold-highlight" />
+                    <span className="font-semibold font-inter">Customer Support</span>
+                    <span className="text-elite-base-white/80">24/7 Help</span>
                   </div>
                 </div>
               </div>
-              <div className="hidden sm:block">
-                <span className="text-3xl font-bold font-playfair text-brand-gold group-hover:text-white transition-all duration-300 tracking-tight">
-                  Shoppers9
-                </span>
-                <div className="text-xs text-brand-slate font-medium font-poppins tracking-wide">Shop Easy, Live Happy</div>
+              
+              {/* Desktop Static Container */}
+              <div className="hidden lg:flex items-center space-x-4 md:space-x-6 lg:space-x-8 xl:space-x-12">
+                <div className="flex items-center space-x-2 whitespace-nowrap">
+                  <Gift className="h-4 w-4 text-elite-gold-highlight" />
+                  <span className="font-semibold font-inter">Fast Delivery</span>
+                  <span className="text-elite-base-white/80">Quick & Reliable</span>
+                </div>
+                <div className="flex items-center space-x-2 whitespace-nowrap">
+                  <Shield className="h-4 w-4 text-elite-gold-highlight" />
+                  <span className="font-semibold font-inter">Secure Shopping</span>
+                  <span className="text-elite-base-white/80">100% Protected</span>
+                </div>
+                <div className="flex items-center space-x-2 whitespace-nowrap">
+                  <Star className="h-4 w-4 text-elite-gold-highlight" />
+                  <span className="font-semibold font-inter">Quality Products</span>
+                  <span className="text-elite-base-white/80">Best Selection</span>
+                </div>
+                <div className="flex items-center space-x-2 whitespace-nowrap">
+                  <Bell className="h-4 w-4 text-elite-gold-highlight" />
+                  <span className="font-semibold font-inter">Customer Support</span>
+                  <span className="text-elite-base-white/80">24/7 Help</span>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Elite Main Navbar */}
+      <nav className="bg-elite-base-white shadow-premium sticky top-0 z-50 border-b border-elite-light-grey">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            {/* Shoppers9 Logo */}
+            <Link to="/" className="flex items-center group">
+              <img 
+                src={shoppers9Logo} 
+                alt="Shoppers9 Logo" 
+                className="h-10 sm:h-12 md:h-14 w-auto transform group-hover:scale-105 transition-all duration-300"
+              />
             </Link>
 
-            {/* Search Bar - Desktop */}
+            {/* Elite Search Bar */}
             <div className="hidden md:flex flex-1 max-w-4xl mx-4 lg:mx-8">
               <form onSubmit={handleSearch} className="w-full">
                 <div className="relative group">
@@ -166,70 +237,69 @@ const Navbar: React.FC = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search products..."
-                    className="w-full pl-14 pr-12 py-4 bg-white/10 border-2 border-brand-gold/30 rounded-2xl focus:outline-none focus:ring-4 focus:ring-brand-gold/20 focus:border-brand-gold focus:bg-white/20 text-sm placeholder-brand-slate text-white font-poppins transition-all duration-300 shadow-sm group-hover:shadow-md"
+                    placeholder="Search products, brands, categories..."
+                    className="elite-input w-full pl-14 pr-12 py-3 text-sm placeholder-elite-medium-grey text-elite-charcoal-black font-inter"
                   />
-                  <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-brand-gold group-focus-within:text-white transition-colors duration-300" />
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-brand-gold text-brand-indigo p-2 rounded-xl hover:bg-white hover:text-brand-indigo transition-all duration-300 shadow-md hover:shadow-lg"
-                  >
-                    <Search className="h-4 w-4" />
-                  </button>
+                  <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-elite-medium-grey group-focus-within:text-elite-cta-purple transition-colors duration-300" />
                 </div>
               </form>
             </div>
 
-            {/* Desktop Navigation */}
+            {/* Elite Desktop Navigation */}
             <div className="hidden lg:flex items-center space-x-4 xl:space-x-6">
               {/* Wishlist */}
               <Link to="/wishlist" className="group relative">
-                <div className="flex flex-col items-center p-3 rounded-2xl text-white hover:text-brand-gold hover:bg-brand-gold/10 transition-all duration-300">
-                  <Heart className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-                  <span className="text-xs mt-1 font-semibold font-poppins">Wishlist</span>
+                <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
+                  <Heart className="h-6 w-6" />
+                  <span className="text-xs mt-1 font-semibold font-inter">Wishlist</span>
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-elite-cta-purple text-elite-base-white text-xs h-6 w-6 flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
+                      {wishlistCount > 99 ? '99+' : wishlistCount}
+                    </span>
+                  )}
                 </div>
               </Link>
               
               {/* Cart */}
               <Link to="/cart" className="group relative">
-                <div className="flex flex-col items-center p-3 rounded-2xl text-white hover:text-brand-gold hover:bg-brand-gold/10 transition-all duration-300">
-                  <ShoppingCart className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-                  <span className="text-xs mt-1 font-semibold font-poppins">Cart</span>
+                <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
+                  <ShoppingCart className="h-6 w-6" />
+                  <span className="text-xs mt-1 font-semibold font-inter">Cart</span>
                   {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-brand-gold text-brand-indigo text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg animate-pulse">
+                    <span className="absolute -top-1 -right-1 bg-elite-cta-purple text-elite-base-white text-xs h-6 w-6 flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
                       {cartCount > 99 ? '99+' : cartCount}
                     </span>
                   )}
                 </div>
               </Link>
 
-              {/* User Menu */}
+              {/* User Menu - Shoppers9 Brand */}
               {isAuthenticated ? (
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="group relative"
                   >
-                    <div className="flex flex-col items-center p-3 rounded-2xl text-white hover:text-brand-gold hover:bg-brand-gold/10 transition-all duration-300">
+                    <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
                       <div className="relative">
-                        <User className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand-gold rounded-full border-2 border-brand-indigo"></div>
+                        <User className="h-6 w-6" />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-green border-2 border-white"></div>
                       </div>
-                      <span className="text-xs mt-1 font-semibold font-poppins">Profile</span>
+                      <span className="text-xs mt-1 font-semibold font-montserrat">Profile</span>
                     </div>
                   </button>
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-4 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in slide-in-from-top-2 duration-300">
-                      <div className="px-6 py-4 border-b border-gray-100">
+                    <div className="modal-content absolute right-0 mt-4 w-64 bg-white/95 backdrop-blur-md shadow-postcard-hover border border-brand-light-grey py-2 z-50 animate-in slide-in-from-top-2 duration-300">
+                      <div className="px-6 py-4 border-b border-brand-light-grey">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                            <span className="text-white font-bold text-lg">
+                          <div className="w-12 h-12 bg-sunset-gradient flex items-center justify-center shadow-sunset">
+                            <span className="text-white font-bold text-lg font-montserrat">
                               {(user?.name || user?.phone || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <div className="font-bold text-gray-800 text-base">{user?.name || 'User'}</div>
-                            <div className="text-sm text-gray-500">{user?.email || user?.phone}</div>
+                            <div className="font-bold text-brand-charcoal-black text-base font-montserrat">{user?.name || 'User'}</div>
+                            <div className="text-sm text-brand-medium-grey font-inter">{user?.email || user?.phone}</div>
                           </div>
                         </div>
                       </div>
@@ -239,7 +309,7 @@ const Navbar: React.FC = () => {
                           className="flex items-center space-x-3 px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 group"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <User className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                          <User className="h-5 w-5" />
                           <span className="font-medium">My Profile</span>
                         </Link>
                         <Link
@@ -247,7 +317,7 @@ const Navbar: React.FC = () => {
                           className="flex items-center space-x-3 px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 group"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <ShoppingCart className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
+                          <ShoppingCart className="h-5 w-5" />
                           <span className="font-medium">Orders</span>
                         </Link>
                         <Link
@@ -286,41 +356,48 @@ const Navbar: React.FC = () => {
               )}
           </div>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-3 rounded-2xl text-white hover:text-brand-gold hover:bg-brand-gold/10 transition-all duration-300 group"
-            >
-              {isMenuOpen ? (
-                <X className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-              ) : (
-                <Menu className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-              )}
-            </button>
+            {/* Mobile cart button */}
+            <Link to="/cart" className="lg:hidden group relative">
+              <div className="flex flex-col items-center justify-center py-2 px-1 transition-colors duration-200 text-gray-500 hover:text-gray-700">
+                <div className="relative">
+                  <ShoppingCart className="h-6 w-6 transition-all duration-200 text-gray-500" fill="none" strokeWidth={2} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs mt-1 font-medium truncate text-gray-500">Cart</span>
+              </div>
+            </Link>
           </div>
         </div>
 
         {/* Category Navigation */}
-        <div className="hidden lg:block border-t border-brand-gold/30 bg-gradient-to-r from-brand-indigo/90 via-brand-indigo/85 to-brand-indigo/90">
+        <div className={`border-t border-gray-200 bg-gray-50 relative z-50 lg:z-50 z-[100000] ${location.pathname === '/profile' ? 'hidden lg:block' : ''}`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-center space-x-6 xl:space-x-8 py-3">
+            <div className="flex items-center lg:justify-center justify-start space-x-4 py-3 lg:overflow-x-visible overflow-x-auto lg:space-x-6 xl:space-x-8 category-scroll" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
               {categoriesLoading ? (
-                <div className="flex items-center space-x-2 text-brand-slate">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-gold"></div>
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                   <span className="text-sm font-poppins">Loading categories...</span>
                 </div>
+              ) : categories.length === 0 ? (
+                <div className="text-gray-600 text-sm">
+                  No categories available (Total: {categories.length})
+                </div>
               ) : (
-                categories.filter(cat => cat.level === 1).map((category) => (
+                categories.filter(cat => cat.level === 1).map((category, index) => (
                   <div 
-                    key={category._id} 
+                    key={`${category._id}-${index}`} 
                     className="relative group"
                     onMouseEnter={() => handleCategoryHover(category._id)}
                     onMouseLeave={handleCategoryLeave}
                   >
-                    <div className="flex items-center space-x-1 text-sm font-medium text-white hover:text-brand-gold transition-colors duration-200 py-2 cursor-pointer">
+                    <div className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 py-2 px-3 cursor-pointer rounded-md whitespace-nowrap">
                       <Link
                         to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
-                        className="hover:text-brand-gold transition-colors duration-200 font-poppins"
+                        className="hover:text-blue-600 transition-colors duration-200 font-poppins"
                       >
                         <span>{category.name}</span>
                       </Link>
@@ -329,20 +406,42 @@ const Navbar: React.FC = () => {
                       )}
                     </div>
                     {showCategoriesMenu === category._id && category.children && category.children.length > 0 && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                        {category.children.filter(child => child.isActive).map((subcategory) => (
-                          <Link
-                            key={subcategory._id}
-                            to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}`}
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-pink-600 transition-colors duration-200"
-                          >
-                            {subcategory.name}
-                          </Link>
-                        ))}
+                      <div 
+                         className="absolute top-full left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] lg:z-[9999] z-[99999]"
+                        onMouseEnter={() => handleCategoryHover(category._id)}
+                        onMouseLeave={handleCategoryLeave}
+                      >
+                        <div className="p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {category.children.filter(child => child.isActive).map((subcategory) => (
+                              <div key={subcategory._id} className="space-y-3">
+                                <Link
+                                  to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}`}
+                                  className="block font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 text-sm uppercase tracking-wide"
+                                >
+                                  {subcategory.name}
+                                </Link>
+                                {subcategory.children && subcategory.children.length > 0 && (
+                                  <div className="space-y-2">
+                                    {subcategory.children.filter(subChild => subChild.isActive).map((subSubcategory) => (
+                                      <Link
+                                        key={subSubcategory._id}
+                                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}&subsubcategory=${encodeURIComponent(subSubcategory.slug || subSubcategory.name)}`}
+                                        className="block text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 py-1"
+                                      >
+                                        {subSubcategory.name}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                ))
+                  ))
               )}
             </div>
           </div>
@@ -366,11 +465,30 @@ const Navbar: React.FC = () => {
                 </div>
               </form>
 
+              {/* Mobile Categories - Hidden */}
+              {!categoriesLoading && categories.length > 0 && (
+                <div className="mb-6 hidden">
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">Categories</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {categories.filter(cat => cat.level === 1).slice(0, 6).map((category, index) => (
+                      <Link
+                        key={`${category._id}-${index}`}
+                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <span className="truncate">{category.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Mobile Navigation Links */}
               <div className="space-y-2">
                 <Link
                   to="/products"
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium hidden"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,7 +499,7 @@ const Navbar: React.FC = () => {
                 
                 <Link
                   to="/cart"
-                  className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium"
+                  className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium hidden"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <div className="flex items-center space-x-3">
@@ -395,7 +513,7 @@ const Navbar: React.FC = () => {
                   )}
                 </Link>
 
-                <Link to="/wishlist" className="flex items-center space-x-3 w-full px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-300 font-medium">
+                <Link to="/wishlist" className="flex items-center space-x-3 w-full px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-300 font-medium hidden">
                   <Heart className="h-5 w-5" />
                   <span>Wishlist</span>
                 </Link>
@@ -417,7 +535,7 @@ const Navbar: React.FC = () => {
                     </div>
                     <Link
                       to="/profile"
-                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 font-medium hidden"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <User className="h-5 w-5" />
@@ -436,7 +554,7 @@ const Navbar: React.FC = () => {
                         handleLogout();
                         setIsMenuOpen(false);
                       }}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium"
+                      className="flex items-center space-x-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium hidden"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

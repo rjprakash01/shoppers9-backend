@@ -20,8 +20,8 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
     // Revenue calculation
     const revenueResult = await Order.aggregate([
-      { $match: { status: { $ne: 'cancelled' }, paymentStatus: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$total' } } }
+      { $match: { orderStatus: { $ne: 'cancelled' }, paymentStatus: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$finalAmount' } } }
     ]);
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
@@ -32,20 +32,20 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       { 
         $match: { 
           createdAt: { $gte: startDate },
-          status: { $ne: 'cancelled' },
-          paymentStatus: 'paid'
+          orderStatus: { $ne: 'cancelled' },
+          paymentStatus: 'completed'
         }
       },
-      { $group: { _id: null, total: { $sum: '$total' } } }
+      { $group: { _id: null, total: { $sum: '$finalAmount' } } }
     ]);
     const recentRevenue = recentRevenueResult.length > 0 ? recentRevenueResult[0].total : 0;
 
     // Recent orders for display
     const latestOrders = await Order.find()
-      .populate('user', 'firstName lastName email')
+      .populate('userId', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('orderNumber total status createdAt user');
+      .select('orderNumber totalAmount orderStatus createdAt userId');
 
     // Top selling products
     const topProducts = await Order.aggregate([
@@ -109,35 +109,37 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       salesTrend
     };
 
+    const responseData = {
+      overview: {
+        totalUsers,
+        totalProducts,
+        totalOrders,
+        totalRevenue,
+        totalAdmins
+      },
+      recentStats: {
+        newUsers: recentUsers,
+        newOrders: recentOrders,
+        recentRevenue
+      },
+      charts: {
+        salesTrend: [],
+        topProducts
+      },
+      recentActivity: {
+        latestOrders
+      }
+    };
+    
     res.json({
       success: true,
-      data: {
-        overview: {
-          totalUsers,
-          totalProducts,
-          totalOrders,
-          totalRevenue,
-          totalAdmins
-        },
-        recentStats: {
-          newUsers: recentUsers,
-          newOrders: recentOrders,
-          recentRevenue
-        },
-        charts: {
-          salesTrend,
-          topProducts
-        },
-        recentActivity: {
-          latestOrders
-        }
-      }
+      data: responseData
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({
       success: false,
       message: 'Error fetching dashboard stats',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error.message
     });
   }
 };

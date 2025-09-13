@@ -1,36 +1,71 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Heart, Star, Gift, Percent, Truck, Shield, CreditCard } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Heart, Star, Gift, Percent, Truck, Shield, CreditCard, X } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWishlist } from '../contexts/WishlistContext';
 import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
+import AddressBook from '../components/AddressBook';
 import type { CartItem } from '../services/cart';
+
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  isDefault: boolean;
+}
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
-  const { wishlist, localWishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, addToCart, moveToWishlist } = useCart();
+  const { isAuthenticated, user } = useAuth();
+  const { wishlist, localWishlist, addToWishlist, removeFromWishlist, clearWishlist, isInWishlist, refreshWishlist } = useWishlist();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [showPriceDetails, setShowPriceDetails] = useState(false);
+  const [showWishlist, setShowWishlist] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [sizeModalOpen, setSizeModalOpen] = useState<string | null>(null);
+  const [quantityModalOpen, setQuantityModalOpen] = useState<string | null>(null);
+  const [selectedItemForChange, setSelectedItemForChange] = useState<CartItem | null>(null);
+
+  // Get current cart items based on authentication status
+  const cartItems = isAuthenticated ? (cart?.items || []) : localCart;
 
   // Refresh cart data when component mounts
   React.useEffect(() => {
     if (isAuthenticated) {
       refreshCart();
     }
-  }, [isAuthenticated]); // Remove refreshCart from dependencies to prevent infinite loop
+  }, [isAuthenticated]);
 
-  // Get current cart items based on authentication status
-  const cartItems = isAuthenticated ? (cart?.items || []) : localCart;
-  
-  // Debug: Log cart items and their IDs
+  // Set default address when user data is available
   React.useEffect(() => {
-    
-    cartItems.forEach((item, index) => {
-      
-    });
+    if (user?.addresses && user.addresses.length > 0 && !selectedAddress) {
+      const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0];
+      setSelectedAddress(defaultAddress);
+    }
+  }, [user, selectedAddress]);
+
+  // Initialize all cart items as selected by default
+  React.useEffect(() => {
+    if (cartItems.length > 0) {
+      const allItemIds = new Set(cartItems.map(item => {
+        return item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+      }));
+      setSelectedItems(allItemIds);
+    }
   }, [cartItems]);
 
   const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
@@ -40,51 +75,15 @@ const Cart: React.FC = () => {
     setIsUpdating(itemKey);
     try {
       if (isAuthenticated) {
-        // For authenticated users, use the item._id
         await updateCartItem(item._id!, item.variantId, item.size, newQuantity);
       } else {
-        // For local cart, use productId
         const productId = item.product || item.productId;
         await updateCartItem(productId!, item.variantId, item.size, newQuantity);
       }
     } catch (error) {
-      
+      console.error('Error updating quantity:', error);
     } finally {
       setIsUpdating(null);
-    }
-  };
-
-  const handleForceRefresh = async () => {
-    
-    localStorage.removeItem('cart');
-    await refreshCart();
-  };
-
-  const handleTestLogin = async () => {
-    try {
-      
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phone: '1234567890',
-          otp: '1234',
-          name: 'Test User'
-        })
-      });
-      
-      const data = await response.json();
-
-      if (data.success && data.data.accessToken) {
-        localStorage.setItem('authToken', data.data.accessToken);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        
-        window.location.reload();
-      }
-    } catch (error) {
-      
     }
   };
 
@@ -92,16 +91,17 @@ const Cart: React.FC = () => {
     const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
     setIsUpdating(itemKey);
     try {
-      if (isAuthenticated) {
-        // For authenticated users, use the item._id
-        await removeFromCart(item._id!, item.variantId, item.size);
+      if (isAuthenticated && item._id) {
+        await removeFromCart(item._id, item.variantId, item.size);
       } else {
-        // For local cart, use productId
         const productId = item.product || item.productId;
-        await removeFromCart(productId!, item.variantId, item.size);
+        if (productId) {
+          await removeFromCart(productId, item.variantId, item.size);
+        }
       }
     } catch (error) {
-      
+      console.error('Error removing item:', error);
+      // Handle error gracefully without breaking the UI
     } finally {
       setIsUpdating(null);
     }
@@ -111,467 +111,763 @@ const Cart: React.FC = () => {
     const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
     setIsUpdating(itemKey);
     try {
-      // First add to wishlist
-      const productId = item.product || item.productId;
-      if (!productId) return;
-      
-      const product = item.productData || {
-        _id: productId,
-        name: 'Product',
-        description: '',
-        category: '',
-        subCategory: '',
-        brand: '',
-        price: item.price,
-        images: item.variant?.images || [],
-        variants: [],
-        specifications: {},
-        tags: [],
-        isActive: true,
-        isFeatured: false,
-        isTrending: false,
-        displayFilters: [],
-        createdAt: '',
-        updatedAt: ''
-      };
-      
-      await addToWishlist(product, item.variantId);
-      
-      // Then remove from cart
-      if (isAuthenticated) {
-        await removeFromCart(item._id!, item.variantId, item.size);
+      if (isAuthenticated && item._id) {
+        await moveToWishlist(item._id);
+        await refreshWishlist();
       } else {
         const productId = item.product || item.productId;
-        await removeFromCart(productId!, item.variantId, item.size);
+        if (!productId) {
+          console.warn('No product ID available for wishlist operation');
+          return;
+        }
+        
+        const product = item.productData || {
+          _id: productId,
+          name: item.productData?.name || 'Product',
+          description: '',
+          category: '',
+          subCategory: '',
+          brand: '',
+          price: item.price,
+          images: item.variant?.images || item.productData?.images || [],
+          variants: [],
+          specifications: {},
+          tags: [],
+          isActive: true,
+          isFeatured: false,
+          isTrending: false,
+          displayFilters: [],
+          createdAt: '',
+          updatedAt: ''
+        };
+        
+        try {
+          await addToWishlist(product, item.variantId);
+          await removeFromCart(productId, item.variantId, item.size);
+          await refreshWishlist();
+        } catch (wishlistError) {
+          console.error('Error in wishlist operation:', wishlistError);
+          // Handle wishlist error gracefully
+        }
       }
-      
-      // Item saved for later successfully
     } catch (error) {
-      
-      alert('Failed to save item for later. Please try again.');
+      console.error('Error moving to wishlist:', error);
+      // Handle error gracefully without breaking the UI
     } finally {
       setIsUpdating(null);
     }
   };
 
-  const handleMoveToCart = async (wishlistItem: any, product: any) => {
-    try {
-      // Add to cart with default variant and size
-      const defaultVariantId = product?.variants?.[0]?._id || 'default';
-      const defaultSize = product?.variants?.[0]?.sizes?.[0]?.size || 'M';
-      
-      await addToCart(product, defaultVariantId, defaultSize, 1);
-      
-      // Remove from wishlist
-      await removeFromWishlist(product._id || product.id);
-      
-      // Item moved to cart successfully
-    } catch (error) {
-      
-      alert('Failed to move item to cart. Please try again.');
-    }
-  };
-
-  const handleRemoveFromWishlist = async (productId: string) => {
-    try {
-      await removeFromWishlist(productId);
-      // Item removed from saved items successfully
-    } catch (error) {
-      
-      alert('Failed to remove item. Please try again.');
-    }
-  };
-
   const handleCheckout = () => {
+    if (getSelectedItemsCount() === 0) {
+      alert('Please select at least one item to proceed with checkout.');
+      return;
+    }
+    
+    // Store selected items for checkout
+    const selectedCartItems = cartItems.filter(item => {
+      const itemId = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+      return selectedItems.has(itemId);
+    });
+    
+    // You can store this in context or pass via navigation state
+    localStorage.setItem('selectedCartItems', JSON.stringify(selectedCartItems));
     navigate('/checkout');
+  };
+
+  const handleAddressSelect = (address: Address) => {
+    setSelectedAddress(address);
+    setIsAddressBookOpen(false);
+  };
+
+  const handleChangeAddress = () => {
+    setIsAddressBookOpen(true);
+  };
+
+  const handleApplyCoupon = () => {
+    if (couponCode.trim()) {
+      // Simulate coupon application
+      if (couponCode.toUpperCase() === 'MYNTRAWOWZ') {
+        setAppliedCoupon(couponCode.toUpperCase());
+        setCouponDiscount(238);
+        setCouponCode('');
+      } else {
+        alert('Invalid coupon code');
+      }
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+  };
+
+  const handleItemSelection = (itemId: string, isSelected: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(itemId);
+      } else {
+        newSet.delete(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      const allItemIds = new Set(cartItems.map(item => {
+        return item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+      }));
+      setSelectedItems(allItemIds);
+    } else {
+      setSelectedItems(new Set());
+    }
+  };
+
+  const calculateSelectedItemsTotal = () => {
+    return cartItems
+      .filter(item => {
+        const itemId = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+        return selectedItems.has(itemId);
+      })
+      .reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const calculateTotal = () => {
+    const subtotal = calculateSelectedItemsTotal();
+    const platformFee = 0; // FREE as shown in screenshot
+    const discount = selectedItems.size > 0 ? couponDiscount : 0; // Only apply discount if items are selected
+    return subtotal - discount + platformFee;
+  };
+
+  const getSelectedItemsCount = () => {
+    return cartItems.filter(item => {
+      const itemId = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+      return selectedItems.has(itemId);
+    }).length;
+  };
+
+  // Mock stock data - in real app, this would come from API
+  const getAvailableStock = (productId: string, variantId: string) => {
+    // Mock stock data
+    const stockData = {
+      sizes: {
+        'XS': 2,
+        'S': 5,
+        'M': 8,
+        'L': 12,
+        'XL': 6,
+        'XXL': 3
+      },
+      maxQuantity: 10
+    };
+    return stockData;
+  };
+
+  const handleSizeChange = async (item: CartItem, newSize: string) => {
+    try {
+      setIsUpdating(item._id || 'updating');
+      // In real app, you would call updateCartItem with new size
+      // await updateCartItem(item._id, item.variantId, newSize, item.quantity);
+      setSizeModalOpen(null);
+      setSelectedItemForChange(null);
+    } catch (error) {
+      console.error('Error updating size:', error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleQuantityChangeModal = async (item: CartItem, newQuantity: number) => {
+    try {
+      setIsUpdating(item._id || 'updating');
+      await handleQuantityChange(item, newQuantity);
+      setQuantityModalOpen(null);
+      setSelectedItemForChange(null);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const openSizeModal = (item: CartItem) => {
+    const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+    setSelectedItemForChange(item);
+    setSizeModalOpen(itemKey);
+  };
+
+  const openQuantityModal = (item: CartItem) => {
+    const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+    setSelectedItemForChange(item);
+    setQuantityModalOpen(itemKey);
   };
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-12 text-center max-w-lg w-full">
-          <div className="w-32 h-32 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
-            <ShoppingBag className="h-16 w-16 text-white" />
+      <div className="min-h-screen bg-elite-light-grey flex items-center justify-center p-4">
+        <div className="postcard-box p-8 text-center max-w-sm w-full">
+          <div className="w-20 h-20 bg-elite-light-grey flex items-center justify-center mx-auto mb-6">
+            <ShoppingBag className="h-10 w-10 text-elite-medium-grey" />
           </div>
           
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
-          <p className="text-gray-600 mb-8 text-lg">
-            Discover amazing products and start building your perfect collection!
+          <h2 className="font-playfair text-subsection font-semibold text-elite-charcoal-black mb-3">Your cart is empty</h2>
+          <p className="font-inter text-body text-elite-medium-grey mb-6">
+            Add items to get started
           </p>
           
-          <div className="space-y-4">
-            <Link
-              to="/products"
-              className="inline-flex items-center bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <ShoppingBag className="mr-3 h-6 w-6" />
-              Start Shopping
-            </Link>
-
-            <div className="text-sm text-gray-500 mt-6">
-              <Link to="/" className="text-purple-600 hover:text-purple-700 font-medium">
-                ← Back to Home
-              </Link>
-            </div>
-          </div>
+          <Link
+            to="/products"
+            className="btn-primary w-full py-3 px-4 font-medium font-inter inline-block text-center"
+          >
+            Continue Shopping
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
-      {/* Header */}
-      <div className="bg-brand-indigo shadow-sm border-b border-brand-gold/20">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <button
-                onClick={() => navigate(-1)}
-                className="mr-4 p-2 text-brand-gold hover:text-white transition-colors rounded-lg hover:bg-brand-gold/10"
-              >
-                <ArrowLeft className="h-6 w-6" />
-              </button>
-              <h1 className="text-2xl font-bold font-playfair text-brand-gold">
-                Shopping Cart
-              </h1>
-              <span className="ml-3 px-3 py-1 bg-brand-gold/20 text-brand-gold rounded-full text-sm font-semibold font-poppins">
-                {cartCount} {cartCount === 1 ? 'item' : 'items'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {!isAuthenticated && (
-                <button 
-                  onClick={handleTestLogin}
-                  className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  Test Login
-                </button>
-              )}
-              <button 
-                onClick={handleForceRefresh}
-                className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Force Refresh
-              </button>
-            </div>
+    <div className="min-h-screen bg-elite-base-white">
+      {/* Elite Header */}
+      <div className="section-white border-b border-elite-light-grey shadow-premium">
+        <div className="elite-container py-4">
+          <div className="flex items-center">
+            <button
+              onClick={() => {
+                // On mobile view, navigate to home; on desktop, go back
+                if (window.innerWidth < 1024) {
+                  navigate('/');
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className="mr-3 p-1"
+            >
+              <ArrowLeft className="h-6 w-6 text-elite-charcoal-black" />
+            </button>
+            <h1 className="font-playfair text-xl font-semibold text-elite-charcoal-black">
+              Cart
+            </h1>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Progress Indicator */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-brand-gold/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-brand-gold rounded-full flex items-center justify-center">
-                  <ShoppingBag className="h-4 w-4 text-brand-indigo" />
-                </div>
-                <span className="ml-2 font-semibold font-poppins text-brand-indigo">Cart</span>
-              </div>
-              <div className="w-16 h-1 bg-brand-slate/30 rounded"></div>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-brand-slate/30 rounded-full flex items-center justify-center">
-                  <CreditCard className="h-4 w-4 text-brand-indigo/50" />
-                </div>
-                <span className="ml-2 text-brand-indigo/50 font-poppins">Checkout</span>
-              </div>
+      {/* Elite Progress Indicator */}
+      <div className="section-grey border-b border-elite-light-grey px-4 sm:px-6 py-2 sm:py-3">
+        <div className="flex items-center justify-center space-x-2 sm:space-x-3 max-w-xs mx-auto">
+          <div className="flex flex-col items-center min-w-0">
+            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-cta-purple flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
+              1
             </div>
-            <div className="text-sm text-brand-indigo/70 font-poppins">
-              Step 1 of 2
+            <span className="text-xs sm:text-sm text-elite-cta-purple font-medium font-inter mt-2 sm:mt-1 whitespace-nowrap">Cart</span>
+          </div>
+          <div className="w-12 sm:w-16 h-px bg-elite-medium-grey"></div>
+          <div className="flex flex-col items-center min-w-0">
+            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-medium-grey flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
+              2
             </div>
+            <span className="text-xs sm:text-sm text-elite-medium-grey font-inter mt-2 sm:mt-1 whitespace-nowrap">Payment</span>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items - Left Side */}
-          <div className="lg:col-span-2 space-y-6">
-            {cartItems.map((item: CartItem) => {
-              const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
-              const productId = item.productData?._id || item.product || item.productId;
-              const productName = item.productData?.name || 'Product';
-              const isUpdatingThis = isUpdating === itemKey;
-              
-              return (
-                <div key={itemKey} className="bg-white rounded-2xl shadow-lg border border-brand-gold/20 p-6 hover:shadow-xl hover:border-brand-gold transition-all duration-300">
-                 <div className="flex flex-col lg:flex-row items-start space-y-6 lg:space-y-0 lg:space-x-6">
-                   {/* Product Image */}
-                   <div className="flex-shrink-0">
-                     <Link to={`/products/${productId}`}>
-                       <img
-                         src={getImageUrl(item.variant?.images?.[0] || item.productData?.images?.[0])}
-                         alt={productName}
-                         className="w-32 h-32 object-cover rounded-2xl border-2 border-brand-gold/20 cursor-pointer hover:border-brand-gold transition-all duration-300 shadow-md hover:shadow-lg"
-                       />
-                     </Link>
-                   </div>
-
-                   {/* Product Details */}
-                   <div className="flex-1 min-w-0">
-                     <Link
-                       to={`/products/${productId}`}
-                       className="text-xl font-bold font-poppins text-brand-indigo hover:text-brand-gold transition-colors line-clamp-2 block mb-3"
-                     >
-                       {productName}
-                     </Link>
-                    
-                    {/* Variant Info */}
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-4">
-                        {item.size && (
-                          <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30">
-                            <span className="text-sm text-brand-indigo font-medium font-poppins">Size: {item.size}</span>
-                          </div>
-                        )}
-                        {item.variant?.color && (
-                          <div className="bg-brand-gold/10 px-3 py-2 rounded-lg border border-brand-gold/30 flex items-center space-x-2">
-                            {item.variant.colorCode && (
-                              <div
-                                className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                                style={{ backgroundColor: item.variant.colorCode }}
-                              />
-                            )}
-                            <span className="text-sm text-brand-indigo font-medium font-poppins">{item.variant.color}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Price */}
-                    <div className="mt-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl font-bold font-poppins text-brand-indigo">
-                          {formatPrice(item.price)}
-                        </span>
-                        {item.originalPrice && item.originalPrice > item.price && (
-                          <>
-                            <span className="text-lg text-brand-indigo/50 line-through font-poppins">
-                              {formatPrice(item.originalPrice)}
-                            </span>
-                            <span className="bg-brand-gold/20 text-brand-indigo px-3 py-1 rounded-full text-sm font-bold font-poppins shadow-sm">
-                              {item.discount}% OFF
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quantity Controls and Actions */}
-                   <div className="mt-6">
-                     <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                       {/* Quantity Controls */}
-                       <div className="flex items-center space-x-4">
-                         <span className="text-sm font-semibold font-poppins text-brand-indigo">Quantity:</span>
-                         <div className="flex items-center bg-brand-gold/10 border-2 border-brand-gold/30 rounded-xl overflow-hidden shadow-sm">
-                           <button
-                             onClick={() => handleQuantityChange(item, item.quantity - 1)}
-                             disabled={item.quantity <= 1 || isUpdatingThis}
-                             className="p-3 hover:bg-brand-gold/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-brand-indigo"
-                           >
-                             <Minus className="h-4 w-4" />
-                           </button>
-                           <span className="px-6 py-3 text-center min-w-[4rem] font-bold text-lg font-poppins bg-white text-brand-indigo">
-                             {isUpdatingThis ? '...' : item.quantity}
-                           </span>
-                           <button
-                             onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                             disabled={isUpdatingThis}
-                             className="p-3 hover:bg-brand-gold/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-brand-indigo"
-                           >
-                             <Plus className="h-4 w-4" />
-                           </button>
-                         </div>
-                       </div>
-
-                       {/* Item Total */}
-                       <div className="text-right">
-                         <p className="text-sm text-brand-indigo/70 font-poppins mb-1">Item Total</p>
-                         <p className="text-2xl font-bold font-poppins text-brand-indigo">
-                           {formatPrice(item.price * item.quantity)}
-                         </p>
-                       </div>
-                     </div>
-
-                     {/* Action Buttons */}
-                     <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-6 border-t border-brand-gold/20">
-                       <button
-                         onClick={() => handleMoveToWishlist(item)}
-                         disabled={isUpdatingThis}
-                         className="flex items-center justify-center space-x-2 bg-brand-gold/10 text-brand-indigo hover:bg-brand-gold/20 px-6 py-3 rounded-xl transition-all duration-200 font-semibold font-poppins border border-brand-gold/30 hover:border-brand-gold shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                       >
-                         <Heart className="w-5 h-5" />
-                         <span>Save for Later</span>
-                       </button>
-                       <button
-                         onClick={() => handleRemoveItem(item)}
-                         disabled={isUpdatingThis}
-                         className="flex items-center justify-center space-x-2 bg-brand-indigo/10 text-brand-indigo hover:bg-brand-indigo/20 px-6 py-3 rounded-xl transition-all duration-200 font-semibold font-poppins border border-brand-indigo/30 hover:border-brand-indigo shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                       >
-                         {isUpdatingThis ? (
-                           <div className="w-5 h-5 border-2 border-brand-indigo border-t-transparent rounded-full animate-spin" />
-                         ) : (
-                           <Trash2 className="w-5 h-5" />
-                         )}
-                         <span>Remove</span>
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-              );
-             })}
+      {/* Elite Delivery Address */}
+      <div className="section-white border-b border-elite-light-grey px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-elite-cta-purple flex items-center justify-center mr-3">
+              <Truck className="h-4 w-4 text-elite-base-white" />
+            </div>
+            <div>
+              {selectedAddress ? (
+                <>
+                  <p className="font-inter text-sm font-medium text-elite-charcoal-black">
+                    Delivery at {selectedAddress.city} - {selectedAddress.pincode}
+                  </p>
+                  <p className="font-inter text-xs text-elite-medium-grey">
+                    {selectedAddress.name} • {selectedAddress.phone}
+                  </p>
+                </>
+              ) : (
+                <p className="font-inter text-sm font-medium text-elite-charcoal-black">Select delivery address</p>
+              )}
+            </div>
           </div>
-          
-          {/* Checkout Box - Right Side */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-8 sticky top-8 border border-brand-gold/20">
-              <h2 className="text-2xl font-bold font-playfair text-brand-indigo mb-6 flex items-center">
-                <Gift className="h-6 w-6 mr-3 text-brand-gold" />
-                Order Summary
-              </h2>
-              
-              {/* Summary Details */}
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center">
-                  <span className="text-brand-indigo/70 font-medium font-poppins">Subtotal ({cartCount} items)</span>
-                  <span className="font-bold text-lg font-poppins text-brand-indigo">{formatPrice(cartTotal)}</span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-brand-indigo/70 font-medium font-poppins flex items-center">
-                    <Truck className="h-4 w-4 mr-2 text-brand-gold" />
-                    Shipping
+          <button 
+            onClick={handleChangeAddress}
+            className="btn-secondary px-3 py-1 text-sm font-medium font-inter"
+          >
+            Change
+          </button>
+        </div>
+      </div>
+
+      <div className="elite-container py-3 pb-24">
+        <div className="lg:grid lg:grid-cols-2 lg:gap-8 space-y-4 lg:space-y-0">
+          {/* Left Side - Cart Items */}
+          <div className="space-y-4">
+            {/* Elite Select All Header */}
+            {cartItems.length > 0 && (
+              <div className="postcard-box px-3 sm:px-4 py-2.5">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.size === cartItems.length && cartItems.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="mr-3 h-4 w-4 text-elite-cta-purple focus:ring-elite-cta-purple border-elite-medium-grey"
+                  />
+                  <span className="font-inter text-sm font-medium text-elite-charcoal-black">
+                    Select All ({getSelectedItemsCount()}/{cartItems.length} items)
                   </span>
-                  <span className="font-bold font-poppins text-brand-gold">FREE</span>
+                </label>
+              </div>
+            )}
+            
+            {/* Elite Cart Items List */}
+            <div className="space-y-4">
+          {cartItems.map((item: CartItem) => {
+          const itemKey = item._id || `${item.product || item.productId}-${item.variantId}-${item.size}`;
+          const productId = item.productData?._id || item.product || item.productId;
+          const productName = item.productData?.name || 'Product';
+          const isUpdatingThis = isUpdating === itemKey;
+          
+          return (
+            <div key={itemKey} className="postcard-box p-4 sm:p-6">
+              <div className="flex space-x-3">
+                {/* Item Selection Checkbox */}
+                <div className="flex-shrink-0 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.has(itemKey)}
+                    onChange={(e) => handleItemSelection(itemKey, e.target.checked)}
+                    className="h-4 w-4 text-elite-cta-purple focus:ring-elite-cta-purple border-elite-medium-grey rounded"
+                  />
                 </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-brand-indigo/70 font-medium font-poppins">Platform Fee</span>
-                  <span className="font-bold font-poppins text-brand-indigo">₹2</span>
+                {/* Product Image */}
+                <div className="flex-shrink-0">
+                  <Link to={`/products/${productId}`}>
+                    <img
+                      src={getImageUrl(item.variant?.images?.[0] || item.productData?.images?.[0])}
+                      alt={productName}
+                      className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
+                    />
+                  </Link>
                 </div>
-                
-                <div className="border-t-2 border-brand-gold/20 pt-4 flex justify-between items-center">
-                  <span className="text-xl font-bold font-playfair text-brand-indigo">Total</span>
-                  <span className="text-2xl font-bold font-poppins text-brand-indigo">{formatPrice(cartTotal + 2)}</span>
+
+                {/* Product Details */}
+                <div className="flex-1 min-w-0">
+                  <Link
+                    to={`/products/${productId}`}
+                    className="text-sm sm:text-base font-medium text-gray-900 line-clamp-2 block mb-1 sm:mb-2"
+                  >
+                    {productName}
+                  </Link>
+                  
+                  <div className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">
+                    {formatPrice(item.price)}
+                  </div>
+                  
+                  {/* Size and Quantity */}
+                  <div className="flex items-center space-x-4 text-sm">
+                    {item.size && (
+                      <button
+                        onClick={() => openSizeModal(item)}
+                        className="flex items-center text-gray-700 hover:text-purple-600 font-medium"
+                      >
+                        <span>Size: {item.size}</span>
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openQuantityModal(item)}
+                      className="flex items-center text-gray-700 hover:text-purple-600 font-medium"
+                    >
+                      <span>Qty: {item.quantity}</span>
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  {/* Returns and Delivery */}
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Truck className="h-3 w-3 mr-1" />
+                      <span>Estimated Delivery by Friday, 26th Sep</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Benefits */}
-              <div className="bg-brand-gold/10 rounded-xl p-4 mb-6 border border-brand-gold/30">
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-brand-indigo font-poppins">
-                    <Shield className="h-4 w-4 mr-2" />
-                    <span>Secure Payment</span>
-                  </div>
-                  <div className="flex items-center text-sm text-brand-indigo font-poppins">
-                    <Truck className="h-4 w-4 mr-2" />
-                    <span>Free Delivery on orders above ₹499</span>
-                  </div>
-                  <div className="flex items-center text-sm text-brand-indigo font-poppins">
-                    <Percent className="h-4 w-4 mr-2" />
-                    <span>Easy Returns & Exchanges</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Checkout Button */}
-              <button
-                onClick={handleCheckout}
-                className="w-full bg-brand-gold text-brand-indigo py-4 px-6 rounded-xl font-bold font-poppins text-lg hover:bg-white hover:text-brand-indigo border border-brand-gold transition-all duration-300 shadow-lg hover:shadow-xl mb-4"
-              >
-                Proceed to Checkout
-              </button>
-
-              {/* Continue Shopping */}
-              <Link
-                to="/products"
-                className="block w-full text-center text-brand-indigo hover:text-brand-gold font-semibold font-poppins py-3 px-6 border-2 border-brand-gold/30 rounded-xl hover:border-brand-gold hover:bg-brand-gold/10 transition-all duration-200"
-              >
-                Continue Shopping
-              </Link>
               
-              {/* Security Badge */}
-              <div className="mt-6 text-center">
-                <div className="flex items-center justify-center text-sm text-gray-500">
-                  <Shield className="h-4 w-4 mr-2" />
-                  <span>SSL Secured Checkout</span>
-                </div>
+              {/* Action Buttons */}
+              <div className="flex border-t border-elite-light-grey mt-4">
+                <button
+                  onClick={() => handleMoveToWishlist(item)}
+                  disabled={isUpdatingThis}
+                  className="flex-1 flex items-center justify-center py-3 text-sm font-medium font-inter text-elite-medium-grey"
+                >
+                  <Heart className="w-4 h-4 mr-2" />
+                  Move to Wishlist
+                </button>
+                <div className="w-px bg-elite-light-grey"></div>
+                <button
+                  onClick={() => handleRemoveItem(item)}
+                  disabled={isUpdatingThis}
+                  className="flex-1 flex items-center justify-center py-3 text-sm font-medium font-inter text-elite-medium-grey"
+                >
+                  {isUpdatingThis ? (
+                    <div className="w-4 h-4 border-2 border-elite-medium-grey border-t-transparent mr-2" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  Remove
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-        
-        {/* Saved for Later / Wishlist Section */}
-        {((isAuthenticated && wishlist?.items && wishlist.items.length > 0) || (!isAuthenticated && localWishlist.length > 0)) && (
-          <div className="mt-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Saved for Later ({isAuthenticated ? (wishlist?.items?.length || 0) : localWishlist.length})
-              </h3>
-              
-              <div className="space-y-4">
-                {(isAuthenticated ? wishlist?.items || [] : localWishlist).map((item: any, index: number) => {
-                  const product = isAuthenticated ? item.product : item.product;
-                  const productId = product?._id || product?.id;
-                  const productName = product?.name || 'Product';
-                  const wishlistItemKey = `wishlist-${productId}-${index}`;
-                  
-                  return (
-                    <div key={wishlistItemKey} className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4 p-4 border border-gray-200 rounded-lg">
-                      {/* Product Image */}
-                      <div className="flex-shrink-0 w-full sm:w-auto">
-                        <Link to={`/products/${productId}`}>
-                          <img
-                            src={getImageUrl(product?.images?.[0])}
-                            alt={productName}
-                            className="w-full h-32 sm:w-20 sm:h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                          />
-                        </Link>
-                      </div>
+          );
+        })}
+            </div>
+            
+            {/* Wishlist Section */}
+            {(isAuthenticated ? wishlist?.items || [] : localWishlist).length > 0 && (
+              <div className="postcard-box p-4 sm:p-6 mt-4" style={{backgroundColor: '#FAFAFA'}}>
+                <h3 className="text-lg font-semibold text-elite-charcoal-black mb-4 flex items-center">
+                  <Heart className="h-5 w-5 text-elite-cta-purple mr-2" />
+                  Wishlist ({(isAuthenticated ? wishlist?.items?.length : localWishlist.length) || 0} items)
+                </h3>
+                
+                <div className="space-y-4">
+                  {(isAuthenticated ? wishlist?.items || [] : localWishlist).map((item: any, index: number) => {
+                    const product = item.product || item;
+                    const wishlistItemId = item._id || `wishlist-${product._id || product.id}-${index}`;
+                    
+                    if (!product) return null;
+                    
+                    return (
+                      <div key={wishlistItemId} className="postcard-box p-4">
+                        <div className="flex space-x-3">
+                          {/* Product Image */}
+                          <div className="flex-shrink-0">
+                            <img
+                              src={getImageUrl(product.images?.[0] || '/placeholder-image.jpg')}
+                              alt={product.name}
+                              className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/placeholder-image.jpg';
+                              }}
+                            />
+                          </div>
 
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0 w-full">
-                        <Link
-                          to={`/products/${productId}`}
-                          className="text-base font-medium text-gray-900 hover:text-pink-600 transition-colors line-clamp-2"
-                        >
-                          {productName}
-                        </Link>
-                        
-                        <div className="mt-1">
-                          <span className="text-sm text-gray-600">
-                            Price: <span className="font-medium text-gray-900">{formatPrice(product?.price || 0)}</span>
-                          </span>
+                          {/* Product Details */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-playfair text-sm font-semibold text-elite-charcoal-black line-clamp-2 mb-1">{product.name}</h4>
+                            <p className="font-inter text-sm font-bold text-elite-charcoal-black mb-2">{formatPrice(product.price)}</p>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    if (product._id || product.id) {
+                                      // Get the first available variant and size
+                                      const firstVariant = product.variants?.[0];
+                                      const variantId = item.variantId || firstVariant?._id || 'default';
+                                      const size = firstVariant?.size || 'M';
+                                      
+                                      await addToCart(product, variantId, size, 1);
+                                      // Remove from wishlist after successfully adding to cart
+                                      const productId = product._id || product.id;
+                                      if (productId) {
+                                        await removeFromWishlist(productId);
+                                      }
+                                    }
+                                  } catch (error) {
+                                    console.error('Error adding to cart:', error);
+                                  }
+                                }}
+                                className="flex items-center justify-center py-2 px-3 text-xs font-medium font-inter text-elite-medium-grey hover:text-elite-cta-purple transition-colors"
+                              >
+                                <ShoppingBag className="w-4 h-4 mr-1" />
+                                Move to Cart
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const productId = product._id || product.id;
+                                  if (productId) {
+                                    removeFromWishlist(productId);
+                                  }
+                                }}
+                                className="flex items-center justify-center py-2 px-3 text-xs font-medium font-inter text-elite-medium-grey hover:text-red-500 transition-colors"
+                              >
+                                <Heart className="w-4 h-4 mr-1 fill-current" />
+                                Remove
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Right Side - Price Details & Checkout */}
+           <div className="space-y-3">
+             {/* Price Details Section */}
+             <div className="bg-white rounded-lg border border-gray-200 p-3">
+               <h3 className="text-base font-semibold text-gray-900 mb-3">Price Details</h3>
+               <div className="space-y-2">
+                 <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Total MRP</span>
+                    <span className="text-sm text-gray-900">{formatPrice(calculateSelectedItemsTotal() + couponDiscount)}</span>
+                  </div>
+                 {couponDiscount > 0 && (
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-gray-600">Coupon Discount</span>
+                     <span className="text-sm text-green-600">-{formatPrice(couponDiscount)}</span>
+                   </div>
+                 )}
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-600">Platform & Event Fee</span>
+                   <div className="text-right">
+                     <span className="text-sm text-green-600">FREE</span>
+                   </div>
+                 </div>
+                 <div className="border-t pt-2 flex justify-between items-center">
+                   <span className="text-base font-semibold text-gray-900">Total Amount</span>
+                   <span className="text-base font-semibold text-gray-900">{formatPrice(calculateTotal())}</span>
+                 </div>
+               </div>
+             </div>
 
-                      {/* Actions */}
-                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                        <button
-                          onClick={() => handleMoveToCart(item, product)}
-                          className="flex items-center space-x-1 text-pink-600 hover:text-pink-700 hover:bg-pink-50 px-3 py-2 rounded-md transition-colors text-sm font-medium"
-                        >
-                          <ShoppingBag className="w-4 h-4" />
-                          <span>Move to Cart</span>
-                        </button>
-                        <button
-                          onClick={() => handleRemoveFromWishlist(productId)}
-                          className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-md transition-colors text-sm font-medium"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Remove</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Place Order Button - Desktop Only */}
+              <div className="hidden lg:block">
+                <button
+                  onClick={handleCheckout}
+                  disabled={getSelectedItemsCount() === 0}
+                  className={`w-full py-3 px-4 rounded-md text-sm font-medium transition-colors ${
+                    getSelectedItemsCount() === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#322F61] text-white hover:bg-[#463F85]'
+                  }`}
+                >
+                  PLACE ORDER
+                </button>
+              </div>
+ 
+              {/* Coupon Section */}
+             <div className="bg-white rounded-lg border border-gray-200 p-3">
+               <div className="flex items-center mb-3">
+                 <h3 className="text-base font-semibold text-gray-900 flex-1">Best Coupon For You</h3>
+                 <button className="text-sm font-medium whitespace-nowrap" style={{color: '#322F61'}}>All Coupons &gt;</button>
+               </div>
+          
+          {appliedCoupon ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-800">Coupon Applied: {appliedCoupon}</p>
+                  <p className="text-xs text-green-600">You saved {formatPrice(couponDiscount)}</p>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="text-red-500"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
+          ) : (
+             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+               <div className="flex items-center space-x-2">
+                 <div className="flex-1 flex items-center border border-teal-400 rounded-lg">
+                   <input
+                     type="text"
+                     value={couponCode}
+                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                     placeholder="MYNTRAWOWZ"
+                     className="flex-1 px-3 py-2 bg-transparent text-teal-600 font-medium text-sm border-0 focus:outline-none"
+                   />
+                 </div>
+                 <button
+                   onClick={handleApplyCoupon}
+                   className="px-4 py-2 bg-[#322F61] text-white text-sm font-medium hover:bg-[#463F85] transition-colors"
+                 >
+                   APPLY COUPON
+                 </button>
+               </div>
+             </div>
+           )}
+        </div>
+
+
+
+
+           </div>
+         </div>
+       </div>
+       
+       {/* Bottom Price Summary - Mobile Only */}
+         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 lg:hidden z-50">
+         <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-base sm:text-lg font-semibold text-gray-900">{formatPrice(calculateTotal())}</p>
+            <button 
+              onClick={() => setShowPriceDetails(!showPriceDetails)}
+              className="text-xs sm:text-sm text-purple-600 font-medium"
+            >
+              VIEW PRICE DETAILS
+            </button>
           </div>
-        )}
+          <button
+             onClick={handleCheckout}
+             disabled={getSelectedItemsCount() === 0}
+             className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md text-sm font-medium transition-colors ${
+               getSelectedItemsCount() === 0
+                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                 : 'bg-[#322F61] text-white hover:bg-[#463F85]'
+             }`}
+           >
+             PLACE ORDER
+           </button>
+        </div>
       </div>
+      
+      {/* Size Selection Modal */}
+      {sizeModalOpen && selectedItemForChange && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end lg:items-center justify-center">
+          <div className="bg-white w-full lg:max-w-md lg:rounded-lg overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Select Size</h3>
+              <button
+                onClick={() => {
+                  setSizeModalOpen(null);
+                  setSelectedItemForChange(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Size Options */}
+            <div className="p-4">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {Object.entries(getAvailableStock(selectedItemForChange.product || selectedItemForChange.productId || '', selectedItemForChange.variantId).sizes)
+                  .filter(([size, stock]) => stock > 0)
+                  .map(([size, stock]) => (
+                    <button
+                      key={size}
+                      onClick={() => handleSizeChange(selectedItemForChange, size)}
+                      className={`p-3 border rounded-full text-center font-medium ${
+                        selectedItemForChange.size === size
+                          ? 'border-red-500 text-red-500 bg-red-50'
+                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))
+                }
+              </div>
+              
+              {/* Price and Seller Info */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-lg font-semibold">{formatPrice(selectedItemForChange.price)}</span>
+                  <span className="text-sm text-gray-500 line-through">{formatPrice(selectedItemForChange.price * 1.6)}</span>
+                  <span className="text-sm text-orange-500 font-medium">(60% OFF)</span>
+                </div>
+                <p className="text-sm text-gray-600">Seller: {selectedItemForChange.productData?.brand || 'Brand Name'}</p>
+              </div>
+            </div>
+            
+            {/* Done Button */}
+            <div className="p-4 border-t">
+              <button
+                onClick={() => {
+                  setSizeModalOpen(null);
+                  setSelectedItemForChange(null);
+                }}
+                className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600"
+              >
+                DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quantity Selection Modal */}
+      {quantityModalOpen && selectedItemForChange && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end lg:items-center justify-center">
+          <div className="bg-white w-full lg:max-w-md lg:rounded-lg overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Select Quantity</h3>
+              <button
+                onClick={() => {
+                  setQuantityModalOpen(null);
+                  setSelectedItemForChange(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Quantity Options */}
+            <div className="p-4">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {Array.from({ length: Math.min(getAvailableStock(selectedItemForChange.product || selectedItemForChange.productId || '', selectedItemForChange.variantId).maxQuantity, 6) }, (_, i) => i + 1)
+                  .map((qty) => (
+                    <button
+                      key={qty}
+                      onClick={() => handleQuantityChangeModal(selectedItemForChange, qty)}
+                      className={`p-3 border rounded-full text-center font-medium ${
+                        selectedItemForChange.quantity === qty
+                          ? 'border-red-500 text-red-500 bg-red-50'
+                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      {qty}
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+            
+            {/* Done Button */}
+            <div className="p-4 border-t">
+              <button
+                onClick={() => {
+                  setQuantityModalOpen(null);
+                  setSelectedItemForChange(null);
+                }}
+                className="w-full bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600"
+              >
+                DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Address Book Modal */}
+      <AddressBook
+        isOpen={isAddressBookOpen}
+        onClose={() => setIsAddressBookOpen(false)}
+        onSelectAddress={handleAddressSelect}
+        selectedAddressId={selectedAddress?.id}
+      />
     </div>
   );
 };

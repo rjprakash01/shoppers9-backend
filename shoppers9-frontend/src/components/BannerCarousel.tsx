@@ -79,7 +79,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
 
       // Filter only carousel banners
       const carouselBanners = activeBanners.filter(banner => 
-        !banner.displayType || banner.displayType === 'carousel' || banner.displayType === 'both'
+        !banner.displayType || banner.displayType === 'carousel'
       );
       
       // Sort banners by order field
@@ -201,28 +201,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
         </div>
       </div>
 
-      {/* Enhanced Navigation Arrows */}
-      {banners.length > 1 && (
-        <React.Fragment key="navigation-arrows">
-          <button
-            onClick={prevSlide}
-            disabled={isTransitioning}
-            className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 sm:p-3 rounded-full transition-all duration-300 disabled:opacity-50 hover:scale-110 shadow-lg"
-            aria-label="Previous banner"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          
-          <button
-            onClick={nextSlide}
-            disabled={isTransitioning}
-            className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 sm:p-3 rounded-full transition-all duration-300 disabled:opacity-50 hover:scale-110 shadow-lg"
-            aria-label="Next banner"
-          >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-        </React.Fragment>
-      )}
+
 
       {/* Enhanced Dots Indicator */}
       {banners.length > 1 && (

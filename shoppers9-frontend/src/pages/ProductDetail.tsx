@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Truck, Shield, RotateCcw } from 'lucide-react';
+import { Heart, ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft } from 'lucide-react';
 import { productService, type Product } from '../services/products';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,7 @@ const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { addToWishlist, removeFromWishlist, isInWishlist: checkIsInWishlist, isLoading: wishlistLoading } = useWishlist();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('');
@@ -21,6 +21,7 @@ const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showSizeModal, setShowSizeModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -28,10 +29,16 @@ const ProductDetail: React.FC = () => {
     }
   }, [id]);
 
+  // Reset image index when variant changes
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedVariant]);
+
   const loadProduct = async (productId: string) => {
     try {
       setIsLoading(true);
       const productData = await productService.getProduct(productId);
+      console.log('Real product data from API:', productData);
       setProduct(productData);
       
       // Set default selections
@@ -42,8 +49,7 @@ const ProductDetail: React.FC = () => {
         }
       }
     } catch (error) {
-
-      // Don't show mock data, just set product to null to show "Product Not Found"
+      console.error('Error fetching product:', error);
       setProduct(null);
     } finally {
       setIsLoading(false);
@@ -52,16 +58,58 @@ const ProductDetail: React.FC = () => {
 
   const handleAddToCart = async () => {
     if (!product || !product._id || !selectedVariant || !selectedSize) {
-      
+      console.log('Missing required fields:', {
+        product: !!product,
+        productId: !!product?._id,
+        selectedVariant: !!selectedVariant,
+        selectedSize: !!selectedSize
+      });
+      alert('Please select a size before adding to cart');
       return;
     }
     
     try {
       setIsAddingToCart(true);
-      await addToCart(product, selectedVariant, selectedSize, quantity);
-      // Show success message or redirect
-    } catch (error) {
+      console.log('Authentication status:', {
+        isAuthenticated,
+        user: user ? { id: user.id, phone: user.phone } : null
+      });
       
+      // If user is not authenticated, show login prompt
+      if (!isAuthenticated) {
+        alert('Please log in to add items to cart. For now, adding to local cart.');
+        // The CartContext should handle local cart for unauthenticated users
+      }
+      // Find the selected variant to check pricing
+      const selectedVariantData = product.variants.find(v => v._id === selectedVariant);
+      console.log('Selected variant pricing:', selectedVariantData);
+      console.log('Adding to cart:', {
+        productId: product._id,
+        variantId: selectedVariant,
+        size: selectedSize,
+        quantity,
+        variantPrice: selectedVariantData?.price,
+        variantOriginalPrice: selectedVariantData?.originalPrice
+      });
+      await addToCart(product, selectedVariant, selectedSize, quantity);
+      alert('Product added to cart successfully!');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        requestData: {
+          productId: product._id,
+          variantId: selectedVariant,
+          size: selectedSize,
+          quantity
+        }
+      });
+      console.error('Full error response:', error.response);
+      console.error('Response data details:', JSON.stringify(error.response?.data, null, 2));
+      alert(`Failed to add product to cart: ${error.response?.data?.message || error.message || 'Unknown error'}`);
     } finally {
       setIsAddingToCart(false);
     }
@@ -116,56 +164,41 @@ const ProductDetail: React.FC = () => {
   const getCurrentImages = () => {
     if (!product) return [];
     
-    // Collect all images from different sources
-    const allImages = new Set<string>();
-    
-    // 1. Add main product images
-    if (product.images) {
-      product.images.forEach(img => {
-        if (img && img.trim()) {
-          allImages.add(img);
-        }
-      });
-    }
-    
-    // 2. Add images from availableColors (uploaded color-specific images)
-    if (product.availableColors) {
-      product.availableColors.forEach(color => {
-        if (color.images) {
-          color.images.forEach(img => {
-            if (img && img.trim()) {
-              allImages.add(img);
-            }
-          });
-        }
-      });
-    }
-    
-    // 3. Add images from current variant (if selected)
     const variant = getCurrentVariant();
-    if (variant?.images) {
+    const variantImages = new Set<string>();
+    
+    // If a specific variant is selected, show only that variant's images
+    if (variant?.images && variant.images.length > 0) {
       variant.images.forEach(img => {
         if (img && img.trim()) {
-          allImages.add(img);
+          variantImages.add(img);
         }
       });
-    }
-    
-    // 4. If no specific variant selected, add images from all variants
-    if (!variant && product.variants) {
-      product.variants.forEach(v => {
-        if (v.images) {
-          v.images.forEach(img => {
+    } else {
+      // Fallback: if no variant images, use main product images
+      if (product.images && product.images.length > 0) {
+        product.images.forEach(img => {
+          if (img && img.trim()) {
+            variantImages.add(img);
+          }
+        });
+      }
+      
+      // If still no images and we have a variant, try to get images from first variant
+      if (variantImages.size === 0 && product.variants && product.variants.length > 0) {
+        const firstVariant = product.variants[0];
+        if (firstVariant.images) {
+          firstVariant.images.forEach(img => {
             if (img && img.trim()) {
-              allImages.add(img);
+              variantImages.add(img);
             }
           });
         }
-      });
+      }
     }
     
     // Convert Set to Array and process with getImageUrls
-    const imageArray = Array.from(allImages);
+    const imageArray = Array.from(variantImages);
     return getImageUrls(imageArray);
   };
 
@@ -181,12 +214,79 @@ const ProductDetail: React.FC = () => {
                 <div className="bg-gray-300 h-6 rounded w-1/2"></div>
                 <div className="bg-gray-300 h-4 rounded w-full"></div>
                 <div className="bg-gray-300 h-4 rounded w-2/3"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+               </div>
+             </div>
+         </div>
+         
+         {/* Size Selection Modal - Mobile Only */}
+         {showSizeModal && (
+           <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end">
+             <div className="bg-white w-full rounded-t-2xl overflow-hidden">
+               {/* Modal Header */}
+               <div className="flex items-center justify-between p-4 border-b">
+                 <h3 className="text-lg font-semibold text-gray-900">Select Size</h3>
+                 <button
+                   onClick={() => setShowSizeModal(false)}
+                   className="p-2 hover:bg-gray-100 rounded-full"
+                 >
+                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                   </svg>
+                 </button>
+               </div>
+               
+               {/* Size Options */}
+               <div className="p-4">
+                 <div className="flex items-center justify-between mb-4">
+                   <span className="text-sm text-gray-600">Available Sizes</span>
+                   <button className="text-sm text-red-500 font-medium">Size Chart &gt;</button>
+                 </div>
+                 
+                 <div className="grid grid-cols-5 gap-3 mb-6">
+                   {Array.from(new Set(product.variants.map(v => v.size).filter(s => s && s.trim() !== ''))).map((size) => {
+                     const sizeVariant = product.variants.find(v => v.size === size);
+                     return (
+                       <button
+                         key={size}
+                         onClick={() => {
+                           if (sizeVariant) {
+                             setSelectedVariant(sizeVariant._id || '');
+                             setSelectedSize(size);
+                           }
+                         }}
+                         className={`py-4 px-4 border rounded-xl text-center font-medium transition-colors ${
+                           selectedSize === size
+                             ? 'border-red-500 bg-red-50 text-red-600'
+                             : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                         }`}
+                       >
+                         {size}
+                       </button>
+                     );
+                   })}
+                 </div>
+                 
+                 {/* Add to Cart Button */}
+                 <button
+                   onClick={() => {
+                     if (selectedSize) {
+                       handleAddToCart();
+                       setShowSizeModal(false);
+                     }
+                   }}
+                   disabled={!selectedSize || isAddingToCart}
+                   className="w-full bg-red-500 text-white py-4 px-6 rounded-xl font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors hover:bg-red-600"
+                 >
+                   <ShoppingCart className="h-5 w-5" />
+                   <span>{isAddingToCart ? 'Adding...' : 'Add to Bag'}</span>
+                 </button>
+               </div>
+             </div>
+           </div>
+         )}
+       </div>
+     </div>
+   );
   }
 
   if (!product) {
@@ -212,16 +312,27 @@ const ProductDetail: React.FC = () => {
   const currentImages = getCurrentImages();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-elite-base-white py-8 pb-32 lg:pb-8">
+      <div className="elite-container">
+        {/* Elite Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-elite-medium-grey hover:text-elite-cta-purple transition-colors font-inter"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            <span className="font-medium">Back</span>
+          </button>
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Product Images */}
+          {/* Elite Product Images */}
           <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="postcard-box p-4">
               <img
                 src={currentImages[selectedImageIndex] || '/placeholder-image.svg'}
                 alt={product.name}
-                className="w-full h-96 object-cover rounded-lg"
+                className="w-full h-96 object-cover"
               />
             </div>
             {currentImages.length > 1 && (
@@ -230,8 +341,8 @@ const ProductDetail: React.FC = () => {
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      selectedImageIndex === index ? 'border-primary-600' : 'border-gray-200'
+                    className={`flex-shrink-0 w-20 h-20 overflow-hidden border-2 ${
+                      selectedImageIndex === index ? 'border-elite-cta-purple' : 'border-elite-light-grey'
                     }`}
                   >
                     <img
@@ -245,10 +356,10 @@ const ProductDetail: React.FC = () => {
             )}
           </div>
 
-          {/* Product Info */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-            <p className="text-gray-600 mb-4">{product.description}</p>
+          {/* Elite Product Info */}
+          <div className="postcard-box p-6">
+            <h1 className="font-playfair text-hero font-bold text-elite-charcoal-black mb-4">{product.name}</h1>
+            <p className="font-inter text-body text-elite-medium-grey mb-6 leading-relaxed">{product.description}</p>
 
             {/* Price */}
             {(() => {
@@ -265,8 +376,8 @@ const ProductDetail: React.FC = () => {
               return priceData.price > 0;
             })() && (
               <div className="mb-6">
-                <div className="flex items-center space-x-2">
-                  <span className="text-3xl font-bold text-primary-600">
+                <div className="flex items-center space-x-3">
+                  <span className="font-inter text-4xl font-bold text-elite-charcoal-black">
                     {(() => {
                       const priceData = currentSize || {
                         price: currentVariant?.price || product.price || 0,
@@ -286,7 +397,7 @@ const ProductDetail: React.FC = () => {
                     return priceData.originalPrice > priceData.price && priceData.price > 0;
                   })() && (
                     <>
-                      <span className="text-lg text-gray-500 line-through">
+                      <span className="font-inter text-lg text-elite-medium-grey line-through">
                         {(() => {
                           const priceData = currentSize || {
                             originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
@@ -294,7 +405,7 @@ const ProductDetail: React.FC = () => {
                           return formatPrice(priceData.originalPrice);
                         })()}
                       </span>
-                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
+                      <span className="bg-elite-cta-purple text-elite-base-white px-3 py-1 text-sm font-bold font-inter uppercase tracking-wide">
                         {(() => {
                           const priceData = currentSize || {
                             price: currentVariant?.price || product.price || 0,
@@ -327,7 +438,6 @@ const ProductDetail: React.FC = () => {
                         onClick={() => {
                           if (colorVariant) {
                             setSelectedVariant(colorVariant._id || '');
-                            setSelectedImageIndex(0);
                             setSelectedSize(colorVariant.size || '');
                           }
                         }}
@@ -410,8 +520,8 @@ const ProductDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Add to Cart */}
-            <div className="space-y-4">
+            {/* Desktop Add to Cart - Hidden on Mobile */}
+            <div className="hidden lg:block space-y-4">
               <button
                 onClick={handleAddToCart}
                 disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
@@ -501,6 +611,35 @@ const ProductDetail: React.FC = () => {
             <div className="text-center text-gray-500 col-span-full py-8">
               <p>Related products will be displayed here</p>
             </div>
+          </div>
+        </div>
+        
+        {/* Mobile Bottom Action Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button 
+              onClick={handleToggleWishlist}
+              disabled={wishlistLoading}
+              className={`btn-secondary flex-1 py-4 px-6 font-medium font-inter flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                product && checkIsInWishlist(product._id)
+                  ? 'border-red-500 bg-red-50 text-red-600'
+                  : ''
+              }`}
+            >
+              <Heart className={`h-5 w-5 ${
+                product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
+              }`} />
+              <span>Wishlist</span>
+            </button>
+            
+            <button
+              onClick={() => setShowSizeModal(true)}
+              className="btn-primary flex-1 py-4 px-6 font-medium font-inter flex items-center justify-center space-x-2"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span>Add to Bag</span>
+            </button>
           </div>
         </div>
       </div>

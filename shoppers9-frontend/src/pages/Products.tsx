@@ -19,7 +19,7 @@ const Products: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(true); // Show filters by default on desktop
+  const [showFilters, setShowFilters] = useState(false); // Hide filters by default, show only when clicked
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
@@ -32,19 +32,45 @@ const Products: React.FC = () => {
   useEffect(() => {
     const search = searchParams.get('search');
     const category = searchParams.get('category');
+    const subcategory = searchParams.get('subcategory');
+    const subsubcategory = searchParams.get('subsubcategory');
     const page = searchParams.get('page');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
     
     if (search) setSearchQuery(search);
+    
+    // Build category filter based on hierarchy
+    let categoryFilter = category;
+    if (subsubcategory) {
+      // If subsubcategory is selected, use the full path
+      categoryFilter = `${category}-${subcategory}-${subsubcategory}`;
+    } else if (subcategory) {
+      // If subcategory is selected, use category-subcategory
+      categoryFilter = `${category}-${subcategory}`;
+    }
     
     setFilters(prev => ({
       ...prev,
       search: search || undefined,
-      category: category || undefined,
+      category: categoryFilter || undefined,
+      minPrice: minPrice ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       page: page ? parseInt(page) : 1
     }));
     
     setCurrentPage(page ? parseInt(page) : 1);
   }, [searchParams]);
+
+  // Handle responsive filter display - only set initial state
+  useEffect(() => {
+    // Show filters by default on desktop (lg and above), hide on mobile - only on initial load
+    if (window.innerWidth >= 1024) {
+      setShowFilters(true);
+    } else {
+      setShowFilters(false);
+    }
+  }, []); // Empty dependency array to run only once on mount
 
   // Fetch products
   useEffect(() => {
@@ -73,10 +99,29 @@ const Products: React.FC = () => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     
-    // Update URL
+    // Update URL - preserve existing category hierarchy unless explicitly changing category
     const params = new URLSearchParams();
     if (updatedFilters.search) params.set('search', updatedFilters.search);
-    if (updatedFilters.category) params.set('category', updatedFilters.category);
+    
+    // Preserve category hierarchy from current URL unless category filter is being updated
+    if (!newFilters.hasOwnProperty('category')) {
+      const currentCategory = searchParams.get('category');
+      const currentSubcategory = searchParams.get('subcategory');
+      const currentSubsubcategory = searchParams.get('subsubcategory');
+      
+      if (currentCategory) params.set('category', currentCategory);
+      if (currentSubcategory) params.set('subcategory', currentSubcategory);
+      if (currentSubsubcategory) params.set('subsubcategory', currentSubsubcategory);
+    } else if (updatedFilters.category) {
+      // If category is being updated, parse the hierarchical category string
+      const categoryParts = updatedFilters.category.split('-');
+      if (categoryParts.length >= 1) params.set('category', categoryParts[0]);
+      if (categoryParts.length >= 2) params.set('subcategory', categoryParts[1]);
+      if (categoryParts.length >= 3) params.set('subsubcategory', categoryParts[2]);
+    }
+    
+    if (updatedFilters.minPrice) params.set('minPrice', updatedFilters.minPrice.toString());
+    if (updatedFilters.maxPrice) params.set('maxPrice', updatedFilters.maxPrice.toString());
     if (updatedFilters.page && updatedFilters.page > 1) params.set('page', updatedFilters.page.toString());
     
     setSearchParams(params);
@@ -94,15 +139,14 @@ const Products: React.FC = () => {
     }
     
     const firstVariant = product.variants[0];
-    const firstSize = firstVariant.sizes[0];
     
-    if (!firstSize || !firstVariant._id) {
+    if (!firstVariant._id || !firstVariant.size) {
       
       return;
     }
     
     try {
-      await addToCart(product, firstVariant._id, firstSize.size, 1);
+      await addToCart(product, firstVariant._id, firstVariant.size, 1);
     } catch (error) {
       
     }
@@ -143,13 +187,13 @@ const Products: React.FC = () => {
     
     if (viewMode === 'list') {
       return (
-        <div key={product._id} className="bg-white border border-brand-gold/20 hover:shadow-md hover:border-brand-gold transition-all duration-200 rounded-2xl">
+        <div key={product._id} className="postcard-box">
           <div className="flex p-4">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
                 src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
                 alt={product.name}
-                className="w-32 h-40 object-cover rounded-xl"
+                className="w-32 h-40 object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder-image.svg';
@@ -159,27 +203,33 @@ const Products: React.FC = () => {
             
             <div className="flex-1 ml-4">
               <Link to={`/products/${product._id}`}>
-                <h3 className="text-lg font-medium font-poppins text-brand-indigo mb-1 hover:text-brand-gold transition-colors">
+                <h3 className="font-playfair text-lg font-semibold text-elite-charcoal-black mb-1 hover:text-elite-cta-purple transition-colors">
                   {product.name}
                 </h3>
               </Link>
-              <p className="text-brand-indigo/70 text-sm mb-3 line-clamp-2 font-poppins">
+              <p className="font-inter text-elite-medium-grey text-sm mb-3 line-clamp-2">
                 {product.description}
               </p>
               
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-lg font-bold font-poppins text-brand-indigo">
-                      {formatPrice(product.price || 0)}
+                    <span className="font-inter text-lg font-bold text-elite-charcoal-black">
+                      {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
+                        formatPriceRange(product.minPrice, product.maxPrice) : 
+                        formatPrice(product.minPrice || 0)
+                      }
                     </span>
-                    {product.originalPrice && product.originalPrice > product.price && (
+                    {product.maxDiscount && product.maxDiscount > 0 && (
                       <>
-                        <span className="text-sm text-brand-indigo/50 line-through font-poppins">
-                          {formatPrice(product.originalPrice)}
+                        <span className="font-inter text-sm text-elite-medium-grey line-through">
+                          {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                            formatPriceRange(product.minOriginalPrice, product.maxOriginalPrice) : 
+                            formatPrice(product.minOriginalPrice || 0)
+                          }
                         </span>
-                        <span className="text-xs bg-brand-gold/20 text-brand-indigo px-2 py-1 rounded-full font-medium font-poppins">
-                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                        <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-2 py-1 uppercase tracking-wide">
+                          {product.maxDiscount}% OFF
                         </span>
                       </>
                     )}
@@ -197,7 +247,7 @@ const Products: React.FC = () => {
                     className={`p-2 transition-colors disabled:opacity-50 ${
                       checkIsInWishlist(product._id)
                         ? 'text-red-500 hover:text-red-600'
-                        : 'text-gray-400 hover:text-red-500'
+                        : 'text-elite-medium-grey hover:text-red-500'
                     }`}
                   >
                     <Heart className={`h-4 w-4 ${
@@ -207,10 +257,10 @@ const Products: React.FC = () => {
                   <button
                     onClick={() => handleAddToCart(product)}
                     disabled={product.totalStock === 0}
-                    className={`px-4 py-2 text-sm font-medium font-poppins rounded-xl transition-colors disabled:cursor-not-allowed ${
+                    className={`btn-primary px-4 py-2 text-sm font-medium font-inter disabled:cursor-not-allowed ${
                       product.totalStock === 0 
-                        ? 'bg-brand-slate/30 text-brand-indigo/50' 
-                        : 'bg-brand-gold text-brand-indigo hover:bg-white hover:text-brand-indigo border border-brand-gold'
+                        ? 'opacity-50' 
+                        : ''
                     }`}
                   >
                     {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
@@ -224,7 +274,7 @@ const Products: React.FC = () => {
     }
     
     return (
-      <div key={product._id} className="group bg-white border border-brand-gold/20 hover:shadow-lg hover:border-brand-gold transition-all duration-200 rounded-2xl overflow-hidden">
+      <div key={product._id} className="group postcard-box overflow-hidden">
         <div className="relative overflow-hidden">
           <Link to={`/products/${product._id}`} className="block">
             <img
@@ -237,8 +287,8 @@ const Products: React.FC = () => {
               }}
             />
             {product.totalStock === 0 && (
-              <div className="absolute inset-0 bg-brand-indigo/80 flex items-center justify-center">
-                <span className="text-white font-medium text-sm font-poppins bg-brand-gold/90 px-3 py-1 rounded-full">Out of Stock</span>
+              <div className="absolute inset-0 bg-elite-charcoal-black/80 flex items-center justify-center">
+                <span className="text-elite-base-white font-medium text-sm font-inter bg-elite-cta-purple px-3 py-1">Out of Stock</span>
               </div>
             )}
           </Link>
@@ -249,37 +299,47 @@ const Products: React.FC = () => {
               handleToggleWishlist(product);
             }}
             disabled={wishlistLoading}
-            className={`absolute top-2 right-2 p-2 bg-brand-gold/90 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 disabled:opacity-50 ${
+            className={`absolute top-2 right-2 p-2 bg-elite-base-white/90 shadow-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 disabled:opacity-50 ${
               checkIsInWishlist(product._id) ? 'opacity-100' : ''
             }`}
           >
             <Heart className={`h-4 w-4 transition-colors ${
               checkIsInWishlist(product._id)
-                ? 'text-brand-indigo fill-current'
-                : 'text-brand-indigo'
+                ? 'text-red-500 fill-current'
+                : 'text-elite-medium-grey'
             }`} />
           </button>
         </div>
         
         <div className="p-3">
           <Link to={`/products/${product._id}`} className="block">
-            <h3 className="text-sm font-medium font-poppins text-brand-indigo mb-1 line-clamp-2 group-hover:text-brand-gold transition-colors">
+            <h3 className="font-playfair text-sm font-semibold text-elite-charcoal-black mb-1 line-clamp-2 group-hover:text-elite-cta-purple transition-colors">
               {product.name}
             </h3>
           </Link>
           
           <div className="mb-2">
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-bold font-poppins text-brand-indigo">
-                {formatPrice(product.price || 0)}
-              </span>
-              {product.originalPrice && product.originalPrice > product.price && (
+              {/* Show price range if min and max prices are different */}
+              {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? (
+                <span className="font-inter text-sm font-bold text-elite-charcoal-black">
+                  From {formatPrice(product.minPrice)}
+                </span>
+              ) : (
+                <span className="font-inter text-sm font-bold text-elite-charcoal-black">
+                  {formatPrice(product.minPrice || 0)}
+                </span>
+              )}
+              {product.maxDiscount && product.maxDiscount > 0 && (
                 <>
-                  <span className="text-xs text-brand-indigo/50 line-through font-poppins">
-                    {formatPrice(product.originalPrice)}
+                  <span className="font-inter text-xs text-elite-medium-grey line-through">
+                    {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                      `From ${formatPrice(product.minOriginalPrice)}` : 
+                      formatPrice(product.minOriginalPrice || 0)
+                    }
                   </span>
-                  <span className="text-xs bg-brand-gold/20 text-brand-indigo px-1 py-0.5 rounded text-xs font-medium font-poppins">
-                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                  <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-1 py-0.5 uppercase tracking-wide">
+                    {product.maxDiscount}% OFF
                   </span>
                 </>
               )}
@@ -289,10 +349,10 @@ const Products: React.FC = () => {
           <button
             onClick={() => handleAddToCart(product)}
             disabled={product.totalStock === 0}
-            className={`w-full py-2 text-xs font-medium font-poppins rounded-xl transition-colors disabled:cursor-not-allowed ${
+            className={`btn-primary w-full py-2 text-xs font-medium font-inter disabled:cursor-not-allowed ${
               product.totalStock === 0 
-                ? 'bg-brand-slate/30 text-brand-indigo/50' 
-                : 'bg-brand-gold text-brand-indigo hover:bg-white hover:text-brand-indigo border border-brand-gold'
+                ? 'opacity-50' 
+                : ''
             }`}
           >
             {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
@@ -339,7 +399,7 @@ const Products: React.FC = () => {
                 id="itemsPerPage"
                 value={filters.limit || 12}
                 onChange={(e) => updateFilters({ limit: parseInt(e.target.value), page: 1 })}
-                className="px-3 py-1 border border-brand-gold/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-gold/20 focus:border-brand-gold bg-white text-sm font-poppins text-brand-indigo"
+                className="input-field px-3 py-1 border border-brand-light-grey focus:outline-none bg-white text-sm font-inter text-brand-charcoal-black"
               >
                 <option value={12}>12</option>
                 <option value={24}>24</option>
@@ -367,7 +427,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: 1 })}
               disabled={currentPage === 1}
-              className="px-3 py-2 text-sm font-medium font-poppins bg-white text-brand-indigo border border-brand-gold/30 rounded-xl hover:bg-brand-gold/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="btn-secondary px-3 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               First
             </button>
@@ -375,7 +435,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: currentPage - 1 })}
               disabled={currentPage === 1}
-              className="px-4 py-2 text-sm font-medium font-poppins bg-white text-brand-indigo border border-brand-gold/30 rounded-xl hover:bg-brand-gold/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="btn-secondary px-4 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
@@ -415,7 +475,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: currentPage + 1 })}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="btn-secondary px-4 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>
@@ -423,7 +483,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: totalPages })}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="btn-secondary px-3 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Last
             </button>
@@ -434,7 +494,7 @@ const Products: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-slate/5">
+    <div className="min-h-screen bg-gradient-to-b from-brand-white to-brand-light-grey">
       <div className="flex">
         {/* Filter Sidebar */}
         <FilterSidebar
@@ -447,21 +507,35 @@ const Products: React.FC = () => {
         {/* Main Content */}
         <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-80' : 'lg:ml-0'}`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
-          {/* Header */}
+          {/* Elite Header */}
           <div className="py-8">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold font-playfair text-brand-indigo mb-2">
-                All Products
+              <h1 className="font-playfair text-section font-semibold text-elite-charcoal-black mb-2">
+                {(() => {
+                  const category = searchParams.get('category');
+                  const subcategory = searchParams.get('subcategory');
+                  const subsubcategory = searchParams.get('subsubcategory');
+                  
+                  if (subsubcategory) {
+                    return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)} > ${subsubcategory?.charAt(0).toUpperCase()}${subsubcategory?.slice(1)}`;
+                  } else if (subcategory) {
+                    return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)}`;
+                  } else if (category) {
+                    return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+                  }
+                  return 'All Products';
+                })()
+                }
               </h1>
-              <p className="text-brand-indigo/70 font-poppins">
+              <p className="font-inter text-body text-elite-medium-grey">
                 {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
               </p>
             </div>
             
-            {/* Search and Controls */}
-            <div className="bg-white border border-brand-gold/20 p-4 mb-6 rounded-2xl shadow-sm">
+            {/* Elite Search and Controls */}
+            <div className="postcard-box p-4 mb-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
-                {/* Search */}
+                {/* Elite Search */}
                 <form onSubmit={handleSearch} className="flex-1 max-w-md">
                   <div className="relative">
                     <input
@@ -469,18 +543,18 @@ const Products: React.FC = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search products..."
-                      className="w-full pl-10 pr-4 py-2 border border-brand-gold/30 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 text-sm font-poppins"
+                      className="elite-input w-full pl-10 pr-4 py-2 text-sm font-inter"
                     />
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-gold" />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-elite-medium-grey" />
                   </div>
                 </form>
                 
-                {/* Controls */}
+                {/* Elite Controls */}
                 <div className="flex items-center space-x-4">
                   {/* Mobile Filter Toggle */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="lg:hidden flex items-center space-x-2 px-4 py-2 border border-brand-gold/30 text-brand-indigo hover:bg-brand-gold/10 text-sm font-medium font-poppins rounded-xl transition-colors"
+                    className="lg:hidden btn-secondary flex items-center space-x-2 px-4 py-2 text-sm font-medium font-inter"
                   >
                     <Filter className="h-4 w-4" />
                     <span>FILTER</span>
@@ -489,7 +563,7 @@ const Products: React.FC = () => {
                   {/* Desktop Filter Toggle */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="hidden lg:flex items-center space-x-2 px-4 py-2 border border-brand-gold/30 text-brand-indigo hover:bg-brand-gold/10 text-sm font-medium font-poppins rounded-xl transition-colors"
+                    className="hidden lg:flex btn-secondary items-center space-x-2 px-4 py-2 text-sm font-medium font-inter"
                   >
                     <Filter className="h-4 w-4" />
                     <span>{showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}</span>
@@ -501,7 +575,7 @@ const Products: React.FC = () => {
                     const [sortBy, sortOrder] = e.target.value.split('-');
                     updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
                   }}
-                  className="px-3 py-2 border border-brand-gold/30 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20 bg-white text-brand-indigo text-sm font-poppins"
+                  className="elite-input px-3 py-2 text-sm font-inter"
                 >
                   <option value="createdAt-desc">Newest First</option>
                   <option value="price-asc">Price: Low to High</option>
@@ -509,11 +583,11 @@ const Products: React.FC = () => {
                   <option value="name-asc">Name: A to Z</option>
                 </select>
                 
-                <div className="flex items-center border border-brand-gold/30 rounded-xl overflow-hidden">
+                <div className="flex items-center border border-elite-medium-grey overflow-hidden">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 transition-colors ${
-                      viewMode === 'grid' ? 'bg-brand-gold text-brand-indigo' : 'text-brand-indigo hover:bg-brand-gold/10'
+                      viewMode === 'grid' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
                     }`}
                   >
                     <Grid className="h-4 w-4" />
@@ -521,7 +595,7 @@ const Products: React.FC = () => {
                   <button
                     onClick={() => setViewMode('list')}
                     className={`p-2 transition-colors ${
-                      viewMode === 'list' ? 'bg-brand-gold text-brand-indigo' : 'text-brand-indigo hover:bg-brand-gold/10'
+                      viewMode === 'list' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
                     }`}
                   >
                     <List className="h-4 w-4" />

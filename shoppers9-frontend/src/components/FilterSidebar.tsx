@@ -191,7 +191,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       {/* Sidebar */}
       <div className={`
         fixed top-35 left-0 z-50 w-80 bg-white shadow-lg lg:shadow-none lg:border-r lg:border-gray-200 h-[calc(100vh-8.75rem)]
-        ${isOpen ? 'block' : 'hidden lg:block'}
+        ${isOpen ? 'block' : 'hidden'}
       `}>
         <div className="h-full flex flex-col">
           {/* Header */}
@@ -206,14 +206,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               )}
             </div>
             <div className="flex items-center space-x-2">
-              {getActiveFilterCount() > 0 && (
-                <button
-                  onClick={clearAllFilters}
-                  className="text-sm text-pink-600 hover:text-pink-700 font-medium"
-                >
-                  Clear All
-                </button>
-              )}
               <button
                 onClick={onClose}
                 className="lg:hidden p-1 rounded-md hover:bg-gray-100"

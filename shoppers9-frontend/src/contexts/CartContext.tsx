@@ -14,6 +14,7 @@ interface CartContextType {
   addToCart: (product: Product | null, variantId: string, size: string, quantity?: number) => Promise<void>;
   updateCartItem: (productId: string, variantId: string, size: string, quantity: number) => Promise<void>;
   removeFromCart: (productId: string, variantId?: string, size?: string) => Promise<void>;
+  moveToWishlist: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
 }
@@ -240,6 +241,27 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
+  const moveToWishlist = async (itemId: string) => {
+    try {
+      setIsLoading(true);
+      
+      if (isAuthenticated) {
+        // User is logged in - use server moveToWishlist
+        const updatedCart = await cartService.moveToWishlist(itemId);
+        setCart(updatedCart);
+      } else {
+        // For local cart, we need to find the item and handle it manually
+        // This is a fallback for non-authenticated users
+        throw new Error('Please log in to save items for later');
+      }
+    } catch (error) {
+      console.error('Error moving item to wishlist:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const refreshCart = async () => {
     if (isAuthenticated) {
       try {
@@ -275,6 +297,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     addToCart,
     updateCartItem,
     removeFromCart,
+    moveToWishlist,
     clearCart,
     refreshCart,
   };

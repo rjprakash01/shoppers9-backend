@@ -101,6 +101,22 @@ class CartService {
     return cart;
   }
 
+  async moveToWishlist(itemId: string): Promise<Cart> {
+    const response = await api.post(`/cart/item/${itemId}/move-to-wishlist`);
+    const cart = response.data.data.cart;
+
+    // Map populated product data to productData field
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => ({
+        ...item,
+        productData: item.product, // Map the populated product to productData
+        product: typeof item.product === 'object' && item.product ? item.product._id : item.product
+      }));
+    }
+    
+    return cart;
+  }
+
   async clearCart(): Promise<void> {
     await api.delete('/cart/clear');
   }
@@ -128,7 +144,7 @@ class CartService {
       
       const cart = JSON.parse(cartStr);
       // Filter out any null or invalid items
-      return Array.isArray(cart) ? cart.filter(item => 
+      const cartItems = Array.isArray(cart) ? cart.filter(item => 
         item && 
         typeof item === 'object' && 
         (item.product || item.productId) &&
@@ -136,6 +152,17 @@ class CartService {
         item.size &&
         typeof item.quantity === 'number'
       ) : [];
+      
+      // Check if any items have price 0 and need migration
+      const needsMigration = cartItems.some(item => item.price === 0);
+      if (needsMigration) {
+        // Clear cart items with 0 price to force re-adding with correct pricing
+        const validItems = cartItems.filter(item => item.price > 0);
+        this.setLocalCart(validItems);
+        return validItems;
+      }
+      
+      return cartItems;
     } catch (error) {
       
       // Clear corrupted cart data
@@ -156,12 +183,16 @@ class CartService {
       item.size === size
     );
 
-    // Find the specific variant and size to get pricing
+    // Find the specific variant to get pricing
     const variant = product.variants.find(v => v._id === variantId);
-    const sizeInfo = variant?.size === size ? variant : null;
     
-    if (!variant || !sizeInfo) {
-      throw new Error('Invalid variant or size selected');
+    if (!variant) {
+      throw new Error('Invalid variant selected');
+    }
+    
+    // Verify the size matches the variant
+    if (variant.size !== size) {
+      throw new Error('Size does not match the selected variant');
     }
 
     if (existingItem) {
@@ -174,9 +205,9 @@ class CartService {
         variantId,
         size,
         quantity,
-        price: sizeInfo.price,
-        originalPrice: sizeInfo.originalPrice,
-        discount: Math.max(0, sizeInfo.originalPrice - sizeInfo.price),
+        price: variant.price,
+        originalPrice: variant.originalPrice,
+        discount: Math.max(0, variant.originalPrice - variant.price),
         isSelected: true,
         productData: product,
         variant: {

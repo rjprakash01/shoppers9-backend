@@ -11,12 +11,11 @@ const router = express.Router();
  * @access Public
  */
 router.get('/tree', asyncHandler(async (req, res) => {
-  // Only get level 1 categories (those without a parent)
+  // Get all active categories to build complete tree
   const categories = await Category.find({ 
-    isActive: true,
-    level: 1  // Filter for level 1 categories only
+    isActive: true
   })
-    .sort({ sortOrder: 1, name: 1 });
+    .sort({ level: 1, sortOrder: 1, name: 1 });
 
   // Build hierarchical tree structure
   const categoryMap = new Map();
@@ -42,6 +41,7 @@ router.get('/tree', asyncHandler(async (req, res) => {
         parent.children.push(categoryObj);
       }
     } else {
+      // Only level 1 categories (no parent) go to root
       tree.push(categoryObj);
     }
   });

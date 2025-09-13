@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // Use relative URL in development to leverage Vite proxy, absolute URL in production
 // Fixed: Always use the environment variable or fallback to production URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://admin-api.shoppers9.com';
+// Use relative URLs to leverage Vite proxy configuration
+const API_BASE_URL = '';
 
 class AuthService {
   private getErrorMessage(error: unknown, defaultMessage: string): string {
@@ -57,11 +58,21 @@ class AuthService {
 
   async login(loginField: string, password: string, loginType: 'email' | 'phone' = 'email') {
     try {
+      console.log('=== FRONTEND LOGIN ATTEMPT ===');
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('Login field:', loginField);
+      console.log('Login type:', loginType);
+      
       const payload = loginType === 'email' 
         ? { email: loginField, password }
         : { phone: loginField, password };
       
+      console.log('Payload:', payload);
+      console.log('Making request to:', `${API_BASE_URL}/api/auth/admin/login`);
+      
       const response = await axios.post(`${API_BASE_URL}/api/auth/admin/login`, payload);
+      
+      console.log('Response received:', response.status, response.data);
       
       if (response.data.success) {
         const { accessToken, user } = response.data.data;
@@ -73,6 +84,16 @@ class AuthService {
         return { success: false, message: response.data.message };
       }
     } catch (error: unknown) {
+      console.log('=== FRONTEND LOGIN ERROR ===');
+      console.log('Error details:', error);
+      if (error instanceof Error) {
+        console.log('Error message:', error.message);
+        console.log('Error stack:', error.stack);
+      }
+      if (error && typeof error === 'object' && 'response' in error) {
+        console.log('Response error:', (error as any).response);
+      }
+      console.log('=== END FRONTEND LOGIN ERROR ===');
       return { success: false, message: this.getErrorMessage(error, 'Login failed') };
     }
   }
@@ -219,21 +240,42 @@ class AuthService {
       const response = await axios.get(`${API_BASE_URL}/api/admin/orders?${params.toString()}`);
       
       if (response.data.success) {
+        // Debug: Log the raw API response
+        console.log('=== FRONTEND ORDER DEBUG ===');
+        console.log('Raw API response:', response.data);
+        if (response.data.data.orders.length > 0) {
+          console.log('First order raw data:', response.data.data.orders[0]);
+          console.log('First order totalAmount:', response.data.data.orders[0].totalAmount);
+          console.log('First order finalAmount:', response.data.data.orders[0].finalAmount);
+        }
+        console.log('=== END FRONTEND ORDER DEBUG ===');
+        
         return {
           orders: response.data.data.orders.map((order: any) => ({
             id: order.id,
             orderId: order.orderNumber,
             userId: {
               id: order.userId?.id || order.userId,
-              name: order.userId?.name || 'Unknown User',
+              name: order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() || 'Unknown User' : 'Unknown User',
               phone: order.userId?.phone || 'N/A'
             },
-            items: order.items?.map((item: any) => ({
-              productId: item.product?.id || item.product,
-              productName: item.product?.name || item.name,
-              quantity: item.quantity,
-              price: item.price
-            })) || [],
+            items: order.items?.map((item: any) => {
+              // Find the variant for additional info like color
+              const variant = item.product?.variants?.find((v: any) => v._id === item.variantId);
+              // Use the original order item price, not current variant price
+              const itemPrice = item.price || 0;
+              
+              return {
+                productId: item.product?.id || item.product,
+                productName: item.product?.name || item.name,
+                quantity: item.quantity,
+                price: itemPrice,
+                originalPrice: item.originalPrice || itemPrice,
+                variantId: item.variantId,
+                size: item.size,
+                color: variant?.color
+              };
+            }) || [],
             totalAmount: order.totalAmount,
             finalAmount: order.finalAmount,
             orderStatus: order.orderStatus,

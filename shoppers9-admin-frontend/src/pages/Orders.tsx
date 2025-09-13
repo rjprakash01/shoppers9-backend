@@ -27,6 +27,10 @@ interface Order {
     productName: string;
     quantity: number;
     price: number;
+    originalPrice?: number;
+    variantId?: string;
+    size?: string;
+    color?: string;
   }>;
   totalAmount: number;
   finalAmount: number;
@@ -108,7 +112,9 @@ const Orders: React.FC = () => {
     
     try {
       setUpdatingOrder(selectedOrder.id);
-    await authService.updateOrderStatus(selectedOrder.orderId, newStatus, trackingId);
+      
+      // Use the MongoDB _id for the API call
+      await authService.updateOrderStatus(selectedOrder.id, newStatus, trackingId);
       
       // Update the order in the local state
       setOrders(orders.map(order => 
@@ -121,6 +127,7 @@ const Orders: React.FC = () => {
       setSelectedOrder(null);
       setNewStatus('');
       setTrackingId('');
+      setError(''); // Clear any previous errors
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update order status');
     } finally {

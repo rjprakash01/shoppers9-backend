@@ -1,18 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap');
+/* Elite Shopping Brand Book - Typography */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Shoppers9 Brand Colors */
+/* Elite Shopping Brand Book - Color Palette */
 :root {
-  --brand-indigo: #19174F;
-  --brand-gold: #C9A646;
-  --brand-white: #FFFFFF;
-  --brand-slate: #D1D5DB;
+  /* Primary Colors */
+  --base-white: #FFFFFF;
+  --cta-dark-purple: #322F61;
+  
+  /* Secondary Colors */
+  --light-grey: #F5F5F5;
+  --medium-grey: #9E9E9E;
+  --charcoal-black: #212121;
+  
+  /* Accent Colors */
+  --gold-highlight: #C9A227;
+  --purple-hover: #463F85;
+  
+  /* Elite Brand Shadows */
+  --premium-shadow: 0 4px 20px rgba(50, 47, 97, 0.1);
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --hover-shadow: 0 8px 30px rgba(50, 47, 97, 0.15);
 }
 
-/* Custom CSS Reset and Styles */
+/* Elite Shopping Brand Book - Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -20,32 +34,351 @@
 }
 
 body {
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
-  color: var(--brand-indigo);
-  background-color: var(--brand-white);
+  color: var(--charcoal-black);
+  background-color: var(--base-white);
+  font-size: 16px;
+  font-weight: 400;
 }
 
-/* Brand Typography */
+/* Elite Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Playfair Display', serif;
   font-weight: 700;
-  color: var(--brand-indigo);
+  line-height: 1.2;
+  color: var(--charcoal-black);
+  margin-bottom: 1rem;
 }
 
-.brand-heading {
-  font-family: 'Playfair Display', serif;
+h1 {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+h4 {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+p, span, div {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+
+.caption, .label {
+  font-size: 12px;
+  color: var(--medium-grey);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Elite Button Styles */
+.btn-primary {
+  background-color: var(--cta-dark-purple);
+  color: var(--base-white);
+  border: none;
+  padding: 12px 24px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--card-shadow);
+}
+
+.btn-primary:hover {
+  background-color: var(--purple-hover);
+  box-shadow: var(--hover-shadow);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--base-white);
+  color: var(--cta-dark-purple);
+  border: 2px solid var(--cta-dark-purple);
+  padding: 10px 22px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--cta-dark-purple);
+  color: var(--base-white);
+  transform: translateY(-2px);
+}
+
+/* Elite Card Styles - Removed (replaced with postcard-box) */
+/* .elite-card {
+  background-color: var(--base-white);
+  border-radius: 0;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.elite-card:hover {
+  box-shadow: var(--hover-shadow);
+  border-color: var(--cta-dark-purple);
+  transform: translateY(-4px);
+} */
+
+/* Elite Section Backgrounds */
+.section-white {
+  background-color: var(--base-white);
+}
+
+.section-grey {
+  background-color: var(--light-grey);
+}
+
+/* Elite Input Styles */
+.elite-input {
+  border: 1px solid var(--medium-grey);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  background-color: var(--base-white);
+  transition: border-color 0.3s ease;
+}
+
+.elite-input:focus {
+  outline: none;
+  border-color: var(--cta-dark-purple);
+  box-shadow: 0 0 0 2px rgba(50, 47, 97, 0.1);
+}
+
+/* Elite Container */
+.elite-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Elite Grid */
+.elite-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+/* Premium Gold Accent */
+.gold-accent {
+  color: var(--gold-highlight);
+}
+
+.gold-border {
+  border-color: var(--gold-highlight);
+}
+
+/* Shoppers9 Brand Typography System */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
-  color: var(--brand-indigo);
+  color: var(--charcoal-black);
+}
+
+/* Typography Hierarchy */
+.hero-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  background: var(--sunset-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.category-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--charcoal-black);
+}
+
+.subsection-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--charcoal-black);
+}
+
+.body-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--charcoal-black);
+  line-height: 1.6;
+}
+
+.caption-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--medium-grey);
+}
+
+.accent-text {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-style: italic;
+  background: var(--sunset-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Legacy Typography Classes */
+.brand-heading {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  color: var(--charcoal-black);
 }
 
 .brand-body {
-  font-family: 'Poppins', sans-serif;
-  color: var(--brand-indigo);
+  font-family: 'Inter', sans-serif;
+  color: var(--charcoal-black);
+}
+
+/* Shoppers9 Postcard Box Style Components */
+.postcard-box {
+  border-radius: 0px; /* Always sharp rectangular edges */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Subtle depth shadow */
+  background-color: var(--brand-white);
+  border: 1px solid var(--light-grey);
+}
+
+.postcard-box:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+/* Product Cards */
+.product-card {
+  @apply postcard-box;
+  overflow: hidden;
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box, var(--sunset-gradient) border-box;
+}
+
+/* Buttons - Postcard Style */
+.btn-primary {
+  background: var(--sunset-gradient);
+  color: var(--brand-white);
+  border: none;
+  border-radius: 0px;
+  padding: 12px 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 126, 95, 0.3);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(255, 126, 95, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: var(--brand-white);
+  background: linear-gradient(white, white) padding-box, var(--sunset-gradient) border-box;
+  border: 2px solid transparent;
+  border-radius: 0px;
+  padding: 12px 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--sunset-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-secondary:hover {
+  box-shadow: 0 4px 12px rgba(255, 126, 95, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Input Fields */
+.input-field {
+  background: var(--brand-white);
+  border: 2px solid var(--light-grey);
+  border-radius: 0px;
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--charcoal-black);
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box, var(--sunset-gradient) border-box;
+  box-shadow: 0 0 0 3px rgba(255, 126, 95, 0.1);
+}
+
+/* Dropdowns */
+.dropdown-menu {
+  background: var(--brand-white);
+  border: 1px solid var(--light-grey);
+  border-radius: 0px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item:hover {
+  background: linear-gradient(90deg, var(--sunset-gradient), transparent);
+  color: var(--brand-white);
+}
+
+/* Modals */
+.modal-content {
+  background: var(--brand-white);
+  border-radius: 0px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  background: var(--sunset-gradient);
+  color: var(--brand-white);
+  padding: 20px;
+  border-radius: 0px;
 }
 
 /* Hide scrollbar for horizontal scroll */
@@ -57,28 +390,94 @@ h1, h2, h3, h4, h5, h6 {
   display: none;  /* Safari and Chrome */
 }
 
+/* Shoppers9 Brand Utility Classes */
+.text-sunset-orange {
+  color: var(--sunset-orange);
+}
+
+.text-sunset-pink {
+  color: var(--sunset-pink);
+}
+
+.text-ocean-blue {
+  color: var(--ocean-blue);
+}
+
+.text-emerald-green {
+  color: var(--emerald-green);
+}
+
+.text-charcoal {
+  color: var(--charcoal-black);
+}
+
+.text-gradient {
+  background: var(--sunset-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-sunset-gradient {
+  background: var(--sunset-gradient);
+}
+
+.bg-cta-gradient {
+  background: var(--cta-gradient);
+}
+
+.bg-hover-gradient {
+  background: var(--hover-gradient);
+}
+
+.bg-ocean-blue {
+  background-color: var(--ocean-blue);
+}
+
+.bg-emerald-green {
+  background-color: var(--emerald-green);
+}
+
+.bg-light-grey {
+  background-color: var(--light-grey);
+}
+
+.border-sunset-gradient {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box, var(--sunset-gradient) border-box;
+}
+
+.border-ocean-blue {
+  border-color: var(--ocean-blue);
+}
+
+.border-emerald-green {
+  border-color: var(--emerald-green);
+}
+
+/* Legacy Brand Classes (Updated) */
 .brand-gold {
-  color: var(--brand-gold);
+  color: var(--sunset-orange);
 }
 
 .brand-indigo {
-  color: var(--brand-indigo);
+  color: var(--charcoal-black);
 }
 
 .bg-brand-indigo {
-  background-color: var(--brand-indigo);
+  background-color: var(--charcoal-black);
 }
 
 .bg-brand-gold {
-  background-color: var(--brand-gold);
+  background: var(--sunset-gradient);
 }
 
 .border-brand-gold {
-  border-color: var(--brand-gold);
+  border-color: var(--sunset-orange);
 }
 
 .border-brand-indigo {
-  border-color: var(--brand-indigo);
+  border-color: var(--charcoal-black);
 }
 
 /* Smooth scrolling */
@@ -123,11 +522,22 @@ html {
 
 /* Modern Button Styles */
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold px-6 py-3 rounded-xl border-none cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300;
+  @apply bg-elite-cta-purple text-elite-base-white font-semibold px-6 py-3 border-none cursor-pointer transition-all duration-300 focus:outline-none;
 }
 
 .btn-secondary {
-  @apply bg-white text-gray-700 font-semibold px-6 py-3 rounded-xl border-2 border-gray-200 cursor-pointer transition-all duration-300 hover:border-blue-500 hover:text-blue-600 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-gray-200;
+  background-color: #322F61;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--card-shadow);
 }
 
 .btn-outline {
@@ -188,6 +598,36 @@ html {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Auto-scroll animation for promotional bar */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
+}
+
+/* Hide scrollbar for mobile category navigation */
+@media (max-width: 1024px) {
+  .category-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Ensure category names stay on single line */
+  .category-scroll .relative {
+    flex-shrink: 0;
+  }
+  
+  .category-scroll .relative span {
+    white-space: nowrap;
   }
 }
 
