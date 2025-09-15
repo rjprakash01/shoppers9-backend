@@ -79,8 +79,12 @@ const CategoryManagement: React.FC = () => {
 
   const fetchCategoryTree = async () => {
     try {
+      console.log('🔍 CategoryManagement: Starting fetchCategoryTree');
+      console.log('🔍 Admin token:', localStorage.getItem('adminToken'));
       setIsLoading(true);
-      const response = await authService.get('/api/admin/categories/tree');
+      console.log('🔍 Making API call to /admin/categories/tree');
+      const response = await authService.get('/admin/categories/tree');
+      console.log('✅ CategoryManagement API response:', response);
       // Handle the backend response format: {success: true, data: {categories: [...]}}
       const categoryData = response.data;
       let rawCategories: any[] = [];
@@ -113,7 +117,8 @@ const CategoryManagement: React.FC = () => {
       const sortedCategories = sortCategoriesByStatus(categories);
       setCategories(sortedCategories);
     } catch (err) {
-      
+      console.error('❌ CategoryManagement API error:', err);
+      console.error('❌ Error details:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
       setCategories([]); // Ensure categories is always an array
     } finally {

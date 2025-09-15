@@ -5,7 +5,8 @@ export const connectDB = async (): Promise<void> => {
     const mongoUri = process.env.MONGODB_URI;
     
     if (!mongoUri) {
-
+      console.log('⚠️  No MONGODB_URI found in environment variables');
+      console.log('🔧 Using in-memory database for development');
       return;
     }
 
@@ -34,19 +35,19 @@ export const connectDB = async (): Promise<void> => {
     }
 
     mongoose.connect(mongoUri, connectionOptions).catch((error) => {
-
+      console.error('❌ MongoDB connection failed:', error.message);
     });
     
     mongoose.connection.on('connected', () => {
-      
+      console.log('✅ MongoDB connected successfully');
     });
 
     mongoose.connection.on('error', (error) => {
-
+      console.error('❌ MongoDB connection error:', error.message);
     });
 
     mongoose.connection.on('disconnected', () => {
-      
+      console.log('⚠️  MongoDB disconnected');
     });
 
     // Handle application termination

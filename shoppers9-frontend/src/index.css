@@ -369,7 +369,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Modals */
 .modal-content {
-  background: var(--brand-white);
+  background: var(--base-white);
   border-radius: 0px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }

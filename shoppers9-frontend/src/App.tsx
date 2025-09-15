@@ -20,6 +20,11 @@ import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
 import OrderConfirmation from './pages/OrderConfirmation';
 import OrderSuccess from './pages/OrderSuccess';
+import Support from './pages/Support';
+import NewTicket from './pages/NewTicket';
+import TicketDetail from './pages/TicketDetail';
+import TrackOrder from './pages/TrackOrder';
+import Coupons from './pages/Coupons';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function AppContent() {
@@ -31,7 +36,9 @@ function AppContent() {
   const isOrdersPage = location.pathname === '/orders' || location.pathname.startsWith('/orders/');
   const isProfilePage = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
   const isOrderConfirmationPage = location.pathname === '/order-confirmation' || location.pathname === '/order-success';
-  const hideNavbarOnMobile = isCartOrCheckoutPage || isProductDetailPage || isWishlistPage || isOrdersPage || isProfilePage || isOrderConfirmationPage;
+  const isSupportPage = location.pathname === '/support' || location.pathname.startsWith('/support/');
+  const isTrackOrderPage = location.pathname === '/track-order';
+  const hideNavbarOnMobile = isCartOrCheckoutPage || isProductDetailPage || isWishlistPage || isOrdersPage || isProfilePage || isOrderConfirmationPage || isSupportPage || isTrackOrderPage;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -39,13 +46,14 @@ function AppContent() {
       <div className={hideNavbarOnMobile ? 'hidden lg:block' : ''}>
         <Navbar />
       </div>
-      <main className={`flex-1 ${hideNavbarOnMobile ? 'pb-20 lg:pb-0' : 'pb-20 lg:pb-0'}`}>
+      <main className={`flex-1 lg:pt-32 ${hideNavbarOnMobile ? 'pb-20 lg:pb-0' : 'pb-20 lg:pb-0'}`}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/categories/:categorySlug" element={<Category />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/coupons" element={<Coupons />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -94,6 +102,31 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <OrderSuccess />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/track-order" element={<TrackOrder />} />
+          <Route
+            path="/support"
+            element={
+              <ProtectedRoute>
+                <Support />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/support/new"
+            element={
+              <ProtectedRoute>
+                <NewTicket />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/support/:ticketId"
+            element={
+              <ProtectedRoute>
+                <TicketDetail />
               </ProtectedRoute>
             }
           />

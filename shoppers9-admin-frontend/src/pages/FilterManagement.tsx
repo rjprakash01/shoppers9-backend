@@ -132,11 +132,14 @@ const FilterManagement: React.FC = () => {
     try {
       setIsLoading(true);
       // Fetch all filters by setting a high limit to avoid pagination issues
-      const response = await authService.get('/api/admin/filters?limit=1000');
+      console.log('🔍 FilterManagement: Fetching filters from /admin/filters');
+      const response = await authService.get('/admin/filters?limit=1000');
+      console.log('✅ FilterManagement API response:', response);
       
       setFilters(response.data.filters || []);
       
     } catch (error) {
+      console.error('❌ FilterManagement API error:', error);
       setError('Failed to fetch filters');
       
     } finally {
@@ -146,7 +149,7 @@ const FilterManagement: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await authService.get('/api/admin/categories/tree');
+      const response = await authService.get('/admin/categories/tree');
 
       setCategories(response.data || []);
     } catch (error) {
@@ -159,12 +162,12 @@ const FilterManagement: React.FC = () => {
       setIsAssignmentLoading(true);
 
       // Fetch assigned filters
-      const assignedResponse = await authService.get(`/api/admin/categories/${categoryId}/filters`);
+      const assignedResponse = await authService.get(`/admin/categories/${categoryId}/filters`);
       
       setAssignedFilters(assignedResponse.data.categoryFilters || assignedResponse.data.filters || []);
       
       // Fetch available filters
-      const availableResponse = await authService.get(`/api/admin/categories/${categoryId}/available-filters`);
+      const availableResponse = await authService.get(`/admin/categories/${categoryId}/available-filters`);
 
       const availableFiltersData = availableResponse.data.availableFilters || [];
       
@@ -281,7 +284,7 @@ const FilterManagement: React.FC = () => {
     
     try {
       
-      const response = await authService.delete(`/api/admin/filters/${filterId}`);
+      const response = await authService.delete(`/admin/filters/${filterId}`);
       
       await fetchFilters();
     } catch (error: any) {
@@ -306,7 +309,7 @@ const FilterManagement: React.FC = () => {
         sortOrder: assignedFilters.length + 1
       };
 
-      const response = await authService.post(`/api/admin/categories/${selectedCategory}/filters`, requestData);
+      const response = await authService.post(`/admin/categories/${selectedCategory}/filters`, requestData);
 
       if (response.success) {
         await fetchCategoryFilters(selectedCategory);
@@ -322,7 +325,7 @@ const FilterManagement: React.FC = () => {
 
   const handleUnassignFilter = async (categoryFilterId: string) => {
     try {
-      await authService.delete(`/api/admin/category-filters/${categoryFilterId}`);
+      await authService.delete(`/admin/category-filters/${categoryFilterId}`);
       if (selectedCategory) {
         await fetchCategoryFilters(selectedCategory);
       }
@@ -336,7 +339,7 @@ const FilterManagement: React.FC = () => {
     if (!selectedCategory) return;
     
     try {
-      const response = await authService.post(`/api/admin/categories/${selectedCategory}/filters/auto-assign`, {
+      const response = await authService.post(`/admin/categories/${selectedCategory}/filters/auto-assign`, {
         force: true
       });
       

@@ -22,6 +22,10 @@ import adminRoutes from './routes/admin';
 import bannerRoutes from './routes/banner';
 import analyticsRoutes from './routes/analytics';
 import categoryRoutes from './routes/category';
+import supportRoutes from './routes/support';
+import inventoryRoutes from './routes/inventory';
+import shippingRoutes from './routes/shipping';
+import couponRoutes from './routes/coupon';
 
 // Load environment variables
 dotenv.config();
@@ -110,31 +114,33 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
+// Debug route to test routing system
+app.get('/api/test', (req, res) => {
+  res.json({ success: true, message: 'API routing is working!' });
+});
+
+// Remove the direct products route - now using proper controller
+// This route is handled by the productController through the routes system
+
+// API Routes
+console.log('🔧 Registering API routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+console.log('✅ Products route registered at /api/products');
 app.use('/api/categories', categoryRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/shipping', shippingRoutes);
+app.use('/api/coupons', couponRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
-// Additional route mounting for load balancer compatibility
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/products', productRoutes);
-app.use('/categories', categoryRoutes);
-app.use('/cart', cartRoutes);
-app.use('/wishlist', wishlistRoutes);
-app.use('/orders', orderRoutes);
-app.use('/payments', paymentRoutes);
-app.use('/admin', adminRoutes);
-app.use('/banners', bannerRoutes);
-app.use('/analytics', analyticsRoutes);
+console.log('✅ All API routes registered');
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -148,16 +154,34 @@ app.get('/api', (req, res) => {
       products: '/api/products',
       cart: '/api/cart',
       wishlist: '/api/wishlist',
+      support: '/api/support',
       banners: '/api/banners'
     },
     documentation: 'https://api.shoppers9.com/docs'
   });
 });
 
-// 404 handler for undefined routes
+// Additional route mounting for load balancer compatibility
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
+app.use('/products', productRoutes);
+app.use('/categories', categoryRoutes);
+app.use('/cart', cartRoutes);
+app.use('/wishlist', wishlistRoutes);
+app.use('/orders', orderRoutes);
+app.use('/payments', paymentRoutes);
+app.use('/support', supportRoutes);
+app.use('/inventory', inventoryRoutes);
+app.use('/shipping', shippingRoutes);
+app.use('/coupons', couponRoutes);
+app.use('/admin', adminRoutes);
+app.use('/banners', bannerRoutes);
+app.use('/analytics', analyticsRoutes);
+
+// 404 handler for undefined routes (MUST be after all routes)
 app.use(notFoundHandler);
 
-// Global error handler
+// Global error handler (MUST be last)
 app.use(errorHandler);
 
 // Start server

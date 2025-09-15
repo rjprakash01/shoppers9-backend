@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Heart, ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft, ZoomIn, ZoomOut, X } from 'lucide-react';
 import { productService, type Product } from '../services/products';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +11,7 @@ import { getImageUrls } from '../utils/imageUtils';
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, cart, localCart, cartCount } = useCart();
   const { isAuthenticated, user } = useAuth();
   const { addToWishlist, removeFromWishlist, isInWishlist: checkIsInWishlist, isLoading: wishlistLoading } = useWishlist();
   const [product, setProduct] = useState<Product | null>(null);
@@ -22,6 +22,8 @@ const ProductDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [showSizeModal, setShowSizeModal] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   useEffect(() => {
     if (id) {
@@ -278,7 +280,7 @@ const ProductDetail: React.FC = () => {
                    className="w-full bg-red-500 text-white py-4 px-6 rounded-xl font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors hover:bg-red-600"
                  >
                    <ShoppingCart className="h-5 w-5" />
-                   <span>{isAddingToCart ? 'Adding...' : 'Add to Bag'}</span>
+                   <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
                  </button>
                </div>
              </div>
@@ -312,36 +314,62 @@ const ProductDetail: React.FC = () => {
   const currentImages = getCurrentImages();
 
   return (
-    <div className="min-h-screen bg-elite-base-white py-8 pb-32 lg:pb-8">
+    <div className="min-h-screen bg-elite-base-white py-1 lg:py-3 pb-16 lg:pb-6">
       <div className="elite-container">
-        {/* Elite Back Button */}
-        <div className="mb-6">
+        {/* Mobile Header with Product Name */}
+        <div className="lg:hidden bg-white border-b border-gray-200 -mx-4 px-4 py-2 mb-2 sticky top-0 z-40">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-700" />
+            </button>
+            <h1 className="font-medium text-sm text-gray-900 truncate flex-1">
+              {product?.name || 'Product Details'}
+            </h1>
+            <button
+              onClick={() => navigate('/cart')}
+              className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <ShoppingCart className="h-4 w-4 text-gray-700" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+        
+        {/* Desktop Back Button */}
+        <div className="hidden lg:block mb-2">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center text-elite-medium-grey hover:text-elite-cta-purple transition-colors font-inter"
           >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            <span className="font-medium">Back</span>
+            <ArrowLeft className="h-3 w-3 mr-1" />
+            <span className="font-medium text-xs">Back</span>
           </button>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
           {/* Elite Product Images */}
-          <div className="space-y-4">
-            <div className="postcard-box p-4">
+          <div className="space-y-1 lg:space-y-2">
+            <div className="postcard-box p-1 lg:p-2 cursor-pointer" onClick={() => setShowImagePreview(true)}>
               <img
                 src={currentImages[selectedImageIndex] || '/placeholder-image.svg'}
                 alt={product.name}
-                className="w-full h-96 object-cover"
+                className="w-full h-56 lg:h-80 object-cover hover:opacity-90 transition-opacity"
               />
             </div>
             {currentImages.length > 1 && (
-              <div className="flex space-x-2 overflow-x-auto">
+              <div className="flex space-x-1 overflow-x-auto">
                 {currentImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 overflow-hidden border-2 ${
+                    className={`flex-shrink-0 w-10 h-10 lg:w-12 lg:h-12 overflow-hidden border-2 ${
                       selectedImageIndex === index ? 'border-elite-cta-purple' : 'border-elite-light-grey'
                     }`}
                   >
@@ -357,9 +385,9 @@ const ProductDetail: React.FC = () => {
           </div>
 
           {/* Elite Product Info */}
-          <div className="postcard-box p-6">
-            <h1 className="font-playfair text-hero font-bold text-elite-charcoal-black mb-4">{product.name}</h1>
-            <p className="font-inter text-body text-elite-medium-grey mb-6 leading-relaxed">{product.description}</p>
+          <div className="postcard-box p-2 lg:p-4">
+            <h1 className="font-playfair text-base lg:text-xl font-bold text-elite-charcoal-black mb-1 lg:mb-2">{product.name}</h1>
+            <p className="font-inter text-xs lg:text-sm text-elite-medium-grey mb-2 lg:mb-3 leading-relaxed">{product.description}</p>
 
             {/* Price */}
             {(() => {
@@ -375,9 +403,9 @@ const ProductDetail: React.FC = () => {
               
               return priceData.price > 0;
             })() && (
-              <div className="mb-6">
-                <div className="flex items-center space-x-3">
-                  <span className="font-inter text-4xl font-bold text-elite-charcoal-black">
+              <div className="mb-2 lg:mb-3">
+                <div className="flex items-center space-x-1">
+                  <span className="font-inter text-base lg:text-xl font-bold text-elite-charcoal-black">
                     {(() => {
                       const priceData = currentSize || {
                         price: currentVariant?.price || product.price || 0,
@@ -397,7 +425,7 @@ const ProductDetail: React.FC = () => {
                     return priceData.originalPrice > priceData.price && priceData.price > 0;
                   })() && (
                     <>
-                      <span className="font-inter text-lg text-elite-medium-grey line-through">
+                      <span className="font-inter text-sm text-elite-medium-grey line-through">
                         {(() => {
                           const priceData = currentSize || {
                             originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
@@ -405,14 +433,14 @@ const ProductDetail: React.FC = () => {
                           return formatPrice(priceData.originalPrice);
                         })()}
                       </span>
-                      <span className="bg-elite-cta-purple text-elite-base-white px-3 py-1 text-sm font-bold font-inter uppercase tracking-wide">
+                      <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-1 py-0.5 uppercase tracking-wide">
                         {(() => {
                           const priceData = currentSize || {
                             price: currentVariant?.price || product.price || 0,
                             originalPrice: currentVariant?.originalPrice || product.originalPrice || 0
                           };
                           return Math.round(((priceData.originalPrice - priceData.price) / priceData.originalPrice) * 100);
-                        })()}% OFF
+                        })()}%
                       </span>
                     </>
                   )}
@@ -427,9 +455,9 @@ const ProductDetail: React.FC = () => {
                 product.displayFilters.length === 0 || 
                 product.displayFilters.some(filterId => filterId.toLowerCase().includes('color')));
             })() && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Color: {currentVariant?.color}</h3>
-                <div className="flex space-x-3">
+              <div className="mb-3 lg:mb-4">
+                <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Color: {currentVariant?.color}</h3>
+                <div className="flex space-x-1 lg:space-x-2">
                   {Array.from(new Set(product.variants.map(v => v.color).filter(c => c && c !== 'Default'))).map((color) => {
                     const colorVariant = product.variants.find(v => v.color === color);
                     return (
@@ -441,7 +469,7 @@ const ProductDetail: React.FC = () => {
                             setSelectedSize(colorVariant.size || '');
                           }
                         }}
-                        className={`w-10 h-10 rounded-full border-2 ${
+                        className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full border-2 ${
                           currentVariant?.color === color ? 'border-primary-600' : 'border-gray-300'
                         }`}
                         style={{ backgroundColor: colorVariant?.colorCode || color }}
@@ -460,9 +488,9 @@ const ProductDetail: React.FC = () => {
                 product.displayFilters.length === 0 || 
                 product.displayFilters.some(filterId => filterId.toLowerCase().includes('size')));
             })() && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Size</h3>
-                <div className="flex flex-wrap gap-2">
+              <div className="mb-3 lg:mb-4">
+                <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Size</h3>
+                <div className="flex flex-wrap gap-1">
                   {/* Get unique sizes available for the selected color */}
                   {Array.from(new Set(
                     product.variants
@@ -483,7 +511,7 @@ const ProductDetail: React.FC = () => {
                           }
                         }}
                         disabled={!sizeVariant || sizeVariant.stock === 0}
-                        className={`px-4 py-2 border rounded-lg font-medium ${
+                        className={`px-2 py-1 lg:px-3 lg:py-1 border rounded-lg font-medium text-xs ${
                           selectedSize === size
                             ? 'border-primary-600 bg-primary-50 text-primary-600'
                             : !sizeVariant || sizeVariant.stock === 0
@@ -501,46 +529,46 @@ const ProductDetail: React.FC = () => {
             )}
 
             {/* Quantity */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Quantity</h3>
-              <div className="flex items-center space-x-3">
+            <div className="mb-3 lg:mb-4">
+              <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Quantity</h3>
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
+                  className="w-7 h-7 lg:w-8 lg:h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm"
                 >
                   -
                 </button>
-                <span className="text-lg font-medium w-12 text-center">{quantity}</span>
+                <span className="text-sm font-medium w-7 lg:w-8 text-center">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
+                  className="w-7 h-7 lg:w-8 lg:h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 text-sm"
                 >
                   +
                 </button>
               </div>
             </div>
 
-            {/* Desktop Add to Cart - Hidden on Mobile */}
-            <div className="hidden lg:block space-y-4">
+            {/* Mobile Action Buttons - Below Quantity */}
+            <div className="lg:hidden space-y-2 mb-3">
               <button
                 onClick={handleAddToCart}
                 disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
-                className="w-full text-white py-3 px-6 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
+                className="w-full text-white py-2 px-3 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors text-xs" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
               >
-                <ShoppingCart className="h-5 w-5" />
-                <span>{isAddingToCart ? 'Adding...' : 'Add to Cart'}</span>
+                <ShoppingCart className="h-3 w-3" />
+                <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
               </button>
               
               <button 
                 onClick={handleToggleWishlist}
                 disabled={wishlistLoading}
-                className={`w-full border py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
+                className={`w-full border py-2 px-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors text-xs ${
                   product && checkIsInWishlist(product._id)
                     ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                <Heart className={`h-5 w-5 ${
+                <Heart className={`h-3 w-3 ${
                   product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
                 }`} />
                 <span>
@@ -552,27 +580,45 @@ const ProductDetail: React.FC = () => {
               </button>
             </div>
 
-            {/* Features */}
-            <div className="mt-8 space-y-4">
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <Truck className="h-5 w-5" />
-                <span>Free shipping on orders over ₹500</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <Shield className="h-5 w-5" />
-                <span>Secure payment</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
-                <RotateCcw className="h-5 w-5" />
-                <span>Easy returns within 30 days</span>
-              </div>
+            {/* Desktop Add to Cart - Hidden on Mobile */}
+            <div className="hidden lg:block space-y-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
+                className="w-full text-white py-2 px-4 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors text-sm" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
+              </button>
+              
+              <button 
+                onClick={handleToggleWishlist}
+                disabled={wishlistLoading}
+                className={`w-full border py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors text-sm ${
+                  product && checkIsInWishlist(product._id)
+                    ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Heart className={`h-4 w-4 ${
+                  product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
+                }`} />
+                <span>
+                  {wishlistLoading 
+                    ? (product && checkIsInWishlist(product._id) ? 'Removing...' : 'Adding...') 
+                    : (product && checkIsInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist')
+                  }
+                </span>
+              </button>
             </div>
+
+
 
             {/* Product Details */}
             {product.specifications && (
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Product Details</h3>
-                <div className="space-y-2 text-sm">
+              <div className="mt-3 lg:mt-4">
+                <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Product Details</h3>
+                <div className="space-y-1 text-xs">
                   {product.specifications.fabric && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fabric:</span>
@@ -603,31 +649,102 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Related Products Section */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">You May Also Like</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Placeholder for related products - can be implemented later */}
-            <div className="text-center text-gray-500 col-span-full py-8">
-              <p>Related products will be displayed here</p>
+
+        
+        {/* Image Preview Modal */}
+        {showImagePreview && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+            <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowImagePreview(false);
+                  setZoomLevel(1);
+                }}
+                className="absolute top-4 right-4 z-10 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 transition-colors"
+              >
+                <X className="h-6 w-6 text-white" />
+              </button>
+              
+              {/* Zoom Controls */}
+              <div className="absolute top-4 left-4 z-10 flex space-x-2">
+                <button
+                  onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.25))}
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 transition-colors"
+                >
+                  <ZoomOut className="h-5 w-5 text-white" />
+                </button>
+                <button
+                  onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.25))}
+                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 transition-colors"
+                >
+                  <ZoomIn className="h-5 w-5 text-white" />
+                </button>
+                <div className="bg-white bg-opacity-20 rounded-full px-3 py-2 text-white text-sm font-medium">
+                  {Math.round(zoomLevel * 100)}%
+                </div>
+              </div>
+              
+              {/* Image Navigation */}
+              {currentImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setSelectedImageIndex(selectedImageIndex > 0 ? selectedImageIndex - 1 : currentImages.length - 1)}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-3 transition-colors"
+                  >
+                    <ArrowLeft className="h-6 w-6 text-white" />
+                  </button>
+                  <button
+                    onClick={() => setSelectedImageIndex(selectedImageIndex < currentImages.length - 1 ? selectedImageIndex + 1 : 0)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-3 transition-colors"
+                  >
+                    <ArrowLeft className="h-6 w-6 text-white transform rotate-180" />
+                  </button>
+                </>
+              )}
+              
+              {/* Main Image */}
+              <div className="overflow-auto max-w-full max-h-full">
+                <img
+                  src={currentImages[selectedImageIndex] || '/placeholder-image.svg'}
+                  alt={product?.name}
+                  className="max-w-none transition-transform duration-200"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    cursor: zoomLevel > 1 ? 'grab' : 'default'
+                  }}
+                  draggable={false}
+                />
+              </div>
+              
+              {/* Image Counter */}
+              {currentImages.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white bg-opacity-20 rounded-full px-4 py-2 text-white text-sm font-medium">
+                  {selectedImageIndex + 1} / {currentImages.length}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-        
+        )}
+
         {/* Mobile Bottom Action Bar */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white p-3 z-50" style={{
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+          borderTop: '1px solid #e5e7eb'
+        }}>
           {/* Action Buttons */}
           <div className="flex space-x-3">
             <button 
               onClick={handleToggleWishlist}
               disabled={wishlistLoading}
-              className={`btn-secondary flex-1 py-4 px-6 font-medium font-inter flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`flex-1 py-3 px-4 font-medium rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
                 product && checkIsInWishlist(product._id)
-                  ? 'border-red-500 bg-red-50 text-red-600'
-                  : ''
+                  ? 'border-2 border-red-500 bg-red-50 text-red-600'
+                  : 'border-2 border-gray-300 text-gray-700 hover:border-gray-400'
               }`}
             >
-              <Heart className={`h-5 w-5 ${
+              <Heart className={`h-4 w-4 ${
                 product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
               }`} />
               <span>Wishlist</span>
@@ -635,10 +752,13 @@ const ProductDetail: React.FC = () => {
             
             <button
               onClick={() => setShowSizeModal(true)}
-              className="btn-primary flex-1 py-4 px-6 font-medium font-inter flex items-center justify-center space-x-2"
+              className="flex-1 py-3 px-4 font-medium rounded-lg flex items-center justify-center space-x-2 text-sm text-white transition-all duration-200 hover:shadow-lg"
+              style={{
+                backgroundColor: 'var(--cta-dark-purple)'
+              }}
             >
-              <ShoppingCart className="h-5 w-5" />
-              <span>Add to Bag</span>
+              <ShoppingCart className="h-4 w-4" />
+              <span>Add</span>
             </button>
           </div>
         </div>

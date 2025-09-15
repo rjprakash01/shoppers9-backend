@@ -7,7 +7,8 @@ import {
   updateOrderStatus,
   processPayment,
   requestReturn,
-  getOrderAnalytics
+  getOrderAnalytics,
+  calculateCheckoutShipping
 } from '../controllers/orderController';
 import { authenticateToken, requireVerification } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
@@ -72,7 +73,24 @@ const processPaymentSchema = Joi.object({
   paymentMethod: Joi.string().required().valid('ONLINE', 'UPI', 'CARD')
 });
 
-// User routes (require authentication and verification)// Routes
+const calculateShippingSchema = Joi.object({
+  shippingAddress: Joi.object({
+    pincode: Joi.string().required().pattern(/^[1-9][0-9]{5}$/)
+  }).required(),
+  serviceType: Joi.string().optional().valid('standard', 'express', 'overnight', 'same_day'),
+  providerId: Joi.string().optional()
+});
+
+// User routes (require authentication and verification)
+
+// Calculate shipping rates for checkout
+router.post('/calculate-shipping', 
+  authenticateToken, 
+  requireVerification, 
+  validateRequest(calculateShippingSchema), 
+  calculateCheckoutShipping
+);
+
 // Create order - both /create and root / endpoints for compatibility
 router.post('/', 
   authenticateToken, 

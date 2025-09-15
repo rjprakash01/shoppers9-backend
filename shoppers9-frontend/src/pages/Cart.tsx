@@ -129,8 +129,8 @@ const Cart: React.FC = () => {
           subCategory: '',
           brand: '',
           price: item.price,
-          images: item.variant?.images || item.productData?.images || [],
-          variants: [],
+          images: item.productData?.images || item.variant?.images || [],
+          variants: item.productData?.variants || [],
           specifications: {},
           tags: [],
           isActive: true,
@@ -184,22 +184,63 @@ const Cart: React.FC = () => {
     setIsAddressBookOpen(true);
   };
 
-  const handleApplyCoupon = () => {
-    if (couponCode.trim()) {
-      // Simulate coupon application
-      if (couponCode.toUpperCase() === 'MYNTRAWOWZ') {
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      alert('Please enter a coupon code');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Store the coupon code for after login
+      localStorage.setItem('pendingCouponCode', couponCode.trim());
+      const shouldLogin = confirm(`To apply coupon "${couponCode.trim()}", you need to login first. Would you like to login now?`);
+      if (shouldLogin) {
+        navigate('/login?redirect=cart&coupon=' + encodeURIComponent(couponCode.trim()));
+      }
+      return;
+    }
+
+    try {
+      // Import coupon service
+      const { couponService } = await import('../services/couponService');
+      const result = await couponService.applyCoupon(couponCode.trim());
+      
+      if (result.success) {
         setAppliedCoupon(couponCode.toUpperCase());
-        setCouponDiscount(238);
+        setCouponDiscount(result.discount);
         setCouponCode('');
+        // Clear any pending coupon
+        localStorage.removeItem('pendingCouponCode');
+        alert(`🎉 Coupon "${couponCode.trim()}" applied successfully! You saved ₹${result.discount}`);
       } else {
-        alert('Invalid coupon code');
+        alert(result.message || 'Invalid coupon code');
+      }
+    } catch (error: any) {
+      console.error('Error applying coupon:', error);
+      if (error.response?.status === 401) {
+        alert('Your session has expired. Please login again to apply coupons.');
+        localStorage.setItem('pendingCouponCode', couponCode.trim());
+        navigate('/login?redirect=cart&coupon=' + encodeURIComponent(couponCode.trim()));
+      } else if (error.response?.status === 400) {
+        alert(error.response?.data?.message || 'Invalid coupon code or coupon requirements not met.');
+      } else {
+        alert('Failed to apply coupon. Please check your internet connection and try again.');
       }
     }
   };
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponDiscount(0);
+  const handleRemoveCoupon = async () => {
+    try {
+      const { couponService } = await import('../services/couponService');
+      await couponService.removeCoupon();
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+    } catch (error: any) {
+      console.error('Error removing coupon:', error);
+      // Still remove from UI even if API call fails
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+    }
   };
 
   const handleItemSelection = (itemId: string, isSelected: boolean) => {
@@ -329,46 +370,98 @@ const Cart: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-elite-base-white">
-      {/* Elite Header */}
-      <div className="section-white border-b border-elite-light-grey shadow-premium">
-        <div className="elite-container py-4">
-          <div className="flex items-center">
+    <div className="min-h-screen" style={{
+      backgroundColor: 'var(--light-grey)'
+    }}>
+      {/* Desktop Header */}
+      <div className="hidden lg:block" style={{
+        backgroundColor: 'var(--cta-dark-purple)',
+        boxShadow: 'var(--premium-shadow)'
+      }}>
+        <div className="elite-container">
+          <div className="flex items-center h-16 py-4">
             <button
-              onClick={() => {
-                // On mobile view, navigate to home; on desktop, go back
-                if (window.innerWidth < 1024) {
-                  navigate('/');
-                } else {
-                  navigate(-1);
-                }
+              onClick={() => navigate(-1)}
+              className="p-2 mr-4 transition-colors duration-200 hover:bg-white/10 rounded-lg"
+              style={{
+                color: 'var(--base-white)',
+                backgroundColor: 'transparent'
               }}
-              className="mr-3 p-1"
             >
-              <ArrowLeft className="h-6 w-6 text-elite-charcoal-black" />
+              <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="font-playfair text-xl font-semibold text-elite-charcoal-black">
-              Cart
-            </h1>
+            <h1 className="text-xl font-bold" style={{
+              fontFamily: 'Playfair Display, serif',
+              color: 'var(--base-white)'
+            }}>My Cart</h1>
           </div>
         </div>
       </div>
 
-      {/* Elite Progress Indicator */}
-      <div className="section-grey border-b border-elite-light-grey px-4 sm:px-6 py-2 sm:py-3">
-        <div className="flex items-center justify-center space-x-2 sm:space-x-3 max-w-xs mx-auto">
-          <div className="flex flex-col items-center min-w-0">
-            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-cta-purple flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
-              1
+      {/* Mobile Cart Header - Clean */}
+      <div className="lg:hidden p-4">
+        <div className="bg-white" style={{
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors" style={{
+                  backgroundColor: 'rgba(99,102,241,0.1)'
+                }}
+              >
+                <ArrowLeft className="h-4 w-4" style={{
+                  color: 'var(--cta-dark-purple)'
+                }} />
+              </button>
+              <h1 className="text-xl font-bold" style={{
+                fontFamily: 'Inter, sans-serif',
+                color: '#1f2937'
+              }}>My Cart</h1>
             </div>
-            <span className="text-xs sm:text-sm text-elite-cta-purple font-medium font-inter mt-2 sm:mt-1 whitespace-nowrap">Cart</span>
+            
+            <div className="text-sm font-medium" style={{
+              color: 'var(--cta-dark-purple)'
+            }}>
+              {cartCount} {cartCount === 1 ? 'item' : 'items'}
+            </div>
           </div>
-          <div className="w-12 sm:w-16 h-px bg-elite-medium-grey"></div>
-          <div className="flex flex-col items-center min-w-0">
-            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-medium-grey flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
-              2
+        </div>
+      </div>
+
+      {/* Progress Indicator - Mobile Only */}
+      <div className="lg:hidden p-4">
+        <div className="bg-white rounded-xl p-4" style={{
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div className="flex items-center justify-center space-x-4 max-w-xs mx-auto">
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{
+                backgroundColor: 'var(--cta-dark-purple)'
+              }}>
+                1
+              </div>
+              <span className="text-xs font-medium mt-1" style={{
+                color: 'var(--cta-dark-purple)'
+              }}>Cart</span>
             </div>
-            <span className="text-xs sm:text-sm text-elite-medium-grey font-inter mt-2 sm:mt-1 whitespace-nowrap">Payment</span>
+            <div className="w-12 h-px" style={{
+              backgroundColor: 'var(--medium-grey)'
+            }}></div>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{
+                backgroundColor: 'var(--medium-grey)'
+              }}>
+                2
+              </div>
+              <span className="text-xs mt-1" style={{
+                color: 'var(--medium-grey)'
+              }}>Payment</span>
+            </div>
           </div>
         </div>
       </div>
@@ -449,9 +542,13 @@ const Cart: React.FC = () => {
                 <div className="flex-shrink-0">
                   <Link to={`/products/${productId}`}>
                     <img
-                      src={getImageUrl(item.variant?.images?.[0] || item.productData?.images?.[0])}
+                      src={getImageUrl(item.productData?.images?.[0] || item.variant?.images?.[0] || '/placeholder-image.svg')}
                       alt={productName}
                       className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder-image.svg';
+                      }}
                     />
                   </Link>
                 </div>
@@ -547,26 +644,39 @@ const Cart: React.FC = () => {
                     
                     if (!product) return null;
                     
+                    // Get the product price - try different sources
+                    const getProductPrice = () => {
+                      if (product.price && product.price > 0) return product.price;
+                      if (product.minPrice && product.minPrice > 0) return product.minPrice;
+                      if (product.variants && product.variants.length > 0) {
+                        const firstVariant = product.variants[0];
+                        if (firstVariant.price && firstVariant.price > 0) return firstVariant.price;
+                      }
+                      return 0;
+                    };
+                    
+                    const productPrice = getProductPrice();
+                    
                     return (
                       <div key={wishlistItemId} className="postcard-box p-4">
                         <div className="flex space-x-3">
                           {/* Product Image */}
                           <div className="flex-shrink-0">
                             <img
-                              src={getImageUrl(product.images?.[0] || '/placeholder-image.jpg')}
-                              alt={product.name}
+                              src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
+                              alt={product.name || 'Product'}
                               className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = '/placeholder-image.jpg';
+                                target.src = '/placeholder-image.svg';
                               }}
                             />
                           </div>
 
                           {/* Product Details */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-playfair text-sm font-semibold text-elite-charcoal-black line-clamp-2 mb-1">{product.name}</h4>
-                            <p className="font-inter text-sm font-bold text-elite-charcoal-black mb-2">{formatPrice(product.price)}</p>
+                            <h4 className="font-playfair text-sm font-semibold text-elite-charcoal-black line-clamp-2 mb-1">{product.name || 'Product Name'}</h4>
+                            <p className="font-inter text-sm font-bold text-elite-charcoal-black mb-2">{formatPrice(productPrice)}</p>
                             
                             {/* Action Buttons */}
                             <div className="flex space-x-2">
@@ -666,7 +776,13 @@ const Cart: React.FC = () => {
              <div className="bg-white rounded-lg border border-gray-200 p-3">
                <div className="flex items-center mb-3">
                  <h3 className="text-base font-semibold text-gray-900 flex-1">Best Coupon For You</h3>
-                 <button className="text-sm font-medium whitespace-nowrap" style={{color: '#322F61'}}>All Coupons &gt;</button>
+                 <button 
+                  onClick={() => navigate('/coupons')}
+                  className="text-sm font-medium whitespace-nowrap hover:underline" 
+                  style={{color: '#322F61'}}
+                >
+                  All Coupons &gt;
+                </button>
                </div>
           
           {appliedCoupon ? (

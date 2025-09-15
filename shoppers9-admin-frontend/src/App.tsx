@@ -11,7 +11,11 @@ import CategoryManagement from './components/CategoryManagement';
 import FilterManagement from './pages/FilterManagement';
 import BannerManagement from './components/BannerManagement';
 import FilterOptionManagement from './components/FilterOptionManagement';
-
+import Support from './pages/Support';
+import SupportDetail from './pages/SupportDetail';
+import Inventory from './pages/Inventory';
+import Shipping from './pages/Shipping';
+import Coupons from './pages/Coupons';
 import Analytics from './pages/Analytics';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -58,6 +62,20 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            <Route path="/support" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Support />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/support/:ticketId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <SupportDetail />
+                </Layout>
+              </ProtectedRoute>
+            } />
             <Route path="/categories" element={
               <ProtectedRoute>
                 <Layout>
@@ -84,6 +102,27 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <FilterOptionManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Inventory />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/shipping" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Shipping />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/coupons" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Coupons />
                 </Layout>
               </ProtectedRoute>
             } />

@@ -38,6 +38,10 @@ const PriceRangeBanners: React.FC<PriceRangeBannersProps> = ({ className = '' })
 
   const generatePriceRangeLink = (banner: Banner) => {
     if (banner.link) {
+      // Fix category links to use proper product filtering
+      if (banner.link.startsWith('/categories/')) {
+        return `/products?category=${banner.link.replace('/categories/', '')}`;
+      }
       return banner.link;
     }
     

@@ -18,6 +18,47 @@ const Login: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/';
 
+  // Handle post-login redirect with pending coupon logic
+  const handlePostLoginRedirect = async () => {
+    const urlParams = new URLSearchParams(location.search);
+    const redirectPage = urlParams.get('redirect');
+    const couponCode = urlParams.get('coupon');
+    const pendingCoupon = localStorage.getItem('pendingCouponCode');
+    
+    // If there's a pending coupon, try to apply it
+    if (pendingCoupon || couponCode) {
+      const codeToApply = couponCode || pendingCoupon;
+      
+      try {
+        const { couponService } = await import('../services/couponService');
+        const result = await couponService.applyCoupon(codeToApply!);
+        
+        if (result.success) {
+          localStorage.removeItem('pendingCouponCode');
+          alert(`🎉 Welcome back! Coupon "${codeToApply}" applied successfully! You saved ${result.discount}`);
+          
+          // Redirect to cart to show the applied coupon
+          navigate('/cart', { replace: true });
+          return;
+        } else {
+          alert(`Coupon "${codeToApply}" could not be applied: ${result.message}`);
+        }
+      } catch (error: any) {
+        console.error('Error applying pending coupon:', error);
+        alert(`Failed to apply coupon "${codeToApply}". You can try again from the cart or coupons page.`);
+      }
+    }
+    
+    // Default redirect logic
+    if (redirectPage === 'coupons') {
+      navigate('/coupons', { replace: true });
+    } else if (redirectPage === 'cart') {
+      navigate('/cart', { replace: true });
+    } else {
+      navigate(from, { replace: true });
+    }
+  };
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim()) {
@@ -71,19 +112,18 @@ const Login: React.FC = () => {
     if (phone === '1234567890' && otp === '1234') {
       try {
         await login(phone, otp);
-        navigate(from, { replace: true });
+        handlePostLoginRedirect();
         return;
       } catch (error: any) {
         // If backend verification fails, still proceed for test user
-        
-        navigate(from, { replace: true });
+        handlePostLoginRedirect();
         return;
       }
     }
 
     try {
       await login(phone, otp);
-      navigate(from, { replace: true });
+      handlePostLoginRedirect();
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Invalid OTP';
       

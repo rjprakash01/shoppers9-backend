@@ -80,7 +80,22 @@ const Products: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await productService.getProducts(filters);
+      console.log('\n=== FRONTEND FILTERS DEBUG ===');
+      console.log('Filters being sent to API:', JSON.stringify(filters, null, 2));
+      
+      // Add cache-busting parameter to ensure fresh data
+      const filtersWithCacheBust = {
+        ...filters,
+        _t: Date.now()
+      };
+      
+      const response = await productService.getProducts(filtersWithCacheBust);
+      console.log('API Response - Total products:', response.products.length);
+      console.log('First 3 products from API:');
+      response.products.slice(0, 3).forEach((product, index) => {
+        console.log(`${index + 1}. ${product.name}`);
+      });
+      console.log('=== END FRONTEND FILTERS DEBUG ===\n');
       setProducts(response.products);
       setTotalPages(response.pagination.totalPages);
     } catch (error) {
@@ -188,12 +203,12 @@ const Products: React.FC = () => {
     if (viewMode === 'list') {
       return (
         <div key={product._id} className="postcard-box">
-          <div className="flex p-4">
+          <div className="flex p-3">
             <Link to={`/products/${product._id}`} className="flex-shrink-0">
               <img
                 src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
                 alt={product.name}
-                className="w-32 h-40 object-cover"
+                className="w-24 h-32 object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder-image.svg';
@@ -201,35 +216,35 @@ const Products: React.FC = () => {
               />
             </Link>
             
-            <div className="flex-1 ml-4">
+            <div className="flex-1 ml-3">
               <Link to={`/products/${product._id}`}>
-                <h3 className="font-playfair text-lg font-semibold text-elite-charcoal-black mb-1 hover:text-elite-cta-purple transition-colors">
+                <h3 className="font-playfair text-base font-semibold text-elite-charcoal-black mb-1 hover:text-elite-cta-purple transition-colors">
                   {product.name}
                 </h3>
               </Link>
-              <p className="font-inter text-elite-medium-grey text-sm mb-3 line-clamp-2">
+              <p className="font-inter text-elite-medium-grey text-sm mb-2 line-clamp-2">
                 {product.description}
               </p>
               
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-inter text-lg font-bold text-elite-charcoal-black">
+                  <div className="flex items-center space-x-1">
+                    <span className="font-inter font-bold text-elite-charcoal-black" style={{ fontSize: '13px' }}>
                       {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                        formatPriceRange(product.minPrice, product.maxPrice) : 
+                        `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}` : 
                         formatPrice(product.minPrice || 0)
                       }
                     </span>
                     {product.maxDiscount && product.maxDiscount > 0 && (
                       <>
-                        <span className="font-inter text-sm text-elite-medium-grey line-through">
+                        <span className="font-inter text-elite-medium-grey line-through" style={{ fontSize: '10px' }}>
                           {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
                             formatPriceRange(product.minOriginalPrice, product.maxOriginalPrice) : 
                             formatPrice(product.minOriginalPrice || 0)
                           }
                         </span>
-                        <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-2 py-1 uppercase tracking-wide">
-                          {product.maxDiscount}% OFF
+                        <span className="bg-elite-cta-purple text-elite-base-white font-bold font-inter px-1 py-0.5 uppercase tracking-wide" style={{ fontSize: '9px' }}>
+                          {product.maxDiscount}%
                         </span>
                       </>
                     )}
@@ -244,27 +259,17 @@ const Products: React.FC = () => {
                       handleToggleWishlist(product);
                     }}
                     disabled={wishlistLoading}
-                    className={`p-2 transition-colors disabled:opacity-50 ${
+                    className={`p-1 transition-colors disabled:opacity-50 ${
                       checkIsInWishlist(product._id)
                         ? 'text-red-500 hover:text-red-600'
                         : 'text-elite-medium-grey hover:text-red-500'
                     }`}
                   >
-                    <Heart className={`h-4 w-4 ${
+                    <Heart className={`h-3 w-3 ${
                       checkIsInWishlist(product._id) ? 'fill-current' : ''
                     }`} />
                   </button>
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.totalStock === 0}
-                    className={`btn-primary px-4 py-2 text-sm font-medium font-inter disabled:cursor-not-allowed ${
-                      product.totalStock === 0 
-                        ? 'opacity-50' 
-                        : ''
-                    }`}
-                  >
-                    {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                  </button>
+
                 </div>
               </div>
             </div>
@@ -274,24 +279,35 @@ const Products: React.FC = () => {
     }
     
     return (
-      <div key={product._id} className="group postcard-box overflow-hidden">
+      <Link
+        key={product._id}
+        to={`/products/${product._id}`}
+        className="bg-white rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg"
+        style={{
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}
+      >
         <div className="relative overflow-hidden">
-          <Link to={`/products/${product._id}`} className="block">
+          <div className="aspect-[3/4] flex items-center justify-center relative" style={{
+            backgroundColor: 'var(--light-grey)'
+          }}>
             <img
               src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
               alt={product.name}
-              className="w-full aspect-[3/4] object-cover"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder-image.svg';
               }}
             />
             {product.totalStock === 0 && (
-              <div className="absolute inset-0 bg-elite-charcoal-black/80 flex items-center justify-center">
-                <span className="text-elite-base-white font-medium text-sm font-inter bg-elite-cta-purple px-3 py-1">Out of Stock</span>
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                <span className="text-white font-medium text-xs px-2 py-1 rounded" style={{
+                  backgroundColor: 'var(--cta-dark-purple)'
+                }}>Out of Stock</span>
               </div>
             )}
-          </Link>
+          </div>
           <button 
             onClick={(e) => {
               e.preventDefault();
@@ -299,66 +315,55 @@ const Products: React.FC = () => {
               handleToggleWishlist(product);
             }}
             disabled={wishlistLoading}
-            className={`absolute top-2 right-2 p-2 bg-elite-base-white/90 shadow-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 disabled:opacity-50 ${
+            className={`absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${
               checkIsInWishlist(product._id) ? 'opacity-100' : ''
             }`}
           >
-            <Heart className={`h-4 w-4 transition-colors ${
+            <Heart className={`h-3 w-3 transition-colors ${
               checkIsInWishlist(product._id)
                 ? 'text-red-500 fill-current'
-                : 'text-elite-medium-grey'
+                : 'text-gray-500 hover:text-red-500'
             }`} />
           </button>
         </div>
         
         <div className="p-3">
-          <Link to={`/products/${product._id}`} className="block">
-            <h3 className="font-playfair text-sm font-semibold text-elite-charcoal-black mb-1 line-clamp-2 group-hover:text-elite-cta-purple transition-colors">
-              {product.name}
-            </h3>
-          </Link>
+          <h3 className="font-semibold text-sm mb-2 text-gray-900 line-clamp-2 leading-tight transition-colors" style={{
+            color: 'var(--charcoal-black)'
+          }}>
+            {product.name}
+          </h3>
           
-          <div className="mb-2">
+          <div className="flex flex-col space-y-1">
             <div className="flex items-center space-x-2">
               {/* Show price range if min and max prices are different */}
               {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? (
-                <span className="font-inter text-sm font-bold text-elite-charcoal-black">
-                  From {formatPrice(product.minPrice)}
+                <span className="text-sm font-bold" style={{
+                  color: 'var(--cta-dark-purple)'
+                }}>
+                  {formatPrice(product.minPrice)}
                 </span>
               ) : (
-                <span className="font-inter text-sm font-bold text-elite-charcoal-black">
+                <span className="text-sm font-bold" style={{
+                  color: 'var(--cta-dark-purple)'
+                }}>
                   {formatPrice(product.minPrice || 0)}
                 </span>
               )}
               {product.maxDiscount && product.maxDiscount > 0 && (
                 <>
-                  <span className="font-inter text-xs text-elite-medium-grey line-through">
+                  <span className="text-xs text-gray-500 line-through">
                     {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
                       `From ${formatPrice(product.minOriginalPrice)}` : 
                       formatPrice(product.minOriginalPrice || 0)
                     }
                   </span>
-                  <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-1 py-0.5 uppercase tracking-wide">
-                    {product.maxDiscount}% OFF
-                  </span>
                 </>
               )}
             </div>
           </div>
-          
-          <button
-            onClick={() => handleAddToCart(product)}
-            disabled={product.totalStock === 0}
-            className={`btn-primary w-full py-2 text-xs font-medium font-inter disabled:cursor-not-allowed ${
-              product.totalStock === 0 
-                ? 'opacity-50' 
-                : ''
-            }`}
-          >
-            {product.totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
-          </button>
         </div>
-      </div>
+      </Link>
     );
   };
 
@@ -375,7 +380,7 @@ const Products: React.FC = () => {
         <button
           key={i}
           onClick={() => updateFilters({ page: i })}
-          className={`px-3 py-2 text-sm font-medium font-poppins rounded-xl transition-colors ${
+          className={`px-2 py-1 text-xs font-medium font-poppins rounded-lg transition-colors ${
             i === currentPage
               ? 'bg-brand-gold text-brand-indigo shadow-sm'
               : 'bg-white text-brand-indigo border border-brand-gold/30 hover:bg-brand-gold/10'
@@ -387,19 +392,19 @@ const Products: React.FC = () => {
     }
     
     return (
-      <div className="mt-8 py-8">
+      <div className="mt-4 py-4">
         {/* Items per page selector and pagination info */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
+          <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <label htmlFor="itemsPerPage" className="text-sm font-medium font-poppins text-brand-indigo">
+              <label htmlFor="itemsPerPage" className="text-xs font-medium font-poppins text-brand-indigo">
                 Items per page:
               </label>
               <select
                 id="itemsPerPage"
                 value={filters.limit || 12}
                 onChange={(e) => updateFilters({ limit: parseInt(e.target.value), page: 1 })}
-                className="input-field px-3 py-1 border border-brand-light-grey focus:outline-none bg-white text-sm font-inter text-brand-charcoal-black"
+                className="input-field px-2 py-1 border border-brand-light-grey focus:outline-none bg-white text-xs font-inter text-brand-charcoal-black"
               >
                 <option value={12}>12</option>
                 <option value={24}>24</option>
@@ -409,7 +414,7 @@ const Products: React.FC = () => {
               </select>
             </div>
             
-            <div className="text-sm text-brand-indigo/70 font-poppins">
+            <div className="text-xs text-brand-indigo/70 font-poppins">
               Showing {((currentPage - 1) * (filters.limit || 12)) + 1} to {Math.min(currentPage * (filters.limit || 12), products.length)} of {products.length} products
             </div>
           </div>
@@ -423,11 +428,11 @@ const Products: React.FC = () => {
         
         {/* Pagination controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center space-x-2">
+          <div className="flex items-center justify-center space-x-1">
             <button
               onClick={() => updateFilters({ page: 1 })}
               disabled={currentPage === 1}
-              className="btn-secondary px-3 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-secondary px-2 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               First
             </button>
@@ -435,7 +440,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: currentPage - 1 })}
               disabled={currentPage === 1}
-              className="btn-secondary px-4 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-secondary px-3 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
@@ -445,7 +450,7 @@ const Products: React.FC = () => {
                 <>
                   <button
                     onClick={() => updateFilters({ page: 1 })}
-                    className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   >
                     1
                   </button>
@@ -464,7 +469,7 @@ const Products: React.FC = () => {
                   )}
                   <button
                     onClick={() => updateFilters({ page: totalPages })}
-                    className="px-3 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   >
                     {totalPages}
                   </button>
@@ -475,7 +480,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: currentPage + 1 })}
               disabled={currentPage === totalPages}
-              className="btn-secondary px-4 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-secondary px-3 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>
@@ -483,7 +488,7 @@ const Products: React.FC = () => {
             <button
               onClick={() => updateFilters({ page: totalPages })}
               disabled={currentPage === totalPages}
-              className="btn-secondary px-3 py-2 text-sm font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-secondary px-2 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Last
             </button>
@@ -505,21 +510,153 @@ const Products: React.FC = () => {
         />
         
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-80' : 'lg:ml-0'}`}>
+        <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-72' : 'lg:ml-0'}`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
-          {/* Elite Header */}
-          <div className="py-8">
-            <div className="mb-6">
-              <h1 className="font-playfair text-section font-semibold text-elite-charcoal-black mb-2">
+          
+          {/* Mobile Header and Controls - Single Line */}
+          <div className="lg:hidden px-3 py-1">
+            <div className="bg-white rounded-md p-2" style={{
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div className="flex items-center justify-between space-x-2 mb-2">
+                {/* Category Title */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-sm font-bold truncate" style={{
+                    fontFamily: 'Inter, sans-serif',
+                    color: '#1f2937'
+                  }}>
+                    {(() => {
+                      const category = searchParams.get('category');
+                      const subcategory = searchParams.get('subcategory');
+                      const subsubcategory = searchParams.get('subsubcategory');
+                      
+                      if (subsubcategory) {
+                        return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)} > ${subsubcategory?.charAt(0).toUpperCase()}${subsubcategory?.slice(1)}`;
+                      } else if (subcategory) {
+                        return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)}`;
+                      } else if (category) {
+                        return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+                      }
+                      return 'All Products';
+                    })()
+                    }
+                  </h1>
+                  <p className="text-xs" style={{
+                    color: 'var(--medium-grey)'
+                  }}>
+                    {products.length > 0 ? `${products.length} found` : 'No products'}
+                  </p>
+                </div>
+                
+                {/* Filter and Sort Controls */}
+                <div className="flex items-center space-x-1.5">
+                  {/* Filter Button */}
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded transition-colors" style={{
+                      backgroundColor: showFilters ? 'var(--cta-dark-purple)' : 'transparent',
+                      color: showFilters ? 'white' : 'var(--cta-dark-purple)',
+                      border: '1px solid var(--cta-dark-purple)'
+                    }}
+                  >
+                    <Filter className="h-3 w-3" />
+                    <span className="hidden xs:inline">{showFilters ? 'HIDE' : 'FILTER'}</span>
+                  </button>
+                  
+                  {/* Sort Dropdown */}
+                  <select
+                    value={`${filters.sortBy}-${filters.sortOrder}`}
+                    onChange={(e) => {
+                      const [sortBy, sortOrder] = e.target.value.split('-');
+                      updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
+                    }}
+                    className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="createdAt-desc">Newest</option>
+                    <option value="price-asc">Price: Low</option>
+                    <option value="price-desc">Price: High</option>
+                    <option value="name-asc">A to Z</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Search Bar */}
+              <form onSubmit={handleSearch} className="w-full">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          {/* Desktop Header */}
+          <div className="hidden lg:block py-4 lg:py-6">
+            {/* Amazon-style Category Path */}
+            <div className="mb-4">
+              <nav className="flex items-center space-x-2 text-sm mb-3">
+                <Link to="/" className="text-blue-600 hover:text-blue-800 hover:underline">
+                  Home
+                </Link>
+                {(() => {
+                  const category = searchParams.get('category');
+                  const subcategory = searchParams.get('subcategory');
+                  const subsubcategory = searchParams.get('subsubcategory');
+                  const pathItems = [];
+                  
+                  if (category) {
+                    pathItems.push({
+                      name: category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' '),
+                      url: `/products?category=${category}`
+                    });
+                  }
+                  
+                  if (subcategory) {
+                    pathItems.push({
+                      name: subcategory.charAt(0).toUpperCase() + subcategory.slice(1).replace(/-/g, ' '),
+                      url: `/products?category=${category}&subcategory=${subcategory}`
+                    });
+                  }
+                  
+                  if (subsubcategory) {
+                    pathItems.push({
+                      name: subsubcategory.charAt(0).toUpperCase() + subsubcategory.slice(1).replace(/-/g, ' '),
+                      url: `/products?category=${category}&subcategory=${subcategory}&subsubcategory=${subsubcategory}`
+                    });
+                  }
+                  
+                  return pathItems.map((item, index) => (
+                    <React.Fragment key={index}>
+                      <span className="text-gray-400">›</span>
+                      {index === pathItems.length - 1 ? (
+                        <span className="text-gray-900 font-medium">{item.name}</span>
+                      ) : (
+                        <Link to={item.url} className="text-blue-600 hover:text-blue-800 hover:underline">
+                          {item.name}
+                        </Link>
+                      )}
+                    </React.Fragment>
+                  ));
+                })()
+                }
+              </nav>
+              
+              <h1 className="font-playfair text-xl lg:text-2xl font-semibold text-elite-charcoal-black mb-1">
                 {(() => {
                   const category = searchParams.get('category');
                   const subcategory = searchParams.get('subcategory');
                   const subsubcategory = searchParams.get('subsubcategory');
                   
                   if (subsubcategory) {
-                    return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)} > ${subsubcategory?.charAt(0).toUpperCase()}${subsubcategory?.slice(1)}`;
+                    return subsubcategory.charAt(0).toUpperCase() + subsubcategory.slice(1).replace(/-/g, ' ');
                   } else if (subcategory) {
-                    return `${category?.charAt(0).toUpperCase()}${category?.slice(1)} > ${subcategory?.charAt(0).toUpperCase()}${subcategory?.slice(1)}`;
+                    return subcategory.charAt(0).toUpperCase() + subcategory.slice(1).replace(/-/g, ' ');
                   } else if (category) {
                     return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
                   }
@@ -527,14 +664,15 @@ const Products: React.FC = () => {
                 })()
                 }
               </h1>
-              <p className="font-inter text-body text-elite-medium-grey">
+              
+              <p className="font-inter text-sm text-elite-medium-grey">
                 {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
               </p>
             </div>
             
             {/* Elite Search and Controls */}
-            <div className="postcard-box p-4 mb-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
+            <div className="postcard-box p-3 mb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 gap-3">
                 {/* Elite Search */}
                 <form onSubmit={handleSearch} className="flex-1 max-w-md">
                   <div className="relative">
@@ -543,30 +681,29 @@ const Products: React.FC = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search products..."
-                      className="elite-input w-full pl-10 pr-4 py-2 text-sm font-inter"
+                      className="elite-input w-full px-3 py-2 text-sm font-inter"
                     />
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-elite-medium-grey" />
                   </div>
                 </form>
                 
                 {/* Elite Controls */}
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
                   {/* Mobile Filter Toggle */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="lg:hidden btn-secondary flex items-center space-x-2 px-4 py-2 text-sm font-medium font-inter"
+                    className="lg:hidden btn-secondary flex items-center space-x-1 px-3 py-2 text-xs font-medium font-inter"
                   >
-                    <Filter className="h-4 w-4" />
+                    <Filter className="h-3 w-3" />
                     <span>FILTER</span>
                   </button>
                   
                   {/* Desktop Filter Toggle */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="hidden lg:flex btn-secondary items-center space-x-2 px-4 py-2 text-sm font-medium font-inter"
+                    className="hidden lg:flex btn-secondary items-center space-x-1 px-3 py-2 text-xs font-medium font-inter"
                   >
-                    <Filter className="h-4 w-4" />
-                    <span>{showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}</span>
+                    <Filter className="h-3 w-3" />
+                    <span>{showFilters ? 'HIDE' : 'SHOW'}</span>
                   </button>
                 
                 <select
@@ -575,30 +712,30 @@ const Products: React.FC = () => {
                     const [sortBy, sortOrder] = e.target.value.split('-');
                     updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
                   }}
-                  className="elite-input px-3 py-2 text-sm font-inter"
+                  className="elite-input px-2 py-2 text-xs font-inter"
                 >
-                  <option value="createdAt-desc">Newest First</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="name-asc">Name: A to Z</option>
+                  <option value="createdAt-desc">Newest</option>
+                  <option value="price-asc">Price: Low</option>
+                  <option value="price-desc">Price: High</option>
+                  <option value="name-asc">A to Z</option>
                 </select>
                 
                 <div className="flex items-center border border-elite-medium-grey overflow-hidden">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 transition-colors ${
+                    className={`p-1.5 transition-colors ${
                       viewMode === 'grid' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
                     }`}
                   >
-                    <Grid className="h-4 w-4" />
+                    <Grid className="h-3 w-3" />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`p-2 transition-colors ${
+                    className={`p-1.5 transition-colors ${
                       viewMode === 'list' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
                     }`}
                   >
-                    <List className="h-4 w-4" />
+                    <List className="h-3 w-3" />
                   </button>
                 </div>
               </div>
@@ -664,9 +801,9 @@ const Products: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className={`grid gap-4 ${
+            <div className={`grid gap-3 lg:gap-4 ${
               viewMode === 'grid'
-                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                ? 'grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'
                 : 'grid-cols-1'
             }`}>
               {products.map(renderProductCard)}

@@ -7,6 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import orderService from '../services/orderService';
 import type { CreateOrderRequest, ShippingAddress } from '../services/orderService';
+import CouponInput from '../components/CouponInput';
 
 
 
@@ -20,6 +21,11 @@ const Checkout: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<'review' | 'payment'>('payment');
   const [isLoading, setIsLoading] = useState(false);
   const [showPriceDetails, setShowPriceDetails] = useState(false);
+  
+  // Coupon state
+  const [appliedCoupon, setAppliedCoupon] = useState<string>('');
+  const [couponDiscount, setCouponDiscount] = useState<number>(0);
+  const [finalAmount, setFinalAmount] = useState<number>(0);
   
   const [shippingAddress] = useState<ShippingAddress>({
     name: 'R J Prakash',
@@ -35,6 +41,28 @@ const Checkout: React.FC = () => {
   // Get current cart items based on authentication status
   const cartItems = isAuthenticated ? (cart?.items || []) : localCart;
   const totalAmount = cartTotal;
+  
+  // Calculate final amount with coupon discount
+  const calculateFinalAmount = () => {
+    const baseAmount = selectedPaymentMethod === 'upi' ? totalAmount - 115 : totalAmount;
+    return Math.max(0, baseAmount - couponDiscount);
+  };
+  
+  // Update final amount when dependencies change
+  React.useEffect(() => {
+    setFinalAmount(calculateFinalAmount());
+  }, [totalAmount, selectedPaymentMethod, couponDiscount]);
+  
+  // Coupon handlers
+  const handleCouponApplied = (discount: number, couponCode: string) => {
+    setCouponDiscount(discount);
+    setAppliedCoupon(couponCode);
+  };
+  
+  const handleCouponRemoved = () => {
+    setCouponDiscount(0);
+    setAppliedCoupon('');
+  };
 
   const handlePlaceOrder = async () => {
     try {
@@ -57,7 +85,9 @@ const Checkout: React.FC = () => {
         shippingAddress,
         paymentMethod: selectedPaymentMethod === 'card' ? 'CARD' : 
                       selectedPaymentMethod === 'upi' ? 'UPI' : 
-                      selectedPaymentMethod === 'netbanking' ? 'ONLINE' : 'COD'
+                      selectedPaymentMethod === 'netbanking' ? 'ONLINE' : 'COD',
+        totalAmount: finalAmount,
+        couponCode: appliedCoupon || undefined
       };
 
       console.log('Placing order with data:', orderData);
@@ -108,39 +138,98 @@ const Checkout: React.FC = () => {
 
   // Elite Payment Step
   return (
-    <div className="min-h-screen bg-elite-base-white">
-      {/* Elite Header */}
-      <div className="section-white border-b border-elite-light-grey shadow-premium">
-        <div className="elite-container py-4">
-          <div className="flex items-center">
+    <div className="min-h-screen" style={{
+      backgroundColor: 'var(--light-grey)'
+    }}>
+      {/* Desktop Header */}
+      <div className="hidden lg:block" style={{
+        backgroundColor: 'var(--cta-dark-purple)',
+        boxShadow: 'var(--premium-shadow)'
+      }}>
+        <div className="elite-container">
+          <div className="flex items-center justify-between h-16">
+            <h1 className="text-xl font-bold" style={{
+              fontFamily: 'Playfair Display, serif',
+              color: 'var(--base-white)'
+            }}>Payment Method</h1>
             <button
               onClick={() => navigate('/cart')}
-              className="mr-3 p-1 hover:bg-elite-light-grey transition-colors"
+              className="p-2 transition-colors duration-200"
+              style={{
+                color: 'var(--base-white)',
+                backgroundColor: 'transparent'
+              }}
             >
-              <ArrowLeft className="h-6 w-6 text-elite-charcoal-black" />
+              <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="font-playfair text-xl font-semibold text-elite-charcoal-black">
-              Payment Method
-            </h1>
           </div>
         </div>
       </div>
 
-      {/* Elite Progress Indicator */}
-      <div className="section-grey border-b border-elite-light-grey px-4 sm:px-6 py-2 sm:py-3">
-        <div className="flex items-center justify-center space-x-2 sm:space-x-3 max-w-xs mx-auto">
-          <div className="flex flex-col items-center min-w-0">
-            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-cta-purple flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
-              ✓
+      {/* Mobile Checkout Header - Clean */}
+      <div className="lg:hidden p-4">
+        <div className="bg-white" style={{
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => navigate('/cart')}
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors" style={{
+                  backgroundColor: 'rgba(99,102,241,0.1)'
+                }}
+              >
+                <ArrowLeft className="h-4 w-4" style={{
+                  color: 'var(--cta-dark-purple)'
+                }} />
+              </button>
+              <h1 className="text-xl font-bold" style={{
+                fontFamily: 'Inter, sans-serif',
+                color: '#1f2937'
+              }}>Checkout</h1>
             </div>
-            <span className="text-xs sm:text-sm text-elite-cta-purple font-medium font-inter mt-2 sm:mt-1 whitespace-nowrap">Cart</span>
+            
+            <div className="text-sm font-medium" style={{
+              color: 'var(--cta-dark-purple)'
+            }}>
+              {formatPrice(totalAmount)}
+            </div>
           </div>
-          <div className="w-12 sm:w-16 h-px bg-elite-cta-purple"></div>
-          <div className="flex flex-col items-center min-w-0">
-            <div className="w-10 h-10 sm:w-8 sm:h-8 bg-elite-cta-purple flex items-center justify-center text-elite-base-white text-sm font-medium font-inter">
-              2
+        </div>
+      </div>
+
+      {/* Progress Indicator - Mobile Only */}
+      <div className="lg:hidden p-4">
+        <div className="bg-white rounded-xl p-4" style={{
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div className="flex items-center justify-center space-x-4 max-w-xs mx-auto">
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{
+                backgroundColor: 'var(--cta-dark-purple)'
+              }}>
+                ✓
+              </div>
+              <span className="text-xs font-medium mt-1" style={{
+                color: 'var(--cta-dark-purple)'
+              }}>Cart</span>
             </div>
-            <span className="text-xs sm:text-sm text-elite-cta-purple font-medium font-inter mt-2 sm:mt-1 whitespace-nowrap">Payment</span>
+            <div className="w-12 h-px" style={{
+              backgroundColor: 'var(--cta-dark-purple)'
+            }}></div>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{
+                backgroundColor: 'var(--cta-dark-purple)'
+              }}>
+                2
+              </div>
+              <span className="text-xs font-medium mt-1" style={{
+                color: 'var(--cta-dark-purple)'
+              }}>Payment</span>
+            </div>
           </div>
         </div>
       </div>
@@ -212,18 +301,35 @@ const Checkout: React.FC = () => {
           
           {/* Right Side - Price Details & Checkout */}
           <div className="space-y-3">
+            {/* Coupon Input Section */}
+             <div className="bg-white rounded-lg border border-gray-200 p-3">
+               <CouponInput
+                 onCouponApplied={handleCouponApplied}
+                 onCouponRemoved={handleCouponRemoved}
+                 appliedCoupon={appliedCoupon}
+                 appliedDiscount={couponDiscount}
+                 disabled={isLoading}
+               />
+             </div>
+
             {/* Price Details Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-3">
               <h3 className="text-base font-semibold text-gray-900 mb-3">Price Details</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total MRP</span>
-                  <span className="text-sm text-gray-900">{selectedPaymentMethod === 'upi' ? formatPrice(totalAmount) : formatPrice(totalAmount)}</span>
+                  <span className="text-sm text-gray-900">{formatPrice(totalAmount)}</span>
                 </div>
                 {selectedPaymentMethod === 'upi' && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Online Discount</span>
                     <span className="text-sm text-green-600">-₹115</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Coupon Discount</span>
+                    <span className="text-sm text-green-600">-{formatPrice(couponDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
@@ -234,7 +340,7 @@ const Checkout: React.FC = () => {
                 </div>
                 <div className="border-t pt-2 flex justify-between items-center">
                   <span className="text-base font-semibold text-gray-900">Total Amount</span>
-                  <span className="text-base font-semibold text-gray-900">{selectedPaymentMethod === 'upi' ? formatPrice(totalAmount - 115) : formatPrice(totalAmount)}</span>
+                  <span className="text-base font-semibold text-gray-900">{formatPrice(finalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -262,7 +368,7 @@ const Checkout: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <p className="font-inter text-base sm:text-lg font-semibold text-elite-charcoal-black">
-              {selectedPaymentMethod === 'upi' ? formatPrice(totalAmount - 115) : formatPrice(totalAmount)}
+              {formatPrice(finalAmount)}
             </p>
             <button 
               onClick={() => setShowPriceDetails(!showPriceDetails)}

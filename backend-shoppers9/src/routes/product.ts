@@ -7,6 +7,11 @@ import Joi from 'joi';
 
 const router = express.Router();
 
+// Debug route to test if product routes are loading
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'Product routes are working!', route: '/api/products/test' });
+});
+
 // Validation schemas
 const getProductsSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),

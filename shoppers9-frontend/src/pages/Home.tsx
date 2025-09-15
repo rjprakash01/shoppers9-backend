@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, Truck, Shield, Headphones, Sparkles, Gift, Heart, TrendingUp, Search, Grid } from 'lucide-react';
+import { ArrowRight, Star, Truck, Shield, Headphones, Sparkles, Gift, Heart, TrendingUp, Search, Grid, ShoppingCart } from 'lucide-react';
 import type { Product } from '../services/products';
 import { productService } from '../services/products';
 import { formatPrice, formatPriceRange, calculateDiscountPercentage } from '../utils/currency';
@@ -10,8 +10,10 @@ import PriceRangeBanners from '../components/PriceRangeBanners';
 import LazyImage from '../components/LazyImage';
 import { bannerService, type Banner } from '../services/banners';
 import { useWishlist } from '../contexts/WishlistContext';
+import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import shoppers9Logo from '../assets/shoppers9-logo.svg';
 
 interface Category {
   id: string;
@@ -44,6 +46,7 @@ const Home: React.FC = () => {
 
   // Wishlist context
   const { addToWishlist, removeFromWishlist, isInWishlist, isLoading: wishlistLoading } = useWishlist();
+  const { cartCount } = useCart();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -233,6 +236,8 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-elite-base-white">
+
+
       {/* Elite Hero Banner Section - Admin Panel Content Only */}
       <section className="section-white w-full relative">
         <div className="h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[500px] postcard-box">
@@ -248,16 +253,24 @@ const Home: React.FC = () => {
       </section>
 
       {/* Elite Trending Products Section */}
-      <section className="section-white py-16">
+      <section className="py-6 lg:py-12" style={{
+        backgroundColor: 'var(--base-white)'
+      }}>
         <div className="elite-container">
-          <div className="text-center mb-12">
-            <h2 className="font-playfair text-section font-semibold text-elite-charcoal-black mb-4">
+          <div className="text-center mb-6 lg:mb-8">
+            <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
+              color: 'var(--charcoal-black)'
+            }}>
               Trending Now
             </h2>
-            <p className="font-inter text-body text-elite-medium-grey mb-6">
+            <p className="text-sm lg:text-base mb-4" style={{
+              color: 'var(--medium-grey)'
+            }}>
               Popular products everyone loves
             </p>
-            <div className="w-24 h-1 bg-elite-cta-purple mx-auto"></div>
+            <div className="w-12 h-1 rounded-full mx-auto" style={{
+              backgroundColor: 'var(--cta-dark-purple)'
+            }}></div>
           </div>
 
           {trendingLoading ? (
@@ -271,29 +284,36 @@ const Home: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-              {(trendingProducts || []).slice(0, 10).map((product) => (
+            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4">
+              {(trendingProducts || []).slice(0, 12).map((product) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="postcard-box group overflow-hidden"
+                  className="bg-white rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg"
+                  style={{
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
                 >
                   <div className="relative overflow-hidden">
-                    <div className="bg-elite-light-grey aspect-[4/5] flex items-center justify-center relative">
+                    <div className="aspect-[3/4] flex items-center justify-center relative" style={{
+                      backgroundColor: 'var(--light-grey)'
+                    }}>
                       {product.images && product.images.length > 0 ? (
                         <LazyImage
                           src={getImageUrl(product.images[0])}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <span className="font-inter text-elite-medium-grey text-xs md:text-sm">No Image</span>
+                        <span className="text-xs text-gray-400">No Image</span>
                       )}
                       {(() => {
                         const discountPercentage = getMaxDiscountPercentage(product);
                         return discountPercentage > 0 ? (
-                          <div className="absolute top-3 left-3">
-                            <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold px-3 py-1.5 font-inter uppercase tracking-wide">
+                          <div className="absolute top-2 left-2">
+                            <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{
+                              backgroundColor: 'var(--cta-dark-purple)'
+                            }}>
                               {discountPercentage}% OFF
                             </span>
                           </div>
@@ -304,40 +324,42 @@ const Home: React.FC = () => {
                     <button 
                       onClick={(e) => handleToggleWishlist(product, e)}
                       disabled={wishlistLoading}
-                      className={`absolute top-3 right-3 p-2 bg-elite-base-white/90 backdrop-blur-sm shadow-card opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-elite-base-white disabled:opacity-50 ${
+                      className={`absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${
                         isInWishlist(product._id) ? 'opacity-100' : ''
                       }`}
                     >
-                      <Heart className={`h-4 w-4 transition-colors ${
+                      <Heart className={`h-3 w-3 transition-colors ${
                         isInWishlist(product._id)
                           ? 'text-red-500 fill-current'
-                          : 'text-elite-medium-grey hover:text-red-500'
+                          : 'text-gray-500 hover:text-red-500'
                       }`} />
                     </button>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-playfair font-semibold text-base mb-3 text-elite-charcoal-black line-clamp-2 leading-tight group-hover:text-elite-cta-purple transition-colors">
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-2 text-gray-900 line-clamp-2 leading-tight transition-colors" style={{
+                      color: 'var(--charcoal-black)'
+                    }}>
                       {product.name}
                     </h3>
                     
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-inter text-lg font-bold text-elite-charcoal-black">
-                            {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                              `From ${formatPrice(product.minPrice)}` : 
-                              formatPrice(product.minPrice || 0)
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-bold" style={{
+                          color: 'var(--cta-dark-purple)'
+                        }}>
+                          {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
+                            `From ${formatPrice(product.minPrice)}` : 
+                            formatPrice(product.minPrice || 0)
+                          }
+                        </span>
+                        {product.maxDiscount && product.maxDiscount > 0 && (
+                          <span className="text-xs text-gray-500 line-through">
+                            {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                              `From ${formatPrice(product.minOriginalPrice)}` : 
+                              formatPrice(product.minOriginalPrice || 0)
                             }
                           </span>
-                          {product.maxDiscount && product.maxDiscount > 0 && (
-                            <span className="font-inter text-sm text-elite-medium-grey line-through">
-                              {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                                `From ${formatPrice(product.minOriginalPrice)}` : 
-                                formatPrice(product.minOriginalPrice || 0)
-                              }
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -346,30 +368,42 @@ const Home: React.FC = () => {
             </div>
           )}
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-6 lg:mt-8">
             <Link
               to="/products"
-              className="btn-primary inline-flex items-center gap-3"
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg"
+              style={{
+                backgroundColor: 'var(--cta-dark-purple)',
+                color: 'var(--base-white)'
+              }}
             >
-              <Grid className="h-5 w-5" />
+              <Grid className="h-4 w-4" />
               View All Products
-              <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" />
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </section>
 
       {/* Elite Featured Products Section */}
-      <section className="section-grey py-16">
+      <section className="py-6 lg:py-12" style={{
+        backgroundColor: 'var(--light-grey)'
+      }}>
         <div className="elite-container">
-          <div className="text-center mb-12">
-            <h2 className="font-playfair text-section font-semibold text-elite-charcoal-black mb-4">
-              Featured Products
+          <div className="text-center mb-6 lg:mb-8">
+            <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
+              color: 'var(--charcoal-black)'
+            }}>
+              Featured Collections
             </h2>
-            <p className="font-inter text-body text-elite-medium-grey mb-6">
-              Our best picks just for you
+            <p className="text-sm lg:text-base mb-4" style={{
+              color: 'var(--medium-grey)'
+            }}>
+              Handpicked products just for you
             </p>
-            <div className="w-24 h-1 bg-elite-cta-purple mx-auto"></div>
+            <div className="w-12 h-1 rounded-full mx-auto" style={{
+              backgroundColor: 'var(--cta-dark-purple)'
+            }}></div>
           </div>
 
           {isLoading ? (
@@ -383,26 +417,33 @@ const Home: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
               {(featuredProducts || []).map((product) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="postcard-box group overflow-hidden"
+                  className="bg-white rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg"
+                  style={{
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
                 >
                   <div className="relative overflow-hidden">
-                    <div className="bg-elite-light-grey aspect-[4/5] flex items-center justify-center relative">
+                    <div className="aspect-[3/4] flex items-center justify-center relative" style={{
+                      backgroundColor: 'var(--light-grey)'
+                    }}>
                       {product.images && product.images.length > 0 ? (
                         <LazyImage
                           src={getImageUrl(product.images[0])}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <span className="font-inter text-elite-medium-grey text-sm">No Image</span>
+                        <span className="text-xs text-gray-400">No Image</span>
                       )}
-                      <div className="absolute top-3 left-3">
-                        <span className="bg-elite-gold-highlight text-elite-base-white text-xs font-bold font-inter px-3 py-1.5 uppercase tracking-wide">
+                      <div className="absolute top-2 left-2">
+                        <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{
+                          backgroundColor: 'var(--gold-highlight)'
+                        }}>
                           FEATURED
                         </span>
                       </div>
@@ -410,45 +451,44 @@ const Home: React.FC = () => {
                     <button 
                       onClick={(e) => handleToggleWishlist(product, e)}
                       disabled={wishlistLoading}
-                      className={`absolute top-3 right-3 p-2 bg-elite-base-white/90 backdrop-blur-sm shadow-card opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-elite-base-white disabled:opacity-50 ${
+                      className={`absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg disabled:opacity-50 ${
                         isInWishlist(product._id) ? 'opacity-100' : ''
                       }`}
                     >
-                      <Heart className={`h-4 w-4 transition-colors ${
+                      <Heart className={`h-3 w-3 transition-colors ${
                         isInWishlist(product._id)
                           ? 'text-red-500 fill-current'
-                          : 'text-elite-medium-grey hover:text-red-500'
+                          : 'text-gray-500 hover:text-red-500'
                       }`} />
                     </button>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-playfair font-semibold text-base mb-3 text-elite-charcoal-black line-clamp-2 leading-tight group-hover:text-elite-cta-purple transition-colors">
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-2 text-gray-900 line-clamp-2 leading-tight transition-colors" style={{
+                      color: 'var(--charcoal-black)'
+                    }}>
                       {product.name}
                     </h3>
                     
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-inter text-lg font-bold text-elite-charcoal-black">
-                            {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                              `From ${formatPrice(product.minPrice)}` : 
-                              formatPrice(product.minPrice || 0)
-                            }
-                          </span>
-                          {product.maxDiscount && product.maxDiscount > 0 && (
-                            <>
-                              <span className="font-inter text-sm text-elite-medium-grey line-through">
-                                {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                                  `From ${formatPrice(product.minOriginalPrice)}` : 
-                                  formatPrice(product.minOriginalPrice || 0)
-                                }
-                              </span>
-                              <span className="bg-elite-cta-purple text-elite-base-white text-xs font-bold font-inter px-2 py-1 uppercase tracking-wide">
-                                {product.maxDiscount}% OFF
-                              </span>
-                            </>
-                          )}
-                        </div>
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-bold" style={{
+                          color: 'var(--cta-dark-purple)'
+                        }}>
+                          {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
+                            `From ${formatPrice(product.minPrice)}` : 
+                            formatPrice(product.minPrice || 0)
+                          }
+                        </span>
+                        {product.maxDiscount && product.maxDiscount > 0 && (
+                          <>
+                            <span className="text-xs text-gray-500 line-through">
+                              {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
+                                `From ${formatPrice(product.minOriginalPrice)}` : 
+                                formatPrice(product.minOriginalPrice || 0)
+                              }
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -460,96 +500,106 @@ const Home: React.FC = () => {
       </section>
 
       {/* Elite Customer Reviews Section */}
-      <section className="section-white py-16">
+      <section className="py-6 lg:py-12" style={{
+        backgroundColor: 'var(--base-white)'
+      }}>
         <div className="elite-container">
-          <div className="text-center mb-12">
-            <h2 className="font-playfair text-section font-semibold text-elite-charcoal-black mb-4">
+          <div className="text-center mb-6 lg:mb-8">
+            <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
+              color: 'var(--charcoal-black)'
+            }}>
               Customer Reviews
             </h2>
-            <p className="font-inter text-body text-elite-medium-grey mb-6">
+            <p className="text-sm lg:text-base mb-4" style={{
+              color: 'var(--medium-grey)'
+            }}>
               See what our happy customers have to say
             </p>
-            <div className="w-24 h-1 bg-elite-cta-purple mx-auto"></div>
+            <div className="w-12 h-1 rounded-full mx-auto" style={{
+              backgroundColor: 'var(--cta-dark-purple)'
+            }}></div>
           </div>
           
           {/* Mobile Carousel Layout */}
           <div>
-            <div className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-4" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+            <div className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-3" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
               {/* Testimonial 1 - Prakash */}
-              <div className="flex-none w-80 postcard-box p-6 snap-center">
-                <div className="flex items-center mb-4">
+              <div className="flex-none w-72 lg:w-80 bg-white rounded-xl p-4 lg:p-6 snap-center" style={{
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <div className="flex items-center mb-3">
                   <div className="flex text-elite-gold-highlight">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-current" />
+                      <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
                 </div>
-                <p className="font-inter text-elite-charcoal-black mb-4 italic text-sm leading-relaxed">
+                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
                   "Great quality products and amazing service. Shopping here is always a wonderful experience. Highly recommend!"
                 </p>
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair">
+                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
                     P
                   </div>
-                  <div className="ml-3">
-                    <p className="font-playfair font-semibold text-elite-charcoal-black">Prakash</p>
-                    <p className="caption text-elite-medium-grey">Happy Customer</p>
+                  <div className="ml-2">
+                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Prakash</p>
+                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
                   </div>
                 </div>
               </div>
 
               {/* Testimonial 2 - Vishnu dutta */}
-              <div className="flex-none w-80 postcard-box p-6 snap-center">
-                <div className="flex items-center mb-4">
+              <div className="flex-none w-72 lg:w-80 postcard-box p-4 lg:p-6 snap-center">
+                <div className="flex items-center mb-3">
                   <div className="flex text-elite-gold-highlight">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-current" />
+                      <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
                 </div>
-                <p className="font-inter text-elite-charcoal-black mb-4 italic text-sm leading-relaxed">
+                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
                   "Love shopping at Shoppers9! Great selection and friendly service. Every order arrives quickly and exactly as expected."
                 </p>
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair">
+                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
                     V
                   </div>
-                  <div className="ml-3">
-                    <p className="font-playfair font-semibold text-elite-charcoal-black">Vishnu dutta</p>
-                    <p className="caption text-elite-medium-grey">Happy Customer</p>
+                  <div className="ml-2">
+                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Vishnu dutta</p>
+                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
                   </div>
                 </div>
               </div>
 
               {/* Testimonial 3 - venkat sai */}
-              <div className="flex-none w-80 postcard-box p-6 snap-center">
-                <div className="flex items-center mb-4">
+              <div className="flex-none w-72 lg:w-80 postcard-box p-4 lg:p-6 snap-center">
+                <div className="flex items-center mb-3">
                   <div className="flex text-elite-gold-highlight">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-current" />
+                      <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
                 </div>
-                <p className="font-inter text-elite-charcoal-black mb-4 italic text-sm leading-relaxed">
+                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
                   "Love the variety of products and competitive prices. Free delivery across all islands is a game changer!"
                 </p>
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair">
+                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
                     V
                   </div>
-                  <div className="ml-3">
-                    <p className="font-playfair font-semibold text-elite-charcoal-black">venkat sai</p>
-                    <p className="caption text-elite-medium-grey">Happy Customer</p>
+                  <div className="ml-2">
+                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">venkat sai</p>
+                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
                   </div>
                 </div>
               </div>
             </div>
             
             {/* Slider Dots Indicator */}
-            <div className="flex justify-center mt-6 space-x-2">
-              <div className="w-2 h-2 bg-elite-cta-purple rounded-full"></div>
-              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-              <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+            <div className="flex justify-center mt-4 space-x-1.5">
+              <div className="w-1.5 h-1.5 bg-elite-cta-purple rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
           </div>
         </div>

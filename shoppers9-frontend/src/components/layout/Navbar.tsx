@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, X, Heart, ChevronDown, Bell, Gift, Star, Shield } from 'lucide-react';
+import { ShoppingCart, User, Search, Menu, X, Heart, ChevronDown, Bell, Gift, Star, Shield, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
@@ -67,7 +67,7 @@ const Navbar: React.FC = () => {
       
       console.log('Total categories loaded:', categoryTree.length);
       console.log('Active categories:', activeCategories.length);
-      console.log('Sample categories:', activeCategories.slice(0, 3));
+      console.log('Sample categories with full structure:', JSON.stringify(activeCategories.slice(0, 2), null, 2));
       
       // Filter out categories with undefined or null IDs to prevent rendering issues
       const validCategories = activeCategories.filter(cat => (cat._id != null && cat._id !== undefined) || (cat.id != null && cat.id !== undefined));
@@ -217,7 +217,7 @@ const Navbar: React.FC = () => {
       )}
       
       {/* Elite Main Navbar */}
-      <nav className="bg-elite-base-white shadow-premium sticky top-0 z-50 border-b border-elite-light-grey">
+      <nav className="bg-elite-base-white shadow-premium lg:fixed lg:top-0 lg:left-0 lg:right-0 sticky top-0 z-50 border-b border-elite-light-grey">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Shoppers9 Logo */}
@@ -238,9 +238,8 @@ const Navbar: React.FC = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search products, brands, categories..."
-                    className="elite-input w-full pl-14 pr-12 py-3 text-sm placeholder-elite-medium-grey text-elite-charcoal-black font-inter"
+                    className="elite-input w-full px-4 py-3 text-sm placeholder-elite-medium-grey text-elite-charcoal-black font-inter"
                   />
-                  <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-elite-medium-grey group-focus-within:text-elite-cta-purple transition-colors duration-300" />
                 </div>
               </form>
             </div>
@@ -249,11 +248,11 @@ const Navbar: React.FC = () => {
             <div className="hidden lg:flex items-center space-x-4 xl:space-x-6">
               {/* Wishlist */}
               <Link to="/wishlist" className="group relative">
-                <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
+                <div className="flex flex-col items-center p-3 text-elite-charcoal-black hover:text-elite-cta-purple transition-colors">
                   <Heart className="h-6 w-6" />
                   <span className="text-xs mt-1 font-semibold font-inter">Wishlist</span>
                   {wishlistCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-elite-cta-purple text-elite-base-white text-xs h-6 w-6 flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-elite-base-white text-xs h-6 w-6 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
                       {wishlistCount > 99 ? '99+' : wishlistCount}
                     </span>
                   )}
@@ -262,11 +261,11 @@ const Navbar: React.FC = () => {
               
               {/* Cart */}
               <Link to="/cart" className="group relative">
-                <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
+                <div className="flex flex-col items-center p-3 text-elite-charcoal-black hover:text-elite-cta-purple transition-colors">
                   <ShoppingCart className="h-6 w-6" />
                   <span className="text-xs mt-1 font-semibold font-inter">Cart</span>
                   {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-elite-cta-purple text-elite-base-white text-xs h-6 w-6 flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-elite-base-white text-xs h-6 w-6 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
                       {cartCount > 99 ? '99+' : cartCount}
                     </span>
                   )}
@@ -280,7 +279,7 @@ const Navbar: React.FC = () => {
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="group relative"
                   >
-                    <div className="postcard-box flex flex-col items-center p-3 text-elite-charcoal-black">
+                    <div className="flex flex-col items-center p-3 text-elite-charcoal-black hover:text-elite-cta-purple transition-colors">
                       <div className="relative">
                         <User className="h-6 w-6" />
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-green border-2 border-white"></div>
@@ -289,55 +288,73 @@ const Navbar: React.FC = () => {
                     </div>
                   </button>
                   {showUserMenu && (
-                    <div className="modal-content absolute right-0 mt-4 w-64 bg-white/95 backdrop-blur-md shadow-postcard-hover border border-brand-light-grey py-2 z-50 animate-in slide-in-from-top-2 duration-300">
-                      <div className="px-6 py-4 border-b border-brand-light-grey">
+                    <div className="modal-content absolute right-0 mt-2 w-64 bg-gray-200 shadow-xl border border-gray-300 rounded-lg py-2 z-[9999] animate-in slide-in-from-top-2 duration-300">
+                      <div className="px-3 py-2 border-b border-gray-200">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-sunset-gradient flex items-center justify-center shadow-sunset">
-                            <span className="text-white font-bold text-lg font-montserrat">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                            <span className="text-white font-bold text-sm font-inter">
                               {(user?.name || user?.phone || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
-                          <div>
-                            <div className="font-bold text-brand-charcoal-black text-base font-montserrat">{user?.name || 'User'}</div>
-                            <div className="text-sm text-brand-medium-grey font-inter">{user?.email || user?.phone}</div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-gray-900 text-sm font-inter truncate">{user?.name || 'User'}</h3>
+                            <p className="text-xs text-gray-600 font-inter truncate">{user?.email || user?.phone}</p>
                           </div>
                         </div>
                       </div>
-                      <div className="py-2">
+                      <div className="py-1">
                         <Link
                           to="/profile"
-                          className="flex items-center space-x-3 px-6 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 group"
+                          className="flex items-center space-x-3 px-3 py-2 mx-1 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-all duration-200 group"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <User className="h-5 w-5" />
-                          <span className="font-medium">My Profile</span>
+                          <div className="w-6 h-6 bg-blue-100 rounded-md flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                            <User className="h-3 w-3 text-blue-600" />
+                          </div>
+                          <span className="font-medium text-xs">My Profile</span>
                         </Link>
                         <Link
                           to="/orders"
-                          className="flex items-center space-x-3 px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 group"
+                          className="flex items-center space-x-3 px-3 py-2 mx-1 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-md transition-all duration-200 group"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <ShoppingCart className="h-5 w-5" />
-                          <span className="font-medium">Orders</span>
+                          <div className="w-6 h-6 bg-purple-100 rounded-md flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                            <ShoppingCart className="h-3 w-3 text-purple-600" />
+                          </div>
+                          <span className="font-medium text-xs">Orders</span>
                         </Link>
                         <Link
                           to="/wishlist"
-                          className="flex items-center space-x-3 px-6 py-3 text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-all duration-200 group"
+                          className="flex items-center space-x-3 px-3 py-2 mx-1 text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-md transition-all duration-200 group"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <Heart className="h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
-                          <span className="font-medium">Wishlist</span>
+                          <div className="w-6 h-6 bg-pink-100 rounded-md flex items-center justify-center group-hover:bg-pink-200 transition-colors">
+                            <Heart className="h-3 w-3 text-pink-600 group-hover:scale-110 transition-transform duration-200" />
+                          </div>
+                          <span className="font-medium text-xs">Wishlist</span>
+                        </Link>
+                        <Link
+                          to="/support"
+                          className="flex items-center space-x-3 px-3 py-2 mx-1 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-md transition-all duration-200 group"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <div className="w-6 h-6 bg-green-100 rounded-md flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                            <MessageCircle className="h-3 w-3 text-green-600 group-hover:scale-110 transition-transform duration-200" />
+                          </div>
+                          <span className="font-medium text-xs">Support</span>
                         </Link>
                       </div>
-                      <div className="border-t border-gray-100 pt-2">
+                      <div className="border-t border-gray-200 pt-1 mt-1">
                         <button
                           onClick={handleLogout}
-                          className="flex items-center space-x-3 w-full px-6 py-3 text-red-600 hover:bg-red-50 transition-all duration-200 group"
+                          className="flex items-center space-x-3 w-full px-3 py-2 mx-1 text-red-600 hover:bg-red-50 rounded-md transition-all duration-200 group"
                         >
-                          <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                          </svg>
-                          <span className="font-medium">Logout</span>
+                          <div className="w-6 h-6 bg-red-100 rounded-md flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                            <svg className="w-3 h-3 text-red-600 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-xs">Logout</span>
                         </button>
                       </div>
                     </div>
@@ -374,7 +391,7 @@ const Navbar: React.FC = () => {
         </div>
 
         {/* Category Navigation */}
-        <div className={`border-t border-gray-200 bg-gray-50 relative z-50 lg:z-50 z-[100000] ${location.pathname === '/profile' ? 'hidden lg:block' : ''}`}>
+        <div className={`border-t border-gray-200 bg-gray-50 relative z-[999999] lg:z-50 lg:fixed lg:top-20 lg:left-0 lg:right-0 ${location.pathname === '/profile' ? 'hidden lg:block' : ''}`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex items-center lg:justify-center justify-start space-x-4 py-3 lg:overflow-x-visible overflow-x-auto lg:space-x-6 xl:space-x-8 category-scroll" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
               {categoriesLoading ? (
@@ -389,14 +406,14 @@ const Navbar: React.FC = () => {
               ) : (
                 categories.filter(cat => cat.level === 1).map((category, index) => (
                   <div 
-                    key={`${category._id}-${index}`} 
+                    key={category._id ? `category-${category._id}` : `category-${index}`} 
                     className="relative group"
                     onMouseEnter={() => handleCategoryHover(category._id)}
                     onMouseLeave={handleCategoryLeave}
                   >
                     <div className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 py-2 px-3 cursor-pointer rounded-md whitespace-nowrap">
                       <Link
-                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
+                        to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}`}
                         className="hover:text-blue-600 transition-colors duration-200 font-poppins"
                       >
                         <span>{category.name}</span>
@@ -407,26 +424,26 @@ const Navbar: React.FC = () => {
                     </div>
                     {showCategoriesMenu === category._id && category.children && category.children.length > 0 && (
                       <div 
-                         className="absolute top-full left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] lg:z-[9999] z-[99999]"
+                         className="absolute top-full left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999999] lg:z-[9999]"
                         onMouseEnter={() => handleCategoryHover(category._id)}
                         onMouseLeave={handleCategoryLeave}
                       >
                         <div className="p-6">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {category.children.filter(child => child.isActive).map((subcategory) => (
-                              <div key={subcategory._id} className="space-y-3">
+                            {category.children.filter(child => child.isActive).map((subcategory, subIndex) => (
+                              <div key={subcategory._id || `subcategory-${subIndex}`} className="space-y-3">
                                 <Link
-                                  to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}`}
+                                  to={`/products?category=${encodeURIComponent(subcategory.slug)}`}
                                   className="block font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 text-sm uppercase tracking-wide"
                                 >
                                   {subcategory.name}
                                 </Link>
                                 {subcategory.children && subcategory.children.length > 0 && (
                                   <div className="space-y-2">
-                                    {subcategory.children.filter(subChild => subChild.isActive).map((subSubcategory) => (
+                                    {subcategory.children.filter(subChild => subChild.isActive).map((subSubcategory, subSubIndex) => (
                                       <Link
-                                        key={subSubcategory._id}
-                                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name)}&subsubcategory=${encodeURIComponent(subSubcategory.slug || subSubcategory.name)}`}
+                                        key={subSubcategory._id || `subsubcategory-${subSubIndex}`}
+                                        to={`/products?category=${encodeURIComponent(subSubcategory.slug)}`}
                                         className="block text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 py-1"
                                       >
                                         {subSubcategory.name}
@@ -459,9 +476,8 @@ const Navbar: React.FC = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search products..."
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white transition-all duration-300"
+                    className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white transition-all duration-300"
                   />
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 </div>
               </form>
 
@@ -473,7 +489,7 @@ const Navbar: React.FC = () => {
                     {categories.filter(cat => cat.level === 1).slice(0, 6).map((category, index) => (
                       <Link
                         key={`${category._id}-${index}`}
-                        to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
+                        to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}`}
                         className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all duration-300"
                         onClick={() => setIsMenuOpen(false)}
                       >

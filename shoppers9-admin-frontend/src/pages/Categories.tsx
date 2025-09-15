@@ -68,14 +68,19 @@ const Categories: React.FC = () => {
 
   const fetchCategories = async (page: number = 1, limit: number = 10, search: string = '', status: string = '') => {
     try {
+      console.log('🔍 Fetching categories - Starting API call...');
       setIsLoading(true);
       setError('');
       
+      console.log('🔍 Calling authService.getAllCategories with params:', { page, limit, search, status });
       const data: CategoriesResponse = await authService.getAllCategories(page, limit, search, status);
+      console.log('✅ Categories API response:', data);
+      
       setCategories(data.categories);
       setPagination(data.pagination);
       setCurrentPage(data.pagination.currentPage);
     } catch (err: unknown) {
+      console.error('❌ Categories API error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
     } finally {
       setIsLoading(false);
@@ -83,12 +88,35 @@ const Categories: React.FC = () => {
   };
 
   useEffect(() => {
-    const delayedSearch = setTimeout(() => {
-      fetchCategories(currentPage, pageSize, searchTerm, statusFilter);
-    }, 300);
-
-    return () => clearTimeout(delayedSearch);
+    console.log('🔍 Categories useEffect triggered');
+    console.log('🔍 Admin token in localStorage:', localStorage.getItem('adminToken'));
+    console.log('🔍 Current params:', { currentPage, pageSize, searchTerm, statusFilter });
+    
+    // Force immediate API call without delay
+    console.log('🔍 Calling fetchCategories immediately...');
+    fetchCategories(currentPage, pageSize, searchTerm, statusFilter);
   }, [currentPage, pageSize, searchTerm, statusFilter]);
+
+  // Add component mount logging
+  useEffect(() => {
+    console.log('🔍 Categories component mounted!');
+    console.log('🔍 Window location:', window.location.href);
+    console.log('🔍 Document ready state:', document.readyState);
+    
+    // Force a visible alert to confirm component is loading
+    alert('Categories component mounted! Check console for logs.');
+  }, []);
+
+  // Add a manual test button
+  const testApiCall = async () => {
+    console.log('🔍 Manual API test triggered');
+    try {
+      const response = await authService.getAllCategories(1, 10, '', '');
+      console.log('✅ Manual API test success:', response);
+    } catch (error) {
+      console.error('❌ Manual API test failed:', error);
+    }
+  };
 
   const handleStatusToggle = async (categoryId: string, currentStatus: boolean) => {
     try {
@@ -159,6 +187,12 @@ const Categories: React.FC = () => {
           <p className="text-gray-600">Manage product categories and their status</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={testApiCall}
+            className="flex items-center px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            🔍 Test API
+          </button>
           <button
             onClick={() => setIsCategoryFormOpen(true)}
             className="flex items-center px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"

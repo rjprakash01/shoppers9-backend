@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { api } from './api';
 
-// Use relative URL in development to leverage Vite proxy, absolute URL in production
-// Fixed: Always use the environment variable or fallback to production URL
-// Use relative URLs to leverage Vite proxy configuration
-const API_BASE_URL = '';
+// Use the same API configuration as other services
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
+  : 'http://localhost:5001/api';
 
 class AuthService {
   private getErrorMessage(error: unknown, defaultMessage: string): string {
@@ -16,43 +17,15 @@ class AuthService {
   }
 
   constructor() {
-    // Set up axios defaults
-    axios.defaults.baseURL = API_BASE_URL;
-    
-    // Add request interceptor to handle authentication
-    axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('adminToken');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-    
-    // Add response interceptor to handle authentication errors
-    axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Clear invalid token and redirect to login
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-    );
+    // Use the shared API instance which already has proper interceptors configured
+    // No need to set up additional interceptors here
   }
 
   setAuthToken(token: string | null) {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-      delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
     }
   }
 
@@ -68,9 +41,9 @@ class AuthService {
         : { phone: loginField, password };
       
       console.log('Payload:', payload);
-      console.log('Making request to:', `${API_BASE_URL}/api/auth/admin/login`);
+      console.log('Making request to:', `/auth/admin/login`);
       
-      const response = await axios.post(`${API_BASE_URL}/api/auth/admin/login`, payload);
+      const response = await api.post('/auth/admin/login', payload);
       
       console.log('Response received:', response.status, response.data);
       
@@ -100,7 +73,7 @@ class AuthService {
 
   async sendOTP(phone: string) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/send-otp`, {
+      const response = await api.post('/auth/send-otp', {
         phone
       });
       
@@ -112,7 +85,7 @@ class AuthService {
 
   async verifyOTP(phone: string, otp: string) {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, {
+      const response = await api.post('/auth/verify-otp', {
         phone,
         otp
       });
@@ -130,7 +103,7 @@ class AuthService {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/analytics/dashboard?${params.toString()}`);
+      const response = await api.get(`/admin/analytics/dashboard?${params.toString()}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to fetch dashboard stats'));
@@ -139,7 +112,7 @@ class AuthService {
 
   async getSalesAnalytics(period: string = '30d') {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/analytics/sales?period=${period}`);
+      const response = await api.get(`/admin/analytics/sales?period=${period}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to fetch sales analytics'));
@@ -157,7 +130,7 @@ class AuthService {
         params.append('search', search);
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/users?${params.toString()}`);
+      const response = await api.get(`/admin/users?${params.toString()}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to fetch users'));
@@ -166,7 +139,7 @@ class AuthService {
 
   async updateUserStatus(userId: string, isVerified: boolean) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/api/admin/users/${userId}/status`, {
+      const response = await api.patch(`/admin/users/${userId}/status`, {
         isVerified
       });
       return response.data.data;
@@ -194,7 +167,7 @@ class AuthService {
         params.append('category', category);
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/products?${params.toString()}`);
+      const response = await api.get(`/admin/products?${params.toString()}`);
       
       if (response.data.success) {
         return {
@@ -217,7 +190,7 @@ class AuthService {
 
   async updateProductStatus(productId: string, isActive: boolean) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/api/admin/products/${productId}/status`, {
+      const response = await api.patch(`/admin/products/${productId}/status`, {
         isActive
       });
       return response.data.data;
@@ -237,7 +210,7 @@ class AuthService {
         params.append('status', status);
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/orders?${params.toString()}`);
+      const response = await api.get(`/admin/orders?${params.toString()}`);
       
       if (response.data.success) {
         // Debug: Log the raw API response
@@ -308,7 +281,7 @@ class AuthService {
 
   async updateOrderStatus(orderId: string, status: string, trackingId?: string) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/api/admin/orders/${orderId}/status`, {
+      const response = await api.patch(`/admin/orders/${orderId}/status`, {
         status,
         trackingId
       });
@@ -333,7 +306,7 @@ class AuthService {
         params.append('status', status);
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/categories?${params.toString()}`);
+      const response = await api.get(`/admin/categories?${params.toString()}`);
       
       // Handle the backend response format: {success: true, data: {categories: [...], pagination: {...}}}
       if (response.data && response.data.success && response.data.data) {
@@ -349,7 +322,7 @@ class AuthService {
 
   async updateCategoryStatus(categoryId: string, isActive: boolean) {
     try {
-      const response = await axios.patch(`${API_BASE_URL}/api/admin/categories/${categoryId}/status`, {
+      const response = await api.patch(`/admin/categories/${categoryId}/status`, {
         isActive
       });
       return response.data.data;
@@ -366,7 +339,7 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.post(`${API_BASE_URL}/api/admin/products`, productData, config);
+      const response = await api.post('/admin/products', productData, config);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to create product'));
@@ -381,7 +354,7 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.post(`${API_BASE_URL}/api/admin/categories`, categoryData, config);
+      const response = await api.post('/admin/categories', categoryData, config);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to create category'));
@@ -396,7 +369,7 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.put(`${API_BASE_URL}/api/admin/products/${productId}`, productData, config);
+      const response = await api.put(`/admin/products/${productId}`, productData, config);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to update product'));
@@ -411,7 +384,7 @@ class AuthService {
         }
       } : {};
       
-      const response = await axios.put(`${API_BASE_URL}/api/admin/categories/${categoryId}`, categoryData, config);
+      const response = await api.put(`/admin/categories/${categoryId}`, categoryData, config);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to update category'));
@@ -420,7 +393,7 @@ class AuthService {
 
   async getProductById(productId: string) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/products/${productId}`);
+      const response = await api.get(`/admin/products/${productId}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get product'));
@@ -429,7 +402,7 @@ class AuthService {
 
   async getCategoryById(categoryId: string) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/categories/${categoryId}`);
+      const response = await api.get(`/admin/categories/${categoryId}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get category'));
@@ -438,7 +411,7 @@ class AuthService {
 
   async getProductsByCategory(categoryId: string, page: number = 1, limit: number = 10) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/products?category=${categoryId}&page=${page}&limit=${limit}`);
+      const response = await api.get(`/admin/products?category=${categoryId}&page=${page}&limit=${limit}`);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get products by category'));
@@ -447,7 +420,7 @@ class AuthService {
 
   async deleteProduct(productId: string) {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/admin/products/${productId}`);
+      const response = await api.delete(`/admin/products/${productId}`);
       return response.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to delete product'));
@@ -456,7 +429,7 @@ class AuthService {
 
   async getCategoryTree() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/admin/categories/tree`);
+      const response = await api.get('/admin/categories/tree');
       return response.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get category tree'));
@@ -465,7 +438,7 @@ class AuthService {
 
   async get(url: string) {
     try {
-      const response = await axios.get(url);
+      const response = await api.get(url);
       return response.data;
     } catch (error: any) {
       // Preserve the original error structure for better error handling
@@ -475,7 +448,7 @@ class AuthService {
 
   async post(url: string, data?: any) {
     try {
-      const response = await axios.post(url, data);
+      const response = await api.post(url, data);
       return response.data;
     } catch (error: any) {
       // Preserve the original error structure for better error handling
@@ -485,7 +458,7 @@ class AuthService {
 
   async put(url: string, data?: any) {
     try {
-      const response = await axios.put(url, data);
+      const response = await api.put(url, data);
       return response.data;
     } catch (error: any) {
       // Preserve the original error structure for better error handling
@@ -495,7 +468,7 @@ class AuthService {
 
   async delete(url: string) {
     try {
-      const response = await axios.delete(url);
+      const response = await api.delete(url);
       return response.data;
     } catch (error: any) {
       // Preserve the original error structure for better error handling

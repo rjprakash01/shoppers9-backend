@@ -281,10 +281,41 @@ const OrderDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 lg:py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        {/* Mobile Header */}
+        <div className="lg:hidden mb-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-xl font-bold text-gray-900">Order Details</h1>
+              <button
+                onClick={() => navigate('/orders')}
+                className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
+              >
+                ← Back
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500">Order ID</p>
+                <p className="font-semibold text-sm">{order.orderId}</p>
+              </div>
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Date</p>
+                  <p className="font-semibold text-sm">{formatDate(order.createdAt)}</p>
+                </div>
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
+                  {getStatusIcon(order.orderStatus)}
+                  <span className="ml-1 capitalize">{order.orderStatus.replace('_', ' ')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden lg:block bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900">Order Details</h1>
             <button
@@ -315,8 +346,8 @@ const OrderDetail: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-wrap gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 mb-4 lg:mb-6">
+          <div className="flex flex-wrap gap-3 lg:gap-4">
             {/* Track Button - Show for all statuses except delivered, returned, and cancelled */}
             {!['delivered', 'returned', 'cancelled'].includes(order.orderStatus.toLowerCase()) && (
               <button
@@ -375,30 +406,30 @@ const OrderDetail: React.FC = () => {
         </div>
 
         {/* Order Items */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h2>
-          <div className="space-y-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 mb-4 lg:mb-6">
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Order Items</h2>
+          <div className="space-y-3 lg:space-y-4">
             {order.items.map((item, index) => {
               const variant = item.product?.variants?.find(v => v._id === item.variantId);
               const imageUrl = variant?.images?.[0] || item.product?.images?.[0] || '';
               
               return (
-                <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                <div key={index} className="flex items-center space-x-3 lg:space-x-4 p-3 lg:p-4 bg-gray-50 rounded-lg">
                   <img
                     src={getImageUrl(imageUrl)}
                     alt={item.product?.name || 'Product'}
-                    className="w-16 h-16 object-cover rounded-md"
+                    className="w-12 lg:w-16 h-12 lg:h-16 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{item.product?.name || 'Product'}</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="font-medium text-gray-900 text-sm lg:text-base">{item.product?.name || 'Product'}</h3>
+                    <p className="text-xs lg:text-sm text-gray-500">
                       {variant?.color && `${variant.color} • `}Size: {item.size}
                     </p>
-                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                    <p className="text-xs lg:text-sm text-gray-500">Quantity: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
-                    <p className="text-sm text-gray-500">{formatPrice(item.price)} each</p>
+                    <p className="font-semibold text-gray-900 text-sm lg:text-base">{formatPrice(item.price * item.quantity)}</p>
+                    <p className="text-xs lg:text-sm text-gray-500">{formatPrice(item.price)} each</p>
                   </div>
                 </div>
               );
@@ -407,8 +438,8 @@ const OrderDetail: React.FC = () => {
         </div>
 
         {/* Order Summary */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-6 mb-4 lg:mb-6">
+          <h2 className="text-base lg:text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Subtotal</span>

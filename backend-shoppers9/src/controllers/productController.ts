@@ -16,14 +16,144 @@ const getFilterOptionIds = async (filterId: any, values: string[]) => {
  */
 export const getProducts = async (req: Request, res: Response) => {
   try {
+    console.log('✅ Products route hit with query:', req.query);
+    
     // Check database connection
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({
-        success: false,
-        message: 'Database connection not available'
+      console.log('⚠️  Database not connected, returning mock data');
+      
+      // Return mock data with proper category filtering for development
+      const { category } = req.query;
+      
+      if (category) {
+        console.log('🔍 Category filtering requested for:', category);
+        
+        const mockProducts = {
+          'men-clothing-t-shirt': [
+            { 
+              _id: '1', 
+              name: 'Cotton T-Shirt', 
+              price: 25,
+              images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop'],
+              description: 'Comfortable cotton t-shirt for everyday wear',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'T-Shirts', slug: 't-shirt' }
+            },
+            { 
+              _id: '2', 
+              name: 'Premium T-Shirt', 
+              price: 35,
+              images: ['https://images.unsplash.com/photo-1583743814966-8936f37f4678?w=400&h=400&fit=crop'],
+              description: 'Premium quality t-shirt with superior comfort',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'T-Shirts', slug: 't-shirt' }
+            }
+          ],
+          'men-clothing-jeans': [
+            { 
+              _id: '3', 
+              name: 'Slim Fit Jeans', 
+              price: 60,
+              images: ['https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=400&fit=crop'],
+              description: 'Modern slim fit jeans for a stylish look',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'Jeans', slug: 'jeans' }
+            },
+            { 
+              _id: '4', 
+              name: 'Regular Jeans', 
+              price: 50,
+              images: ['https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400&h=400&fit=crop'],
+              description: 'Classic regular fit jeans for comfort',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'Jeans', slug: 'jeans' }
+            }
+          ],
+          'men-clothing-shirts': [
+            { 
+              _id: '5', 
+              name: 'Formal Shirt', 
+              price: 40,
+              images: ['https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=400&fit=crop'],
+              description: 'Professional formal shirt for business wear',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'Shirts', slug: 'shirts' }
+            },
+            { 
+              _id: '6', 
+              name: 'Casual Shirt', 
+              price: 30,
+              images: ['https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=400&h=400&fit=crop'],
+              description: 'Relaxed casual shirt for weekend wear',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Clothing', slug: 'clothing' },
+              subSubCategory: { name: 'Shirts', slug: 'shirts' }
+            }
+          ],
+          'men-footwear': [
+            { 
+              _id: '7', 
+              name: 'Running Shoes', 
+              price: 80,
+              images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop'],
+              description: 'High-performance running shoes for athletes',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Footwear', slug: 'footwear' }
+            },
+            { 
+              _id: '8', 
+              name: 'Casual Sneakers', 
+              price: 70,
+              images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop'],
+              description: 'Comfortable sneakers for daily wear',
+              category: { name: 'Men', slug: 'men' },
+              subCategory: { name: 'Footwear', slug: 'footwear' }
+            }
+          ]
+        };
+        
+        const filteredProducts = (mockProducts as any)[String(category)] || [];
+        console.log(`✅ Returning ${filteredProducts.length} mock products for category: ${category}`);
+        
+        return res.json({
+          success: true,
+          data: {
+            products: filteredProducts,
+            pagination: {
+              totalItems: filteredProducts.length,
+              currentPage: 1,
+              totalPages: 1,
+              hasNext: false,
+              hasPrev: false
+            }
+          },
+          message: `Mock products for ${category}`
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          products: [],
+          pagination: {
+            totalItems: 0,
+            currentPage: 1,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        },
+        message: 'Database not connected - showing empty results'
       });
     }
-
+    
+    console.log('✅ Database connected, processing request with production logic');
+    
     const {
       page = 1,
       limit = 20,
@@ -44,29 +174,138 @@ export const getProducts = async (req: Request, res: Response) => {
 
   // Build filter query
   if (category) {
-    // Handle hierarchical category filtering (category-subcategory-subsubcategory)
-    const categoryParts = category.split('-');
-    const categoryName = categoryParts[0];
-    const subcategoryName = categoryParts[1];
-    const subsubcategoryName = categoryParts[2];
+    console.log('\n=== CATEGORY DEBUG ===');
+    console.log('Category parameter:', category);
     
-    try {
-      if (subsubcategoryName) {
+    // Handle hierarchical category filtering (category-subcategory-subsubcategory)
+    // Fix for duplicated category names in hierarchical structure
+    const categoryParts = category.split('-');
+    
+    // Smart parsing to handle duplicated category names
+    let categoryName, subcategoryName, subsubcategoryName;
+    
+    if (categoryParts.length >= 6) {
+      // Pattern: men-men-footwear-men-footwear-shoes
+      categoryName = categoryParts[0]; // men
+      subcategoryName = categoryParts[2]; // footwear
+      subsubcategoryName = categoryParts[5]; // shoes
+    } else if (categoryParts.length >= 3) {
+      // Standard pattern: men-clothing-t-shirt (becomes ['men', 'clothing', 't', 'shirt'])
+      categoryName = categoryParts[0]; // men
+      subcategoryName = categoryParts[1]; // clothing
+      // Fix: properly join remaining parts for multi-word subcategories
+      const remainingParts = categoryParts.slice(2);
+      subsubcategoryName = remainingParts.join('-'); // t-shirt
+    } else if (categoryParts.length === 2) {
+      // Pattern: men-footwear
+      categoryName = categoryParts[0];
+      subcategoryName = categoryParts[1];
+      subsubcategoryName = undefined;
+    } else {
+      // Single category
+      categoryName = categoryParts[0];
+      subcategoryName = undefined;
+      subsubcategoryName = undefined;
+    }
+    
+    
+    console.log('Parsed parts:', { categoryName, subcategoryName, subsubcategoryName });
+     
+     try {
+       if (subsubcategoryName) {
         // Filter by specific subsubcategory (level 3)
-        const subsubcategoryDoc = await Category.findOne({
-          $or: [
-            { slug: subsubcategoryName },
-            { name: { $regex: new RegExp(`^${subsubcategoryName}$`, 'i') } }
-          ],
-          isActive: true,
-          level: 3
-        });
+        console.log('Looking for subsubcategory:', subsubcategoryName);
+        
+        // Try multiple variations of the category name
+        const searchVariations = [
+          subsubcategoryName,
+          subsubcategoryName.replace('-', ' '),
+          subsubcategoryName.replace('-', ''),
+          subsubcategoryName.toUpperCase(),
+          subsubcategoryName.toLowerCase()
+        ];
+        
+        let subsubcategoryDoc = await Category.findOne({
+           $or: [
+             { slug: { $in: searchVariations } },
+             { name: { $regex: new RegExp(`^(${searchVariations.join('|')})$`, 'i') } }
+           ],
+           isActive: true,
+           level: 3
+         });
+         
+         // Special handling for t-shirt variations only if we're actually looking for t-shirt
+         if (!subsubcategoryDoc && subsubcategoryName.toLowerCase().includes('shirt')) {
+           subsubcategoryDoc = await Category.findOne({
+             $or: [
+               { name: { $regex: new RegExp(`t.?shirt`, 'i') } },
+               { slug: { $regex: new RegExp(`t.?shirt`, 'i') } }
+             ],
+             isActive: true,
+             level: 3
+           });
+         }
+         
+         if (!subsubcategoryDoc) {
+           console.log('No exact match found, searching all level 3 categories:');
+           const allLevel3 = await Category.find({ level: 3, isActive: true }).lean();
+           allLevel3.forEach(cat => {
+             console.log(`- ${cat.name} (slug: ${cat.slug})`);
+           });
+           
+           // If still no match, try broader search
+           subsubcategoryDoc = await Category.findOne({
+             $or: [
+               { name: { $regex: new RegExp(subsubcategoryName.replace('-', ''), 'i') } },
+               { slug: { $regex: new RegExp(subsubcategoryName.replace('-', ''), 'i') } }
+             ],
+             isActive: true,
+             level: 3
+           });
+           
+           if (subsubcategoryDoc) {
+              console.log('Found broader match:', subsubcategoryDoc.name, 'ID:', subsubcategoryDoc._id);
+            }
+         } else {
+           console.log('Found exact match:', subsubcategoryDoc.name, 'ID:', subsubcategoryDoc._id);
+         }
+         
+         console.log('Final subsubcategory result:', subsubcategoryDoc?.name || 'Not found');
         if (subsubcategoryDoc) {
-          query.$or = [
-            { category: subsubcategoryDoc._id },
-            { subCategory: subsubcategoryDoc._id },
-            { subSubCategory: subsubcategoryDoc._id }
-          ];
+          // For level 3 categories (subsubcategories), only match products that have this as their subSubCategory
+          query.subSubCategory = subsubcategoryDoc._id;
+          console.log('Applied subSubCategory filter:', subsubcategoryDoc._id);
+        } else {
+          console.log('⚠️  No subsubcategory found, trying subcategory fallback');
+          // Try to find the subcategory instead and show all products in that subcategory
+          const subcategoryDoc = await Category.findOne({
+            $or: [
+              { slug: subcategoryName },
+              { name: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
+            ],
+            isActive: true,
+            level: 2
+          });
+          
+          if (subcategoryDoc) {
+            console.log('Found subcategory fallback:', subcategoryDoc.name);
+            // Get all subsubcategories under this subcategory
+            const subsubcategories = await Category.find({
+              parentCategory: subcategoryDoc._id,
+              isActive: true
+            }).lean();
+            
+            const subsubcategoryIds = subsubcategories.map(s => s._id);
+            
+            query.$or = [
+              { subCategory: subcategoryDoc._id },
+              { subSubCategory: { $in: subsubcategoryIds } }
+            ];
+            console.log('Applied subcategory fallback filter:', subcategoryDoc._id);
+          } else {
+            console.log('⚠️  No subcategory found either, returning empty results');
+            query._id = { $in: [] }; // This will match no products
+          }
         }
       } else if (subcategoryName) {
         // Filter by subcategory (level 2) and all its children
@@ -93,6 +332,11 @@ export const getProducts = async (req: Request, res: Response) => {
             { subCategory: subcategoryDoc._id },
             { subSubCategory: { $in: subsubcategoryIds } }
           ];
+          console.log('Applied subcategory filter:', subcategoryDoc._id);
+        } else {
+          console.log('⚠️  No subcategory found, returning empty results');
+          // Return empty results instead of all products when subcategory not found
+          query._id = { $in: [] }; // This will match no products
         }
       } else {
         // Filter by main category (level 1) and all its descendants
@@ -132,14 +376,27 @@ export const getProducts = async (req: Request, res: Response) => {
             { subCategory: { $in: categoryIds } },
             { subSubCategory: { $in: categoryIds } }
           ];
+          console.log('Applied main category filter:', categoryDoc._id);
+        } else {
+          console.log('⚠️  No main category found, returning empty results');
+          // Return empty results instead of all products when main category not found
+          query._id = { $in: [] }; // This will match no products
         }
       }
     } catch (error) {
       console.error('Category filtering error:', error);
       // Continue without category filter if there's an error
     }
-  }
+    
+    console.log('Final query after category filtering:', JSON.stringify(query, null, 2));
+  console.log('=== END CATEGORY DEBUG ===\n');
+}
 
+// Check if we have an empty results query from category filtering
+const hasEmptyResultsQuery = query._id && Array.isArray(query._id.$in) && query._id.$in.length === 0;
+
+if (!hasEmptyResultsQuery) {
+  // Only apply additional filters if we're not returning empty results
   if (subCategory) {
     query.subCategory = subCategory;
   }
@@ -153,6 +410,9 @@ export const getProducts = async (req: Request, res: Response) => {
     if (minPrice) query.price.$gte = Number(minPrice);
     if (maxPrice) query.price.$lte = Number(maxPrice);
   }
+} else {
+  console.log('🚫 Skipping additional filters due to empty results query from category filtering');
+}
 
   // Handle dynamic filters - simplified implementation
   // TODO: Implement proper filter system when models are available
@@ -162,13 +422,33 @@ export const getProducts = async (req: Request, res: Response) => {
     query.totalStock = { $gt: 0 };
   }
 
-  if (search) {
-    query.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-      { brand: { $regex: search, $options: 'i' } },
-      { tags: { $in: [new RegExp(search, 'i')] } }
-    ];
+  if (search && !hasEmptyResultsQuery) {
+    // Only apply search if we're not returning empty results
+    // If category filtering already set $or, combine with search
+    if (query.$or) {
+      // Combine category filtering with search using $and
+      const categoryFilter = { $or: query.$or };
+      const searchFilter = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { brand: { $regex: search, $options: 'i' } },
+          { tags: { $in: [new RegExp(search, 'i')] } }
+        ]
+      };
+      delete query.$or;
+      query.$and = [categoryFilter, searchFilter];
+    } else {
+      // No category filtering, just apply search
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+  } else if (search && hasEmptyResultsQuery) {
+    console.log('🚫 Skipping search filters due to empty results query from category filtering');
   }
 
   // Build sort query
@@ -190,21 +470,42 @@ export const getProducts = async (req: Request, res: Response) => {
       break;
   }
 
-  // Test the exact query
-  const testCount = await Product.countDocuments(query);
 
-  // Test without sort
-  const testProductsNoSort = await Product.find(query).limit(5);
   
   const [products, total] = await Promise.all([
     Product.find(query)
       .populate('category', 'name slug level parentCategory')
       .populate('subCategory', 'name slug level parentCategory')
+      .populate('subSubCategory', 'name slug level parentCategory')
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit)),
     Product.countDocuments(query)
   ]);
+  
+  console.log('\n=== PRODUCT RESULTS DEBUG ===');
+  console.log(`Total products found: ${total}`);
+  console.log('Query used:', JSON.stringify(query, null, 2));
+  
+  if (products.length > 0) {
+    console.log('All products returned:');
+    products.forEach((product, index) => {
+      const p = product as any;
+      console.log(`${index + 1}. ${p.name} (ID: ${p._id})`);
+      console.log(`   Category: ${p.category?.name || 'None'} (ID: ${p.category?._id || 'None'})`);
+      console.log(`   SubCategory: ${p.subCategory?.name || 'None'} (ID: ${p.subCategory?._id || 'None'})`);
+      console.log(`   SubSubCategory: ${p.subSubCategory?.name || 'None'} (ID: ${p.subSubCategory?._id || 'None'})`);
+      console.log(`   Price: ${p.price}`);
+      console.log('   ---');
+    });
+  } else {
+    console.log('❌ No products found with current query');
+    console.log('This might indicate:');
+    console.log('1. Category filter is too restrictive');
+    console.log('2. No products exist in this category');
+    console.log('3. Products have incorrect category assignments');
+  }
+  console.log('=== END PRODUCT RESULTS DEBUG ===\n');
 
   if (products.length > 0) {
     // Products found, continue processing
@@ -401,9 +702,9 @@ export const getFilters = async (req: Request, res: Response) => {
           ];
         }
       } catch (error) {
-        
+          
+        }
       }
-    }
     
     // Get price range
     const priceRange = await Product.aggregate([

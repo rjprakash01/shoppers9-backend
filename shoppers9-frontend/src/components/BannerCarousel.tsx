@@ -191,7 +191,22 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
             {currentBanner.link && currentBanner.buttonText && (
               <Link
                 key={`banner-link-${currentBanner._id}`}
-                to={currentBanner.link}
+                to={(() => {
+                  console.log('Banner link debug:', {
+                    originalLink: currentBanner.link,
+                    title: currentBanner.title,
+                    buttonText: currentBanner.buttonText
+                  });
+                  
+                  if (currentBanner.link.startsWith('/categories/')) {
+                    const transformedLink = `/products?category=${currentBanner.link.replace('/categories/', '')}`;
+                    console.log('Transformed link:', transformedLink);
+                    return transformedLink;
+                  }
+                  
+                  console.log('Using original link:', currentBanner.link);
+                  return currentBanner.link;
+                })()}
                 className="inline-flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 rounded-2xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
               >
                 {currentBanner.buttonText}

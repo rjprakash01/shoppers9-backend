@@ -6,6 +6,9 @@ import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { OrderStatus, PaymentStatus, RefundStatus } from '../types';
+import { inventoryService } from '../services/inventoryService';
+import { shippingService } from '../services/shippingService';
+import { couponService } from '../services/couponService';
 
 // Create a new order from cart
 export const createOrder = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -54,26 +57,20 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
 
 
 
-    // Validate stock availability
-    for (const item of cart.items) {
-      const product = await Product.findById(item.product);
-      if (!product) {
-        return next(new AppError(`Product ${item.product} not found`, 404));
-      }
+    // Validate stock availability using inventory service
+    const stockItems = cart.items.map(item => ({
+      productId: item.product,
+      variantId: item.variantId,
+      quantity: item.quantity
+    }));
 
-      const variant = product.variants.find(v => v._id?.toString() === item.variantId);
-      if (!variant) {
-        return next(new AppError(`Product variant not found`, 404));
-      }
-
-      const variantObj = variant as any;
-      if (variantObj.size !== item.size) {
-        return next(new AppError(`Size mismatch for ${product.name}`, 400));
-      }
-      
-      if (!variantObj.stock || variantObj.stock < item.quantity) {
-        return next(new AppError(`Insufficient stock for ${product.name} - ${item.size}`, 400));
-      }
+    const stockCheck = await inventoryService.checkStock(stockItems);
+    if (!stockCheck.inStock) {
+      const unavailableItems = stockCheck.unavailableItems.map(item => {
+        const cartItem = cart.items.find(ci => ci.product === item.productId && ci.variantId === item.variantId);
+        return `${cartItem?.product || 'Unknown Product'} - Requested: ${item.requested}, Available: ${item.available}`;
+      }).join(', ');
+      return next(new AppError(`Insufficient stock for: ${unavailableItems}`, 400));
     }
 
     // Generate order number
@@ -121,17 +118,23 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
 
     await order.save();
 
-    // Update product stock
-    for (const item of cart.items) {
-      await Product.updateOne(
-        {
-          _id: item.product,
-          'variants._id': item.variantId
-        },
-        {
-          $inc: { 'variants.$.stock': -item.quantity }
-        }
-      );
+    // Reserve stock using inventory service
+    try {
+      await inventoryService.reserveStock(stockItems);
+    } catch (error) {
+      // If stock reservation fails, delete the order and throw error
+      await Order.findByIdAndDelete(order._id);
+      return next(new AppError(`Failed to reserve stock: ${(error as Error).message}`, 400));
+    }
+
+    // Increment coupon usage if coupon was applied
+    if (cart.appliedCoupon) {
+      try {
+        await couponService.incrementCouponUsage(cart.appliedCoupon);
+      } catch (error) {
+        console.error('Failed to increment coupon usage:', error);
+        // Don't fail the order for coupon tracking issues
+      }
     }
 
     // Clear cart
@@ -158,13 +161,14 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
 // Get user's orders
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
     const { page = 1, limit = 10, status } = req.query;
 
     if (!userId) {
       return next(new AppError('User not authenticated', 401));
     }
 
+    console.log('Fetching orders for userId:', userId);
     const query: any = { userId };
     if (status) {
       query.orderStatus = status;
@@ -177,6 +181,11 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response, ne
       .populate('items.product', 'name images brand variants');
 
     const total = await Order.countDocuments(query);
+    
+    console.log('Found orders:', orders.length, 'Total count:', total);
+    if (orders.length > 0) {
+      console.log('First order:', JSON.stringify(orders[0], null, 2));
+    }
 
     res.json({
       success: true,
@@ -255,17 +264,28 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
 
     await order.save();
 
-    // Restore product stock
-    for (const item of order.items) {
-      await Product.updateOne(
-        {
-          _id: item.product,
-          'variants._id': item.variantId
-        },
-        {
-          $inc: { 'variants.$.stock': item.quantity }
-        }
-      );
+    // Restore product stock using inventory service
+    const stockItems = order.items.map(item => ({
+      productId: item.product,
+      variantId: item.variantId,
+      quantity: item.quantity
+    }));
+
+    try {
+      await inventoryService.releaseStock(stockItems);
+    } catch (error) {
+      console.error('Failed to restore stock for cancelled order:', error);
+      // Continue with cancellation even if stock restoration fails
+    }
+
+    // Restore coupon usage if coupon was used
+    if (order.couponCode) {
+      try {
+        await couponService.decrementCouponUsage(order.couponCode);
+      } catch (error) {
+        console.error('Failed to restore coupon usage for cancelled order:', error);
+        // Continue with cancellation even if coupon restoration fails
+      }
     }
 
     res.json({
@@ -412,6 +432,68 @@ export const requestReturn = async (req: AuthenticatedRequest, res: Response, ne
 };
 
 // Get order analytics (for admin)
+// Calculate shipping rates for checkout
+export const calculateCheckoutShipping = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { shippingAddress, serviceType, providerId } = req.body;
+    const userId = req.user?.userId || req.user?.id;
+
+    if (!userId) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    if (!shippingAddress || !shippingAddress.pincode) {
+      return next(new AppError('Shipping address with pincode is required', 400));
+    }
+
+    // Get user's cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart || cart.items.length === 0) {
+      return next(new AppError('Cart is empty', 400));
+    }
+
+    // Calculate package details from cart items
+    let totalWeight = 0;
+    let totalValue = cart.totalAmount;
+    const maxDimensions = { length: 30, width: 20, height: 15 }; // Default package dimensions
+
+    // Estimate weight based on items (this could be enhanced with actual product weights)
+    for (const item of cart.items) {
+      totalWeight += item.quantity * 0.5; // Assume 0.5kg per item as default
+    }
+
+    // Ensure minimum weight
+    totalWeight = Math.max(totalWeight, 0.1);
+
+    const shippingRequest = {
+      weight: totalWeight,
+      dimensions: maxDimensions,
+      value: totalValue,
+      fromPincode: '110001', // Default warehouse pincode
+      toPincode: shippingAddress.pincode,
+      serviceType,
+      providerId
+    };
+
+    const shippingOptions = await shippingService.calculateShippingRates(shippingRequest);
+
+    res.json({
+      success: true,
+      message: 'Shipping rates calculated successfully',
+      data: {
+        options: shippingOptions,
+        packageDetails: {
+          weight: totalWeight,
+          dimensions: maxDimensions,
+          value: totalValue
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getOrderAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { startDate, endDate, status } = req.query;

@@ -29,7 +29,7 @@ const supportMessageSchema = new Schema<ISupportMessage>({
 const supportSchema = new Schema<ISupport>({
   ticketId: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
     trim: true
   },
