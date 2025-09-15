@@ -26,6 +26,7 @@ import supportRoutes from './routes/support';
 import inventoryRoutes from './routes/inventory';
 import shippingRoutes from './routes/shipping';
 import couponRoutes from './routes/coupon';
+import searchRoutes from './routes/search';
 
 // Load environment variables
 dotenv.config();
@@ -137,6 +138,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/analytics', analyticsRoutes);

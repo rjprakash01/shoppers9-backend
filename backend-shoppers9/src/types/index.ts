@@ -8,10 +8,22 @@ export interface IUser extends Document {
   name: string;
   email?: string;
   phone: string;
+  password?: string;
+  authMethod: 'phone' | 'email' | 'both';
   isVerified: boolean;
+  isEmailVerified?: boolean;
   addresses: IAddress[];
+  lastLogin?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  loginAttempts?: number;
+  lockUntil?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Methods
+  comparePassword?(candidatePassword: string): Promise<boolean>;
+  isLocked?(): boolean;
+  incLoginAttempts?(): Promise<IUser>;
 }
 
 export interface IAddress {
@@ -329,9 +341,11 @@ export interface ICoupon extends Document {
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount?: number;
+  maxBonusCap?: number;
   usageLimit: number;
   usedCount: number;
   isActive: boolean;
+  showOnWebsite: boolean;
   validFrom: Date;
   validUntil: Date;
   applicableCategories?: string[];
@@ -658,7 +672,9 @@ export interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
     id: string;
-    phone: string;
+    phone?: string;
+    email?: string;
+    authMethod?: 'phone' | 'email' | 'both';
     isVerified: boolean;
     isAdmin?: boolean;
     adminRole?: string;

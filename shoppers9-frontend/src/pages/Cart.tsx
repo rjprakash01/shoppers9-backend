@@ -25,20 +25,19 @@ interface Address {
 const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, addToCart, moveToWishlist } = useCart();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, updateUser } = useAuth();
   const { wishlist, localWishlist, addToWishlist, removeFromWishlist, clearWishlist, isInWishlist, refreshWishlist } = useWishlist();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [couponDiscount, setCouponDiscount] = useState(0);
+
   const [showPriceDetails, setShowPriceDetails] = useState(false);
   const [showWishlist, setShowWishlist] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [sizeModalOpen, setSizeModalOpen] = useState<string | null>(null);
   const [quantityModalOpen, setQuantityModalOpen] = useState<string | null>(null);
   const [selectedItemForChange, setSelectedItemForChange] = useState<CartItem | null>(null);
+
 
   // Get current cart items based on authentication status
   const cartItems = isAuthenticated ? (cart?.items || []) : localCart;
@@ -53,8 +52,15 @@ const Cart: React.FC = () => {
   // Set default address when user data is available
   React.useEffect(() => {
     if (user?.addresses && user.addresses.length > 0 && !selectedAddress) {
-      const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0];
-      setSelectedAddress(defaultAddress);
+      // If user has only one address, automatically set it as default
+      if (user.addresses.length === 1) {
+        const singleAddress = { ...user.addresses[0], isDefault: true };
+        setSelectedAddress(singleAddress);
+      } else {
+        // If multiple addresses, use the default one or first one
+        const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0];
+        setSelectedAddress(defaultAddress);
+      }
     }
   }, [user, selectedAddress]);
 
@@ -184,64 +190,18 @@ const Cart: React.FC = () => {
     setIsAddressBookOpen(true);
   };
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      alert('Please enter a coupon code');
-      return;
-    }
-
-    if (!isAuthenticated) {
-      // Store the coupon code for after login
-      localStorage.setItem('pendingCouponCode', couponCode.trim());
-      const shouldLogin = confirm(`To apply coupon "${couponCode.trim()}", you need to login first. Would you like to login now?`);
-      if (shouldLogin) {
-        navigate('/login?redirect=cart&coupon=' + encodeURIComponent(couponCode.trim()));
-      }
-      return;
-    }
-
-    try {
-      // Import coupon service
-      const { couponService } = await import('../services/couponService');
-      const result = await couponService.applyCoupon(couponCode.trim());
-      
-      if (result.success) {
-        setAppliedCoupon(couponCode.toUpperCase());
-        setCouponDiscount(result.discount);
-        setCouponCode('');
-        // Clear any pending coupon
-        localStorage.removeItem('pendingCouponCode');
-        alert(`🎉 Coupon "${couponCode.trim()}" applied successfully! You saved ₹${result.discount}`);
-      } else {
-        alert(result.message || 'Invalid coupon code');
-      }
-    } catch (error: any) {
-      console.error('Error applying coupon:', error);
-      if (error.response?.status === 401) {
-        alert('Your session has expired. Please login again to apply coupons.');
-        localStorage.setItem('pendingCouponCode', couponCode.trim());
-        navigate('/login?redirect=cart&coupon=' + encodeURIComponent(couponCode.trim()));
-      } else if (error.response?.status === 400) {
-        alert(error.response?.data?.message || 'Invalid coupon code or coupon requirements not met.');
-      } else {
-        alert('Failed to apply coupon. Please check your internet connection and try again.');
-      }
-    }
+  const handleAddAddress = () => {
+    // Open AddressBook modal for adding new address
+    setIsAddressBookOpen(true);
   };
 
-  const handleRemoveCoupon = async () => {
-    try {
-      const { couponService } = await import('../services/couponService');
-      await couponService.removeCoupon();
-      setAppliedCoupon(null);
-      setCouponDiscount(0);
-    } catch (error: any) {
-      console.error('Error removing coupon:', error);
-      // Still remove from UI even if API call fails
-      setAppliedCoupon(null);
-      setCouponDiscount(0);
-    }
-  };
+  // Check if user has any addresses
+  const hasAddresses = user?.addresses && user.addresses.length > 0;
+  const hasMultipleAddresses = user?.addresses && user.addresses.length > 1;
+
+
+
+
 
   const handleItemSelection = (itemId: string, isSelected: boolean) => {
     setSelectedItems(prev => {
@@ -278,8 +238,7 @@ const Cart: React.FC = () => {
   const calculateTotal = () => {
     const subtotal = calculateSelectedItemsTotal();
     const platformFee = 0; // FREE as shown in screenshot
-    const discount = selectedItems.size > 0 ? couponDiscount : 0; // Only apply discount if items are selected
-    return subtotal - discount + platformFee;
+    return subtotal + platformFee;
   };
 
   const getSelectedItemsCount = () => {
@@ -467,33 +426,49 @@ const Cart: React.FC = () => {
       </div>
 
       {/* Elite Delivery Address */}
-      <div className="section-white border-b border-elite-light-grey px-4 py-4">
+      <div className="bg-white border border-gray-200 rounded-lg mx-4 my-4 px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="w-6 h-6 bg-elite-cta-purple flex items-center justify-center mr-3">
-              <Truck className="h-4 w-4 text-elite-base-white" />
+            <div className="w-6 h-6 bg-purple-600 flex items-center justify-center mr-3 rounded">
+              <Truck className="h-4 w-4 text-white" />
             </div>
             <div>
               {selectedAddress ? (
                 <>
-                  <p className="font-inter text-sm font-medium text-elite-charcoal-black">
+                  <p className="text-sm font-medium text-gray-900">
                     Delivery at {selectedAddress.city} - {selectedAddress.pincode}
                   </p>
-                  <p className="font-inter text-xs text-elite-medium-grey">
+                  <p className="text-xs text-gray-600">
                     {selectedAddress.name} • {selectedAddress.phone}
                   </p>
+                  {selectedAddress.isDefault && (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">
+                      Default Address
+                    </span>
+                  )}
                 </>
               ) : (
-                <p className="font-inter text-sm font-medium text-elite-charcoal-black">Select delivery address</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {hasAddresses ? 'Select delivery address' : 'Add delivery address'}
+                </p>
               )}
             </div>
           </div>
-          <button 
-            onClick={handleChangeAddress}
-            className="btn-secondary px-3 py-1 text-sm font-medium font-inter"
-          >
-            Change
-          </button>
+          {hasAddresses ? (
+            <button 
+              onClick={handleChangeAddress}
+              className="bg-gray-200 text-gray-800 px-3 py-1 text-sm font-medium rounded hover:bg-gray-300 transition-colors"
+            >
+              Change
+            </button>
+          ) : (
+            <button 
+              onClick={handleAddAddress}
+              className="bg-purple-600 text-white px-3 py-1 text-sm font-medium rounded hover:bg-purple-700 transition-colors"
+            >
+              Add Address
+            </button>
+          )}
         </div>
       </div>
 
@@ -736,14 +711,8 @@ const Cart: React.FC = () => {
                <div className="space-y-2">
                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total MRP</span>
-                    <span className="text-sm text-gray-900">{formatPrice(calculateSelectedItemsTotal() + couponDiscount)}</span>
+                    <span className="text-sm text-gray-900">{formatPrice(calculateSelectedItemsTotal())}</span>
                   </div>
-                 {couponDiscount > 0 && (
-                   <div className="flex justify-between items-center">
-                     <span className="text-sm text-gray-600">Coupon Discount</span>
-                     <span className="text-sm text-green-600">-{formatPrice(couponDiscount)}</span>
-                   </div>
-                 )}
                  <div className="flex justify-between items-center">
                    <span className="text-sm text-gray-600">Platform & Event Fee</span>
                    <div className="text-right">
@@ -772,56 +741,7 @@ const Cart: React.FC = () => {
                 </button>
               </div>
  
-              {/* Coupon Section */}
-             <div className="bg-white rounded-lg border border-gray-200 p-3">
-               <div className="flex items-center mb-3">
-                 <h3 className="text-base font-semibold text-gray-900 flex-1">Best Coupon For You</h3>
-                 <button 
-                  onClick={() => navigate('/coupons')}
-                  className="text-sm font-medium whitespace-nowrap hover:underline" 
-                  style={{color: '#322F61'}}
-                >
-                  All Coupons &gt;
-                </button>
-               </div>
-          
-          {appliedCoupon ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-800">Coupon Applied: {appliedCoupon}</p>
-                  <p className="text-xs text-green-600">You saved {formatPrice(couponDiscount)}</p>
-                </div>
-                <button
-                  onClick={handleRemoveCoupon}
-                  className="text-red-500"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ) : (
-             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-               <div className="flex items-center space-x-2">
-                 <div className="flex-1 flex items-center border border-teal-400 rounded-lg">
-                   <input
-                     type="text"
-                     value={couponCode}
-                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                     placeholder="MYNTRAWOWZ"
-                     className="flex-1 px-3 py-2 bg-transparent text-teal-600 font-medium text-sm border-0 focus:outline-none"
-                   />
-                 </div>
-                 <button
-                   onClick={handleApplyCoupon}
-                   className="px-4 py-2 bg-[#322F61] text-white text-sm font-medium hover:bg-[#463F85] transition-colors"
-                 >
-                   APPLY COUPON
-                 </button>
-               </div>
-             </div>
-           )}
-        </div>
+
 
 
 
@@ -984,6 +904,9 @@ const Cart: React.FC = () => {
         onSelectAddress={handleAddressSelect}
         selectedAddressId={selectedAddress?.id}
       />
+
+
+
     </div>
   );
 };

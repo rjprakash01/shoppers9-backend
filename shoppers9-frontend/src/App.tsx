@@ -10,11 +10,13 @@ import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Category from './pages/Category';
+import Search from './pages/Search';
 import Cart from './pages/Cart';
 import Wishlist from './pages/Wishlist';
 import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderDetail from './pages/OrderDetail';
@@ -51,12 +53,14 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/categories/:categorySlug" element={<Category />} />
+          <Route path="/category/:categorySlug" element={<Category />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/coupons" element={<Coupons />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/register" element={<Register />} />
           <Route
             path="/checkout"
             element={

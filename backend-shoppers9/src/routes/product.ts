@@ -1,5 +1,6 @@
 import express from 'express';
 import { productController } from '../controllers/productController';
+import { searchController } from '../controllers/searchController';
 import { validateQuery, validateParams } from '../middleware/validation';
 import { optionalAuth } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -61,14 +62,70 @@ router.get('/',
 
 /**
  * @route GET /products/search
- * @desc Search products
+ * @desc Search products (enhanced)
  * @access Public
  */
 router.get('/search',
   optionalAuth,
   validateQuery(searchSchema),
-  asyncHandler(productController.searchProducts)
+  asyncHandler(searchController.enhancedSearch)
 );
+
+/**
+ * @route GET /products/autocomplete
+ * @desc Autocomplete for products
+ * @access Public
+ */
+router.get('/autocomplete',
+  asyncHandler(searchController.autocomplete)
+);
+
+/**
+ * @route GET /products/suggestions
+ * @desc Get search suggestions
+ * @access Public
+ */
+router.get('/suggestions',
+  asyncHandler(searchController.getSearchSuggestions)
+);
+
+/**
+ * @route GET /products/trending-searches
+ * @desc Get trending searches
+ * @access Public
+ */
+router.get('/trending-searches',
+  asyncHandler(searchController.getTrendingSearches)
+);
+
+/**
+ * @route GET /products/popular-searches
+ * @desc Get popular searches
+ * @access Public
+ */
+router.get('/popular-searches', async (req, res) => {
+  try {
+    const popularSearches = [
+      'T-shirts',
+      'Jeans',
+      'Sneakers',
+      'Dresses',
+      'Jackets',
+      'Accessories'
+    ];
+    
+    res.json({
+      success: true,
+      data: { searches: popularSearches }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get popular searches',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
 
 /**
  * @route GET /products/categories

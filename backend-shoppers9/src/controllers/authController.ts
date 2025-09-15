@@ -1,5 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { User } from '../models/User';
 import { OTP } from '../models/OTP';
 import { Cart } from '../models/Cart';
@@ -7,6 +8,7 @@ import { Wishlist } from '../models/Wishlist';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, ApiResponse } from '../types';
 import { smsService } from '../services/smsService';
+import { emailService } from '../services/emailService';
 
 class AuthController {
   // Send OTP to phone number
@@ -29,9 +31,9 @@ class AuthController {
       };
 
       res.status(200).json(response);
-    } catch (error) {
-      
-      throw new AppError('Failed to send OTP', 500);
+    } catch (error: any) {
+      console.error('SendOTP Error:', error);
+      throw new AppError(`Failed to send OTP: ${error.message}`, 500);
     }
   }
 
@@ -392,25 +394,252 @@ class AuthController {
     }
   }
 
+  // Register with email and password
+  async registerWithEmail(req: any, res: any): Promise<void> {
+    const { name, email, password } = req.body;
+
+    try {
+      // Validate input
+      if (!name || !email || !password) {
+        throw new AppError('Name, email, and password are required', 400);
+      }
+
+      // Check if user already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        throw new AppError('User with this email already exists', 409);
+      }
+
+      // Create new user
+      const user = new User({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        password,
+        authMethod: 'email',
+        isVerified: false,
+        isEmailVerified: false
+      });
+
+      await user.save();
+
+      // Create cart and wishlist for new user
+      await Promise.all([
+        Cart.create({ userId: user._id, items: [], totalAmount: 0, totalDiscount: 0, subtotal: 0 }),
+        Wishlist.create({ userId: user._id, items: [] })
+      ]);
+
+      // Generate tokens
+      const { accessToken, refreshToken } = this.generateTokens(user);
+
+      // Send welcome email (non-blocking) - don't let email failures break registration
+      try {
+        emailService.sendWelcomeEmail(user.email!, user.name).catch(err => {
+          console.log('Welcome email failed (non-critical):', err.message);
+        });
+      } catch (err) {
+        console.log('Email service error (non-critical):', err);
+      }
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Account created successfully',
+        data: {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            authMethod: user.authMethod,
+            isVerified: user.isVerified,
+            isEmailVerified: user.isEmailVerified
+          },
+          tokens: {
+            accessToken,
+            refreshToken
+          }
+        }
+      };
+
+      res.status(201).json(response);
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new AppError('User with this email already exists', 409);
+      }
+      throw error;
+    }
+  }
+
+  // Login with email and password
+  async loginWithEmail(req: any, res: any): Promise<void> {
+    const { email, password } = req.body;
+
+    try {
+      // Validate input
+      if (!email || !password) {
+        throw new AppError('Email and password are required', 400);
+      }
+
+      // Find user by email
+      const user = await User.findOne({ email: email.toLowerCase().trim() });
+      if (!user) {
+        throw new AppError('Invalid email or password', 401);
+      }
+
+      // Check if account is locked
+      if (user.isLocked && user.isLocked()) {
+        throw new AppError('Account temporarily locked due to too many failed login attempts', 423);
+      }
+
+      // Verify password
+      const isPasswordValid = await user.comparePassword!(password);
+      if (!isPasswordValid) {
+        // Increment login attempts
+        await user.incLoginAttempts!();
+        throw new AppError('Invalid email or password', 401);
+      }
+
+      // Reset login attempts on successful login
+      if (user.loginAttempts && user.loginAttempts > 0) {
+        await user.updateOne({
+          $unset: { loginAttempts: 1, lockUntil: 1 }
+        });
+      }
+
+      // Update last login
+      user.lastLogin = new Date();
+      await user.save();
+
+      // Generate tokens
+      const { accessToken, refreshToken } = this.generateTokens(user);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            authMethod: user.authMethod,
+            isVerified: user.isVerified,
+            isEmailVerified: user.isEmailVerified,
+            lastLogin: user.lastLogin
+          },
+          tokens: {
+            accessToken,
+            refreshToken
+          }
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Request password reset
+  async requestPasswordReset(req: any, res: any): Promise<void> {
+    const { email } = req.body;
+
+    try {
+      if (!email) {
+        throw new AppError('Email is required', 400);
+      }
+
+      const user = await User.findOne({ email: email.toLowerCase().trim() });
+      if (!user) {
+        // Don't reveal if email exists or not
+        const response: ApiResponse = {
+          success: true,
+          message: 'If an account with that email exists, a password reset link has been sent'
+        };
+        return res.status(200).json(response);
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await user.save();
+
+      // Send password reset email (non-blocking) - don't let email failures break the flow
+      emailService.sendPasswordResetEmail(user.email!, user.name, resetToken).catch(emailError => {
+        console.log('Password reset email failed (non-critical):', emailError.message);
+      });
+      // Continue immediately without waiting for email
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Password reset link sent to your email'
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Reset password
+  async resetPassword(req: any, res: any): Promise<void> {
+    const { token, password } = req.body;
+
+    try {
+      if (!token || !password) {
+        throw new AppError('Token and new password are required', 400);
+      }
+
+      // Hash the token to compare with stored hash
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+      // Find user with valid reset token
+      const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: new Date() }
+      });
+
+      if (!user) {
+        throw new AppError('Invalid or expired reset token', 400);
+      }
+
+      // Update password and clear reset token
+      user.password = password;
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+
+      await user.save();
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Password reset successful'
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Helper method to generate JWT tokens
   public generateTokens(user: any) {
-    const jwtSecret = process.env.JWT_SECRET;
-    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
-    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
-    const jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
-
-    if (!jwtSecret || !jwtRefreshSecret) {
-      throw new AppError('JWT secrets not configured', 500);
-    }
-
     const payload = {
+      userId: user._id,
       id: user._id,
       phone: user.phone,
+      email: user.email,
+      authMethod: user.authMethod,
       isVerified: user.isVerified
     };
 
-    const accessToken = jwt.sign(payload, jwtSecret as string, { expiresIn: jwtExpiresIn } as any);
-    const refreshToken = jwt.sign(payload, jwtRefreshSecret as string, { expiresIn: jwtRefreshExpiresIn } as any);
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
+      expiresIn: '15m'
+    } as SignOptions);
+
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, {
+      expiresIn: '7d'
+    } as SignOptions);
 
     return { accessToken, refreshToken };
   }

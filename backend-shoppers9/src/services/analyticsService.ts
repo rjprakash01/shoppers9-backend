@@ -245,7 +245,7 @@ class AnalyticsService {
             orders: '$orders',
             conversionRate: { $literal: 0 } // Would need view data to calculate
           }
-        }
+        } as any
       ]);
 
       return topProducts;
@@ -528,9 +528,9 @@ class AnalyticsService {
         timestamp: new Date(),
         data: event.data,
         value: event.value,
-        productId: event.productId,
-        categoryId: event.categoryId,
-        orderId: event.orderId
+        productId: event.productId ? new mongoose.Types.ObjectId(event.productId) : undefined,
+        categoryId: event.categoryId ? new mongoose.Types.ObjectId(event.categoryId) : undefined,
+        orderId: event.orderId ? new mongoose.Types.ObjectId(event.orderId) : undefined
       });
 
       // Update session metrics

@@ -39,6 +39,10 @@ const couponSchema = new Schema<ICoupon>({
     type: Number,
     min: 0
   },
+  maxBonusCap: {
+    type: Number,
+    min: 0
+  },
   usageLimit: {
     type: Number,
     required: true,
@@ -51,6 +55,10 @@ const couponSchema = new Schema<ICoupon>({
     min: 0
   },
   isActive: {
+    type: Boolean,
+    default: true
+  },
+  showOnWebsite: {
     type: Boolean,
     default: true
   },

@@ -58,10 +58,12 @@ const Coupons: React.FC = () => {
     discountValue: 0,
     minOrderAmount: 0,
     maxDiscountAmount: 0,
+    maxBonusCap: 0,
     usageLimit: 1,
     validFrom: '',
     validUntil: '',
-    isActive: true
+    isActive: true,
+    showOnWebsite: true
   });
 
   useEffect(() => {
@@ -81,11 +83,23 @@ const Coupons: React.FC = () => {
           break;
           
         case 'coupons':
-          const couponsData = await couponService.getCoupons({
+          // Convert string filters to proper types for API
+          const apiFilters: any = {
             page: couponsPage,
             limit: 20,
-            ...couponsFilters
-          });
+            search: couponsFilters.search || undefined,
+            discountType: couponsFilters.discountType || undefined
+          };
+          
+          // Handle isActive filter conversion
+          if (couponsFilters.isActive === 'true') {
+            apiFilters.isActive = true;
+          } else if (couponsFilters.isActive === 'false') {
+            apiFilters.isActive = false;
+          }
+          // If empty string, don't include isActive (show all)
+          
+          const couponsData = await couponService.getCoupons(apiFilters);
           setCoupons(couponsData.coupons);
           setCouponsTotalPages(couponsData.pagination.pages);
           break;
@@ -139,6 +153,31 @@ const Coupons: React.FC = () => {
     }
   };
 
+  const handleCloneCoupon = (coupon: Coupon) => {
+    // Generate a new code by appending _COPY to the original
+    const newCode = `${coupon.code}_COPY`;
+    
+    // Pre-fill the form with cloned data
+    setCouponForm({
+      code: newCode,
+      description: `${coupon.description} (Copy)`,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
+      minOrderAmount: coupon.minOrderAmount,
+      maxDiscountAmount: coupon.maxDiscountAmount || 0,
+      maxBonusCap: coupon.maxBonusCap || 0,
+      usageLimit: coupon.usageLimit,
+      validFrom: new Date().toISOString().split('T')[0], // Set to today
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      isActive: true,
+      showOnWebsite: coupon.showOnWebsite ?? true
+    });
+    
+    // Clear editing state and open modal for creating new coupon
+    setEditingCoupon(null);
+    setShowCouponModal(true);
+  };
+
   const resetCouponForm = () => {
     setCouponForm({
       code: '',
@@ -147,10 +186,12 @@ const Coupons: React.FC = () => {
       discountValue: 0,
       minOrderAmount: 0,
       maxDiscountAmount: 0,
+      maxBonusCap: 0,
       usageLimit: 1,
       validFrom: '',
       validUntil: '',
-      isActive: true
+      isActive: true,
+      showOnWebsite: true
     });
   };
 
@@ -163,10 +204,12 @@ const Coupons: React.FC = () => {
       discountValue: coupon.discountValue,
       minOrderAmount: coupon.minOrderAmount,
       maxDiscountAmount: coupon.maxDiscountAmount || 0,
+      maxBonusCap: coupon.maxBonusCap || 0,
       usageLimit: coupon.usageLimit,
       validFrom: new Date(coupon.validFrom).toISOString().split('T')[0],
       validUntil: new Date(coupon.validUntil).toISOString().split('T')[0],
-      isActive: coupon.isActive
+      isActive: coupon.isActive,
+      showOnWebsite: coupon.showOnWebsite ?? true
     });
     setShowCouponModal(true);
   };
@@ -366,6 +409,153 @@ const Coupons: React.FC = () => {
         </div>
       )}
 
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && analytics && (
+        <div className="space-y-6">
+          {/* Analytics Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Coupons</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.totalCoupons}</p>
+                </div>
+                <Ticket className="w-8 h-8 text-blue-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active Coupons</p>
+                  <p className="text-2xl font-bold text-green-600">{analytics.activeCoupons}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Expired Coupons</p>
+                  <p className="text-2xl font-bold text-red-600">{analytics.expiredCoupons}</p>
+                </div>
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Usage</p>
+                  <p className="text-2xl font-bold text-purple-600">{analytics.totalUsage}</p>
+                </div>
+                <Users className="w-8 h-8 text-purple-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Performing Coupons */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
+                Top Performing Coupons
+              </h3>
+              <div className="space-y-3">
+                {analytics.topCoupons.map((coupon, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-blue-600">#{index + 1}</span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{coupon.code}</div>
+                        <div className="text-sm text-gray-500">
+                          {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `₹${coupon.discountValue}`} discount
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium text-gray-900">{coupon.usedCount} uses</div>
+                      <div className="text-sm text-gray-500">Total redemptions</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Coupon Performance Metrics */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2 text-purple-500" />
+                Performance Metrics
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="font-medium text-gray-900">Active Rate</div>
+                    <div className="text-sm text-gray-500">Percentage of active coupons</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-green-600">
+                      {analytics.totalCoupons > 0 ? Math.round((analytics.activeCoupons / analytics.totalCoupons) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="font-medium text-gray-900">Average Usage</div>
+                    <div className="text-sm text-gray-500">Average uses per coupon</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-blue-600">
+                      {analytics.totalCoupons > 0 ? Math.round(analytics.totalUsage / analytics.totalCoupons) : 0}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="font-medium text-gray-900">Expiry Rate</div>
+                    <div className="text-sm text-gray-500">Percentage of expired coupons</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium text-red-600">
+                      {analytics.totalCoupons > 0 ? Math.round((analytics.expiredCoupons / analytics.totalCoupons) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Usage Distribution */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-indigo-500" />
+              Usage Distribution
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{analytics.activeCoupons}</div>
+                <div className="text-sm text-green-700">Active & Available</div>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">{analytics.totalUsage}</div>
+                <div className="text-sm text-yellow-700">Total Redemptions</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">{analytics.expiredCoupons}</div>
+                <div className="text-sm text-red-700">Expired/Inactive</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Coupons Tab */}
       {activeTab === 'coupons' && (
         <div className="space-y-6">
@@ -453,6 +643,9 @@ const Coupons: React.FC = () => {
                           Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Website
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
@@ -518,6 +711,18 @@ const Coupons: React.FC = () => {
                               <span className="ml-1">{getStatusText(coupon)}</span>
                             </span>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              coupon.showOnWebsite ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {coupon.showOnWebsite ? (
+                                <Eye className="w-3 h-3 mr-1" />
+                              ) : (
+                                <Eye className="w-3 h-3 mr-1 opacity-50" />
+                              )}
+                              {coupon.showOnWebsite ? 'Visible' : 'Hidden'}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center space-x-2">
                               <button
@@ -533,6 +738,13 @@ const Coupons: React.FC = () => {
                                 title={coupon.isActive ? 'Deactivate' : 'Activate'}
                               >
                                 {coupon.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                              </button>
+                              <button
+                                onClick={() => handleCloneCoupon(coupon)}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Clone coupon"
+                              >
+                                <Copy className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteCoupon(coupon._id)}
@@ -760,17 +972,50 @@ const Coupons: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={couponForm.isActive}
-                  onChange={(e) => setCouponForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                  Active (coupon can be used immediately)
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Bonus Cap
                 </label>
+                <input
+                  type="number"
+                  value={couponForm.maxBonusCap}
+                  onChange={(e) => setCouponForm(prev => ({ ...prev, maxBonusCap: Number(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="0"
+                  step="0.01"
+                  placeholder="Maximum bonus amount for this coupon"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum bonus amount that can be earned from this coupon
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={couponForm.isActive}
+                    onChange={(e) => setCouponForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                    Active (coupon can be used immediately)
+                  </label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="showOnWebsite"
+                    checked={couponForm.showOnWebsite}
+                    onChange={(e) => setCouponForm(prev => ({ ...prev, showOnWebsite: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="showOnWebsite" className="ml-2 block text-sm text-gray-900">
+                    Show on Website (display this coupon to customers)
+                  </label>
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">

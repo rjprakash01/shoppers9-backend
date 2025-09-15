@@ -1,29 +1,32 @@
 # Dependencies
 node_modules/
 */node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# Build outputs
+build/
+dist/
+*/build/
+*/dist/
+.next/
+out/
 
 # Environment variables
 .env
 .env.local
-.env.development
-.env.production
-.env.backup
-*/.*env*
-*/.env.production
-*/.env.backup
-
-# Build outputs
-dist/
-build/
-*/dist/
-*/build/
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
 
 # Logs
-*.log
 logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.log
 
 # Runtime data
 pids/
@@ -33,11 +36,26 @@ pids/
 
 # Coverage directory used by tools like istanbul
 coverage/
-.nyc_output
+*.lcov
+.nyc_output/
 
-# Uploads
-uploads/
-*/uploads/
+# TypeScript
+*.tsbuildinfo
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.npm/
+.yarn/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -48,78 +66,47 @@ uploads/
 ehthumbs.db
 Thumbs.db
 
-# Personal configuration files
-Users/
+# AWS & Terraform
 .aws/
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-
-# Terraform
-.terraform/
 *.tfstate
-*.tfstate.backup
-*.tfplan
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfvars.json
 *.tfvars
-*.swo
-*~
+tfplan
 
-# Temporary files
-*.tmp
-*.temp
-
-# Test files that might contain sensitive data
-*test*.json
-*debug*.html
-cookies.txt
-
-# Compiled TypeScript
-*.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env.test
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
+# Uploads & temporary files
+uploads/
+public/uploads/
 temp/
+tmp/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates & keys
+*.pem
+*.key
+*.crt
+*.cert
+
+# Test files (keep only in development)
+test-*.js
+test-*.html
+debug-*.js
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z

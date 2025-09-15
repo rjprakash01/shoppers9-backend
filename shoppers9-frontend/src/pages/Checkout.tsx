@@ -7,7 +7,7 @@ import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import orderService from '../services/orderService';
 import type { CreateOrderRequest, ShippingAddress } from '../services/orderService';
-import CouponInput from '../components/CouponInput';
+
 
 
 
@@ -26,6 +26,9 @@ const Checkout: React.FC = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
   const [finalAmount, setFinalAmount] = useState<number>(0);
+  const [couponCode, setCouponCode] = useState('');
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
   
   const [shippingAddress] = useState<ShippingAddress>({
     name: 'R J Prakash',
@@ -62,6 +65,71 @@ const Checkout: React.FC = () => {
   const handleCouponRemoved = () => {
     setCouponDiscount(0);
     setAppliedCoupon('');
+  };
+
+  const handleShowAllCoupons = async () => {
+    try {
+      const { couponService } = await import('../services/couponService');
+      const coupons = await couponService.getPublicCoupons();
+      setAvailableCoupons(coupons);
+      setShowCouponModal(true);
+    } catch (error: any) {
+      console.error('Error fetching coupons:', error);
+      alert('Failed to load coupons. Please try again.');
+    }
+  };
+
+  const handleSelectCoupon = (couponCode: string) => {
+    setCouponCode(couponCode);
+    setShowCouponModal(false);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      alert('Please enter a coupon code');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      alert('Please login to apply coupons');
+      return;
+    }
+
+    try {
+      const { couponService } = await import('../services/couponService');
+      const result = await couponService.applyCoupon(couponCode.trim());
+      
+      if (result.success) {
+        setAppliedCoupon(couponCode.toUpperCase());
+        setCouponDiscount(result.discount);
+        setCouponCode('');
+        alert(`🎉 Coupon "${couponCode.trim()}" applied successfully! You saved ₹${result.discount}`);
+      } else {
+        alert(result.message || 'Invalid coupon code');
+      }
+    } catch (error: any) {
+      console.error('Error applying coupon:', error);
+      if (error.response?.status === 401) {
+        alert('Your session has expired. Please login again to apply coupons.');
+      } else if (error.response?.status === 400) {
+        alert(error.response?.data?.message || 'Invalid coupon code or coupon requirements not met.');
+      } else {
+        alert('Failed to apply coupon. Please check your internet connection and try again.');
+      }
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    try {
+      const { couponService } = await import('../services/couponService');
+      await couponService.removeCoupon();
+      setAppliedCoupon('');
+      setCouponDiscount(0);
+    } catch (error: any) {
+      console.error('Error removing coupon:', error);
+      setAppliedCoupon('');
+      setCouponDiscount(0);
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -302,15 +370,59 @@ const Checkout: React.FC = () => {
           {/* Right Side - Price Details & Checkout */}
           <div className="space-y-3">
             {/* Coupon Input Section */}
-             <div className="bg-white rounded-lg border border-gray-200 p-3">
-               <CouponInput
-                 onCouponApplied={handleCouponApplied}
-                 onCouponRemoved={handleCouponRemoved}
-                 appliedCoupon={appliedCoupon}
-                 appliedDiscount={couponDiscount}
-                 disabled={isLoading}
-               />
-             </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-3">
+              <div className="flex items-center mb-3">
+                <h3 className="text-base font-semibold text-gray-900 flex-1">Best Coupon For You</h3>
+              </div>
+          
+              {appliedCoupon ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Coupon Applied: {appliedCoupon}</p>
+                      <p className="text-xs text-green-600">You saved {formatPrice(couponDiscount)}</p>
+                    </div>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-red-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Have a coupon code?</span>
+                      <button
+                        onClick={handleShowAllCoupons}
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        All Coupons
+                      </button>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1 flex items-center border border-teal-400 rounded-lg">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="Enter coupon code"
+                          className="flex-1 px-3 py-2 bg-transparent text-teal-600 font-medium text-sm border-0 focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        onClick={handleApplyCoupon}
+                        className="px-4 py-2 bg-[#322F61] text-white text-sm font-medium hover:bg-[#463F85] transition-colors"
+                      >
+                        APPLY COUPON
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Price Details Section */}
             <div className="bg-white rounded-lg border border-gray-200 p-3">
@@ -390,6 +502,69 @@ const Checkout: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Coupon Modal */}
+      {showCouponModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Available Coupons</h3>
+              <button
+                onClick={() => setShowCouponModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {availableCoupons.length === 0 ? (
+                <div className="text-center py-8">
+                  <Gift className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">No coupons available at the moment</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {availableCoupons.map((coupon, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-3 hover:border-blue-300 cursor-pointer transition-colors"
+                      onClick={() => handleSelectCoupon(coupon.code)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Percent className="w-4 h-4 text-green-600" />
+                          <span className="font-semibold text-gray-900">{coupon.code}</span>
+                        </div>
+                        <span className="text-sm text-green-600 font-medium">
+                          {coupon.discountType === 'percentage' 
+                            ? `${coupon.discountValue}% OFF`
+                            : `₹${coupon.discountValue} OFF`
+                          }
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{coupon.description}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Min order: ₹{coupon.minOrderAmount}</span>
+                        <span>Valid until: {new Date(coupon.validUntil).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t bg-gray-50">
+              <button
+                onClick={() => setShowCouponModal(false)}
+                className="w-full bg-gray-600 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -43,9 +43,11 @@ export const authenticateToken = async (
     const decoded = jwt.verify(token, jwtSecret as string) as any;
     
     req.user = {
-      userId: decoded.id,
-      id: decoded.id,
+      userId: decoded.userId || decoded.id,
+      id: decoded.userId || decoded.id,
       phone: decoded.phone,
+      email: decoded.email,
+      authMethod: decoded.authMethod,
       isVerified: decoded.isVerified
     };
 

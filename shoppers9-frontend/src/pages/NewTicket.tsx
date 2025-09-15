@@ -20,7 +20,6 @@ const NewTicket: React.FC = () => {
     subject: '',
     description: '',
     category: SupportCategory.GENERAL_INQUIRY,
-    priority: SupportPriority.MEDIUM,
     orderNumber: ''
   });
 
@@ -30,7 +29,7 @@ const NewTicket: React.FC = () => {
     category?: string;
   }>({});
 
-  const priorityOptions = supportService.getPriorityOptions();
+
 
   useEffect(() => {
     loadCategories();
@@ -252,27 +251,7 @@ const NewTicket: React.FC = () => {
                 )}
               </div>
 
-              {/* Priority */}
-              <div>
-                <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority
-                </label>
-                <select
-                  id="priority"
-                  value={formData.priority}
-                  onChange={(e) => handleInputChange('priority', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {priorityOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-sm text-gray-500">
-                  Select the urgency level of your issue
-                </p>
-              </div>
+
 
               {/* Order Selection (Optional) */}
               <div>

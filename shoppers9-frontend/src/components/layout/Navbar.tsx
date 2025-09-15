@@ -6,6 +6,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { categoriesService, type Category } from '../../services/categories';
 import shoppers9Logo from '../../assets/shoppers9-logo.svg';
+import EnhancedSearch from '../EnhancedSearch';
 
 // Type declaration for NodeJS
 declare global {
@@ -229,19 +230,18 @@ const Navbar: React.FC = () => {
               />
             </Link>
 
-            {/* Elite Search Bar */}
+            {/* Elite Enhanced Search Bar */}
             <div className="hidden md:flex flex-1 max-w-4xl mx-4 lg:mx-8">
-              <form onSubmit={handleSearch} className="w-full">
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search products, brands, categories..."
-                    className="elite-input w-full px-4 py-3 text-sm placeholder-elite-medium-grey text-elite-charcoal-black font-inter"
-                  />
-                </div>
-              </form>
+              <EnhancedSearch
+                placeholder="Search products, brands, categories..."
+                onSearch={(query) => {
+                  setSearchQuery(query);
+                  navigate(`/products?search=${encodeURIComponent(query)}`);
+                }}
+                size="md"
+                className="w-full"
+                showFilters={false}
+              />
             </div>
 
             {/* Elite Desktop Navigation */}
@@ -468,18 +468,20 @@ const Navbar: React.FC = () => {
         {isMenuOpen && (
           <div className="lg:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md slide-up">
             <div className="px-4 pt-4 pb-6 space-y-4">
-              {/* Mobile Search */}
-              <form onSubmit={handleSearch} className="mb-6">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search products..."
-                    className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white transition-all duration-300"
-                  />
-                </div>
-              </form>
+              {/* Mobile Enhanced Search */}
+              <div className="mb-6">
+                <EnhancedSearch
+                  placeholder="Search products..."
+                  onSearch={(query) => {
+                    setSearchQuery(query);
+                    setIsMenuOpen(false);
+                    navigate(`/products?search=${encodeURIComponent(query)}`);
+                  }}
+                  size="md"
+                  className="w-full"
+                  showFilters={false}
+                />
+              </div>
 
               {/* Mobile Categories - Hidden */}
               {!categoriesLoading && categories.length > 0 && (

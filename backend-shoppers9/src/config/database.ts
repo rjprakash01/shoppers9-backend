@@ -34,9 +34,11 @@ export const connectDB = async (): Promise<void> => {
       connectionOptions.w = 'majority';
     }
 
-    mongoose.connect(mongoUri, connectionOptions).catch((error) => {
+    try {
+      await mongoose.connect(mongoUri, connectionOptions);
+    } catch (error: any) {
       console.error('❌ MongoDB connection failed:', error.message);
-    });
+    }
     
     mongoose.connection.on('connected', () => {
       console.log('✅ MongoDB connected successfully');
