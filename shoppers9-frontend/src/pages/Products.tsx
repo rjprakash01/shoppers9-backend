@@ -9,7 +9,6 @@ import { formatPrice, formatPriceRange } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import FilterSidebar from '../components/FilterSidebar';
 import EnhancedSearch from '../components/EnhancedSearch';
-import AdvancedFilters from '../components/AdvancedFilters';
 import { searchService } from '../services/searchService';
 
 const Products: React.FC = () => {
@@ -23,7 +22,6 @@ const Products: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false); // Hide filters by default, show only when clicked
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
@@ -512,15 +510,6 @@ const Products: React.FC = () => {
           onFiltersChange={handleFiltersChange}
           currentFilters={filters}
         />
-
-        {/* Advanced Filters */}
-        <AdvancedFilters
-          isOpen={showAdvancedFilters}
-          onClose={() => setShowAdvancedFilters(false)}
-          onFiltersChange={handleFiltersChange}
-          currentFilters={filters}
-          category={searchParams.get('category') || undefined}
-        />
         
         {/* Main Content */}
         <div className={`flex-1 transition-all duration-300 ${showFilters ? 'lg:ml-72' : 'lg:ml-0'}`}>
@@ -566,15 +555,15 @@ const Products: React.FC = () => {
                 <div className="flex items-center space-x-1.5">
                   {/* Filter Button */}
                   <button
-                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    onClick={() => setShowFilters(!showFilters)}
                     className="flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded transition-colors relative" style={{
-                      backgroundColor: showAdvancedFilters ? 'var(--cta-dark-purple)' : 'transparent',
-                      color: showAdvancedFilters ? 'white' : 'var(--cta-dark-purple)',
+                      backgroundColor: showFilters ? 'var(--cta-dark-purple)' : 'transparent',
+                      color: showFilters ? 'white' : 'var(--cta-dark-purple)',
                       border: '1px solid var(--cta-dark-purple)'
                     }}
                   >
                     <Filter className="h-3 w-3" />
-                    <span className="hidden xs:inline">{showAdvancedFilters ? 'HIDE' : 'FILTER'}</span>
+                    <span className="hidden xs:inline">{showFilters ? 'HIDE' : 'FILTER'}</span>
                     {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length > 0 && (
                       <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1 py-0.5 rounded-full ml-1">
                         {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length}
@@ -714,13 +703,13 @@ const Products: React.FC = () => {
                     <span>FILTER</span>
                   </button>
                   
-                  {/* Desktop Advanced Filter Toggle */}
+                  {/* Desktop Filter Toggle */}
                   <button
-                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    onClick={() => setShowFilters(!showFilters)}
                     className="hidden lg:flex btn-secondary items-center space-x-1 px-3 py-2 text-xs font-medium font-inter relative"
                   >
                     <Filter className="h-3 w-3" />
-                    <span>{showAdvancedFilters ? 'HIDE' : 'FILTERS'}</span>
+                    <span>{showFilters ? 'HIDE' : 'FILTERS'}</span>
                     {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length > 0 && (
                       <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                         {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length}

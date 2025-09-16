@@ -227,7 +227,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const fetchCategories = async () => {
     try {
       
-      const response = await authService.get('/api/admin/categories/tree');
+      const response = await authService.get('/categories/tree');
 
       const flattenCategories = (categories: any[]): Category[] => {
         let flattened: Category[] = [];

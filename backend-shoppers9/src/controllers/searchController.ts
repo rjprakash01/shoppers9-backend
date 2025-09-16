@@ -34,7 +34,7 @@ interface SearchFilters {
 export const enhancedSearch = async (req: Request, res: Response) => {
   try {
     const {
-      search,
+      q: search,
       category,
       subcategory,
       subsubcategory,
@@ -54,9 +54,20 @@ export const enhancedSearch = async (req: Request, res: Response) => {
     // Build base query
     const query: any = { isActive: true };
     
-    // Text search with scoring
+    // Build search and category conditions separately
+    const searchConditions: any[] = [];
+    const categoryConditions: any[] = [];
+    
+    // Text search with fallback to regex
     if (search) {
-      query.$text = { $search: search as string };
+      // Use regex-based search instead of $text to avoid index dependency
+      const searchRegex = new RegExp(search as string, 'i');
+      searchConditions.push(
+        { name: searchRegex },
+        { description: searchRegex },
+        { brand: searchRegex },
+        { tags: { $in: [searchRegex] } }
+      );
     }
     
     // Category filtering
@@ -88,15 +99,32 @@ export const enhancedSearch = async (req: Request, res: Response) => {
             ...subsubcategories.map(s => s._id)
           ];
           
-          query.$or = [
+          categoryConditions.push(
             { category: { $in: allCategoryIds } },
             { subCategory: { $in: allCategoryIds } },
             { subSubCategory: { $in: allCategoryIds } }
-          ];
+          );
         } else {
-          query[`${'category'.repeat(categoryDoc.level)}`] = categoryDoc._id;
+          const categoryField = categoryDoc.level === 1 ? 'category' : 
+                               categoryDoc.level === 2 ? 'subCategory' : 'subSubCategory';
+          query[categoryField] = categoryDoc._id;
         }
       }
+    }
+    
+    // Combine search and category conditions
+    if (searchConditions.length > 0 && categoryConditions.length > 0) {
+      // Both search and category: products must match search AND be in category
+      query.$and = [
+        { $or: searchConditions },
+        { $or: categoryConditions }
+      ];
+    } else if (searchConditions.length > 0) {
+      // Only search: products must match search terms
+      query.$or = searchConditions;
+    } else if (categoryConditions.length > 0) {
+      // Only category: products must be in category
+      query.$or = categoryConditions;
     }
     
     // Additional filters
@@ -148,11 +176,8 @@ export const enhancedSearch = async (req: Request, res: Response) => {
         break;
       case 'relevance':
       default:
-        if (search) {
-          sort = { score: { $meta: 'textScore' } };
-        } else {
-          sort = { featured: -1, salesCount: -1 };
-        }
+        // Use popularity-based sorting for relevance since we're not using text search
+        sort = { featured: -1, salesCount: -1, viewCount: -1, createdAt: -1 };
         break;
     }
     

@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import orderService from '../services/orderService';
+import { settingsService, type PlatformSettings } from '../services/settings';
 import type { CreateOrderRequest, ShippingAddress } from '../services/orderService';
 
 
@@ -29,6 +30,7 @@ const Checkout: React.FC = () => {
   const [couponCode, setCouponCode] = useState('');
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   
   const [shippingAddress] = useState<ShippingAddress>({
     name: 'R J Prakash',
@@ -44,17 +46,55 @@ const Checkout: React.FC = () => {
   // Get current cart items based on authentication status
   const cartItems = isAuthenticated ? (cart?.items || []) : localCart;
   const totalAmount = cartTotal;
+
+  // Load platform settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const platformSettings = await settingsService.getSettings();
+        setSettings(platformSettings);
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  // Calculate fees using settings
+  const calculatePlatformFee = () => {
+    if (!settings) return 0;
+    return settingsService.calculatePlatformFee(totalAmount, settings);
+  };
+
+  const calculateDeliveryFee = () => {
+    if (!settings) return 0;
+    return settingsService.calculateDeliveryFee(totalAmount, settings);
+  };
   
-  // Calculate final amount with coupon discount
+  // Calculate final amount with all fees and discounts
   const calculateFinalAmount = () => {
-    const baseAmount = selectedPaymentMethod === 'upi' ? totalAmount - 115 : totalAmount;
-    return Math.max(0, baseAmount - couponDiscount);
+    let amount = totalAmount;
+    const platformFee = calculatePlatformFee();
+    const deliveryFee = calculateDeliveryFee();
+    
+    // Add platform fee and delivery fee
+    amount = amount + platformFee + deliveryFee;
+    
+    // Apply UPI discount
+    if (selectedPaymentMethod === 'upi') {
+      amount = amount - 115; // ₹115 discount for UPI
+    }
+    
+    // Apply coupon discount
+    amount = amount - couponDiscount;
+    
+    return Math.max(0, amount);
   };
   
   // Update final amount when dependencies change
   React.useEffect(() => {
     setFinalAmount(calculateFinalAmount());
-  }, [totalAmount, selectedPaymentMethod, couponDiscount]);
+  }, [totalAmount, selectedPaymentMethod, couponDiscount, settings]);
   
   // Coupon handlers
   const handleCouponApplied = (discount: number, couponCode: string) => {
@@ -209,30 +249,7 @@ const Checkout: React.FC = () => {
     <div className="min-h-screen" style={{
       backgroundColor: 'var(--light-grey)'
     }}>
-      {/* Desktop Header */}
-      <div className="hidden lg:block" style={{
-        backgroundColor: 'var(--cta-dark-purple)',
-        boxShadow: 'var(--premium-shadow)'
-      }}>
-        <div className="elite-container">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-bold" style={{
-              fontFamily: 'Playfair Display, serif',
-              color: 'var(--base-white)'
-            }}>Payment Method</h1>
-            <button
-              onClick={() => navigate('/cart')}
-              className="p-2 transition-colors duration-200"
-              style={{
-                color: 'var(--base-white)',
-                backgroundColor: 'transparent'
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       {/* Mobile Checkout Header - Clean */}
       <div className="lg:hidden p-4">
@@ -445,10 +462,12 @@ const Checkout: React.FC = () => {
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Platform & Event Fee</span>
-                  <div className="text-right">
-                    <span className="text-sm text-green-600">FREE</span>
-                  </div>
+                  <span className="text-sm text-gray-600">Platform Fee</span>
+                  <span className="text-sm text-gray-900">{formatPrice(calculatePlatformFee())}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Delivery Fee</span>
+                  <span className="text-sm text-gray-900">{formatPrice(calculateDeliveryFee())}</span>
                 </div>
                 <div className="border-t pt-2 flex justify-between items-center">
                   <span className="text-base font-semibold text-gray-900">Total Amount</span>

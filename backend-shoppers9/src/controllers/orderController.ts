@@ -9,6 +9,7 @@ import { OrderStatus, PaymentStatus, RefundStatus } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { shippingService } from '../services/shippingService';
 import { couponService } from '../services/couponService';
+import { notificationService } from '../services/notificationService';
 
 // Create a new order from cart
 export const createOrder = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -85,15 +86,21 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     }, 0);
     
     const totalAmount = originalAmount; // Original amount before discounts
-    const discount = cart.totalDiscount + (cart.couponDiscount || 0);
+    const discount = cart.totalDiscount; // Only item-level discounts, not coupon discount
     const discountedAmount = cart.totalAmount; // This is the amount after item-level discounts
     
     // Calculate fees based on discounted amount
     const platformFee = discountedAmount > 500 ? 0 : 20;
     const deliveryCharge = discountedAmount > 500 ? 0 : 50;
     
-    // finalAmount should be the discounted amount plus fees
-    let finalAmount = discountedAmount + platformFee + deliveryCharge;
+    // Apply coupon discount if available
+    let couponDiscount = 0;
+    if (couponCode && cart.couponDiscount) {
+      couponDiscount = cart.couponDiscount;
+    }
+    
+    // finalAmount should be the discounted amount minus coupon discount plus fees
+    let finalAmount = discountedAmount - couponDiscount + platformFee + deliveryCharge;
     if (finalAmount < 0) {
       finalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
     }
@@ -112,11 +119,28 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
       deliveryCharge,
       finalAmount,
       couponCode,
-      couponDiscount: cart.couponDiscount,
+      couponDiscount,
       estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
     });
 
     await order.save();
+
+    // Create notification for admin panel
+    try {
+      const user = await User.findById(userId).select('firstName lastName');
+      const customerName = user ? `${(user as any).firstName} ${(user as any).lastName}` : 'Customer';
+      
+      await notificationService.createNewOrderNotification({
+        orderId: order.orderNumber,
+        customerName,
+        customerId: userId,
+        totalAmount: order.finalAmount,
+        itemCount: order.items.length
+      });
+    } catch (notificationError) {
+      console.error('Failed to create new order notification:', notificationError);
+      // Continue with order creation even if notification fails
+    }
 
     // Reserve stock using inventory service
     try {
@@ -263,6 +287,22 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
     }
 
     await order.save();
+
+    // Create notification for admin panel
+    try {
+      const user = await User.findById(userId).select('firstName lastName');
+      const customerName = user ? `${(user as any).firstName} ${(user as any).lastName}` : 'Customer';
+      
+      await notificationService.createOrderCancelledNotification({
+        orderId: order.orderNumber,
+        customerName,
+        customerId: userId,
+        reason: reason || 'No reason provided'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create cancellation notification:', notificationError);
+      // Continue with cancellation even if notification fails
+    }
 
     // Restore product stock using inventory service
     const stockItems = order.items.map(item => ({
@@ -417,17 +457,42 @@ export const requestReturn = async (req: AuthenticatedRequest, res: Response, ne
     
     await order.save();
 
+    // Create notification for admin panel
+    try {
+      const user = await User.findById(userId).select('firstName lastName');
+      const customerName = user ? `${(user as any).firstName} ${(user as any).lastName}` : 'Customer';
+      
+      // Get product names from order items
+      const productNames = order.items.map(item => {
+        if (typeof item.product === 'object' && (item.product as any).name) {
+          return (item.product as any).name;
+        }
+        return 'Product';
+      }).join(', ');
+      
+      await notificationService.createReturnRequestNotification({
+        orderId: order.orderNumber,
+        customerName,
+        customerId: userId,
+        productName: productNames,
+        reason: reason || 'No reason provided'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create return request notification:', notificationError);
+      // Continue with return request even if notification fails
+    }
+
     res.json({
-      success: true,
-      message: 'Return request submitted successfully',
-      data: {
-        orderNumber: order.orderNumber,
-        returnRequestedAt: order.returnRequestedAt,
-        returnReason: order.returnReason
-      }
-    });
-  } catch (error: any) {
-    next(new AppError(error.message || 'Failed to request return', 500));
+        success: true,
+        message: 'Return request submitted successfully',
+        data: {
+          order,
+          returnRequestedAt: order.returnRequestedAt,
+          returnReason: order.returnReason
+        }
+      });
+    } catch (error: any) {
+      next(new AppError(error.message || 'Failed to request return', 500));
   }
 };
 

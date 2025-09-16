@@ -4,7 +4,7 @@ import axios from 'axios';
 const inventoryApi = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
     ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5002/api',
+    : 'http://localhost:5001/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ class InventoryService {
    */
   async getInventoryReport(): Promise<InventoryReport> {
     try {
-      const response = await inventoryApi.get<ApiResponse<InventoryReport>>('/inventory/overview');
+      const response = await inventoryApi.get<ApiResponse<InventoryReport>>('/admin/inventory/report');
       
       if (response.data.success) {
         return response.data.data;
@@ -187,7 +187,7 @@ class InventoryService {
           critical: number;
           low: number;
         };
-      }>>('/inventory/alerts');
+      }>>('/admin/inventory/alerts');
       
       if (response.data.success) {
         return response.data.data;
@@ -227,7 +227,7 @@ class InventoryService {
           total: number;
           pages: number;
         };
-      }>>('/inventory/detailed', { params });
+      }>>('/admin/inventory/detailed', { params });
       
       if (response.data.success) {
         return response.data.data;
@@ -247,7 +247,7 @@ class InventoryService {
     try {
       const { productId, variantId, ...updateData } = request;
       const response = await inventoryApi.put<ApiResponse<any>>(
-        `/inventory/products/${productId}/variants/${variantId}/stock`,
+        `/admin/inventory/products/${productId}/variants/${variantId}/stock`,
         updateData
       );
       

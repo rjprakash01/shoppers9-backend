@@ -9,6 +9,7 @@ import BannerCarousel from '../components/BannerCarousel';
 import PriceRangeBanners from '../components/PriceRangeBanners';
 import LazyImage from '../components/LazyImage';
 import { bannerService, type Banner } from '../services/banners';
+import { testimonialService, type Testimonial } from '../services/testimonials';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +38,7 @@ const Home: React.FC = () => {
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryBanners, setCategoryBanners] = useState<Banner[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   const [, setFilterData] = useState<FilterData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,7 @@ const Home: React.FC = () => {
     fetchCategoryBanners(false);
 
     fetchFilterData();
+    fetchTestimonials();
 
     // Set up periodic refresh for category banners to detect admin changes (reduced frequency)
     const bannerRefreshInterval = setInterval(() => {
@@ -102,6 +105,15 @@ const Home: React.FC = () => {
       }
     } catch (error) {
       
+    }
+  };
+
+  const fetchTestimonials = async () => {
+    try {
+      const fetchedTestimonials = await testimonialService.getFeaturedTestimonials(6);
+      setTestimonials(fetchedTestimonials);
+    } catch (error) {
+      console.error('Error fetching testimonials:', error);
     }
   };
 
@@ -523,84 +535,76 @@ const Home: React.FC = () => {
           {/* Mobile Carousel Layout */}
           <div>
             <div className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-3" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-              {/* Testimonial 1 - Prakash */}
-              <div className="flex-none w-72 lg:w-80 bg-white rounded-xl p-4 lg:p-6 snap-center" style={{
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }}>
-                <div className="flex items-center mb-3">
-                  <div className="flex text-elite-gold-highlight">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
+              {testimonials.length > 0 ? (
+                testimonials.map((testimonial, index) => (
+                  <div key={testimonial._id} className={`flex-none w-72 lg:w-80 ${index % 2 === 0 ? 'bg-white' : 'postcard-box'} rounded-xl p-4 lg:p-6 snap-center`} style={{
+                    boxShadow: index % 2 === 0 ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
+                  }}>
+                    <div className="flex items-center mb-3">
+                      <div className="flex text-elite-gold-highlight">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="h-4 w-4 fill-current" />
+                        ))}
+                        {[...Array(5 - testimonial.rating)].map((_, i) => (
+                          <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
+                      "{testimonial.content}"
+                    </p>
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
+                        {testimonial.customerName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ml-2">
+                        <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">{testimonial.customerName}</p>
+                        <p className="text-xs text-elite-medium-grey">Verified Customer</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // Fallback content when no testimonials are available
+                <div className="flex-none w-72 lg:w-80 bg-white rounded-xl p-4 lg:p-6 snap-center" style={{
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div className="flex items-center mb-3">
+                    <div className="flex text-elite-gold-highlight">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-current" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
+                    "Great quality products and amazing service. Shopping here is always a wonderful experience!"
+                  </p>
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
+                      S
+                    </div>
+                    <div className="ml-2">
+                      <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Shoppers9 Customer</p>
+                      <p className="text-xs text-elite-medium-grey">Happy Customer</p>
+                    </div>
                   </div>
                 </div>
-                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
-                  "Great quality products and amazing service. Shopping here is always a wonderful experience. Highly recommend!"
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
-                    P
-                  </div>
-                  <div className="ml-2">
-                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Prakash</p>
-                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Testimonial 2 - Vishnu dutta */}
-              <div className="flex-none w-72 lg:w-80 postcard-box p-4 lg:p-6 snap-center">
-                <div className="flex items-center mb-3">
-                  <div className="flex text-elite-gold-highlight">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
-                  "Love shopping at Shoppers9! Great selection and friendly service. Every order arrives quickly and exactly as expected."
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
-                    V
-                  </div>
-                  <div className="ml-2">
-                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Vishnu dutta</p>
-                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Testimonial 3 - venkat sai */}
-              <div className="flex-none w-72 lg:w-80 postcard-box p-4 lg:p-6 snap-center">
-                <div className="flex items-center mb-3">
-                  <div className="flex text-elite-gold-highlight">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
-                  "Love the variety of products and competitive prices. Free delivery across all islands is a game changer!"
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
-                    V
-                  </div>
-                  <div className="ml-2">
-                    <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">venkat sai</p>
-                    <p className="text-xs text-elite-medium-grey">Happy Customer</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
             
             {/* Slider Dots Indicator */}
-            <div className="flex justify-center mt-4 space-x-1.5">
-              <div className="w-1.5 h-1.5 bg-elite-cta-purple rounded-full"></div>
-              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
-              <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
-            </div>
+            {testimonials.length > 1 && (
+              <div className="flex justify-center mt-4 space-x-1.5">
+                {testimonials.map((_, index) => (
+                  <div 
+                    key={index}
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      index === 0 ? 'bg-elite-cta-purple' : 'bg-elite-medium-grey/30'
+                    }`}
+                  ></div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

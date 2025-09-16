@@ -4,7 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 const BACKEND_BASE_URL = API_BASE_URL.replace('/api', '');
 // Admin backend URL for uploaded images (where images are actually stored)
 const ADMIN_BACKEND_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5001';
-// For development, admin backend runs on port 5001, and images are uploaded via admin backend
+// For development, admin backend runs on port 5001, and images are uploaded/served from there
 const UPLOADS_BASE_URL = 'http://localhost:5001';
 
 /**

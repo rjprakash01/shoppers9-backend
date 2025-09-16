@@ -77,7 +77,7 @@ class SearchService {
       const params = new URLSearchParams();
       
       if (filters.query) {
-        params.append('search', filters.query);
+        params.append('q', filters.query);
         this.addToSearchHistory(filters.query);
       }
       

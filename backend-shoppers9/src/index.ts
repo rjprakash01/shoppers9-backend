@@ -21,6 +21,8 @@ import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
 import bannerRoutes from './routes/banner';
 import analyticsRoutes from './routes/analytics';
+import testimonialRoutes from './routes/testimonials';
+import settingsRoutes from './routes/settings';
 import categoryRoutes from './routes/category';
 import supportRoutes from './routes/support';
 import inventoryRoutes from './routes/inventory';
@@ -142,6 +144,8 @@ app.use('/api/search', searchRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/testimonials', testimonialRoutes);
+app.use('/api/settings', settingsRoutes);
 console.log('✅ All API routes registered');
 
 // API documentation endpoint

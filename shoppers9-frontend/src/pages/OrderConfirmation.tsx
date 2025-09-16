@@ -8,6 +8,7 @@ interface OrderDetails {
   orderId: string;
   orderNumber: string;
   totalAmount: number;
+  finalAmount?: number;
   estimatedDelivery: string;
   status: string;
   items?: any[];
@@ -184,7 +185,7 @@ const OrderConfirmation: React.FC = () => {
                     <CreditCard className="h-3 w-3 text-brand-indigo mr-1" />
                     <p className="text-xs font-medium font-poppins text-brand-indigo">Total Amount</p>
                   </div>
-                  <p className="text-sm font-bold font-poppins text-brand-indigo">{formatPrice(orderDetails.totalAmount)}</p>
+                  <p className="text-sm font-bold font-poppins text-brand-indigo">{formatPrice(orderDetails.finalAmount || orderDetails.totalAmount)}</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">

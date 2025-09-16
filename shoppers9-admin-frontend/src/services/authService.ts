@@ -429,7 +429,7 @@ class AuthService {
 
   async getCategoryTree() {
     try {
-      const response = await api.get('/admin/categories/tree');
+      const response = await api.get('/categories/tree');
       return response.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get category tree'));

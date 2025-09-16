@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Order from '../models/Order';
 import { AuthRequest } from '../types';
+import { NotificationService } from '../utils/notificationService';
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
@@ -194,6 +195,32 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
     await order.save();
     console.log('Order saved successfully');
 
+    // Create notifications for specific status changes
+    try {
+      const orderData = order as any;
+      const user = orderData.userId;
+      
+      if (status === 'delivered') {
+        await NotificationService.createOrderDeliveredNotification({
+          orderId: orderData.orderNumber || orderData._id.toString(),
+          customerName: user ? `${user.firstName} ${user.lastName}` : 'Customer',
+          customerId: user ? user._id.toString() : '',
+          deliveryAddress: orderData.shippingAddress ? 
+            `${orderData.shippingAddress.street}, ${orderData.shippingAddress.city}` : 'Address'
+        });
+      } else if (status === 'cancelled') {
+        await NotificationService.createOrderCancelledNotification({
+          orderId: orderData.orderNumber || orderData._id.toString(),
+          customerName: user ? `${user.firstName} ${user.lastName}` : 'Customer',
+          customerId: user ? user._id.toString() : '',
+          reason: 'Order cancelled by admin'
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Don't fail the order update if notification fails
+    }
+
     // Return simplified response
     return res.json({
       success: true,
@@ -377,6 +404,59 @@ export const bulkUpdateOrders = async (req: Request, res: Response) => {
   }
 };
 
+export const testDiscountCalculation = async (req: Request, res: Response) => {
+  try {
+    console.log('Testing discount calculation...');
+    
+    // Find orders with coupon discounts
+    const ordersWithCoupons = await Order.find({
+      couponDiscount: { $gt: 0 }
+    }).limit(3);
+    
+    console.log(`Found ${ordersWithCoupons.length} orders with coupon discounts`);
+    
+    const analysis = ordersWithCoupons.map((order: any) => {
+      const itemsDiscountedTotal = order.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      const expectedFinalAmount = itemsDiscountedTotal - order.couponDiscount + order.platformFee + order.deliveryCharge;
+      
+      return {
+        orderNumber: order.orderNumber,
+        itemsTotal: itemsDiscountedTotal,
+        couponDiscount: order.couponDiscount,
+        platformFee: order.platformFee,
+        deliveryCharge: order.deliveryCharge,
+        currentFinalAmount: order.finalAmount,
+        expectedFinalAmount: expectedFinalAmount,
+        isCorrect: order.finalAmount === expectedFinalAmount
+      };
+    });
+    
+    return res.json({
+      success: true,
+      message: 'Discount calculation analysis completed',
+      data: {
+        ordersAnalyzed: ordersWithCoupons.length,
+        analysis: analysis,
+        testScenario: {
+          productPrice: 1000,
+          discountedPrice: 800,
+          couponDiscount: 400, // 50% of 800
+          platformFee: 0, // >500 so no fee
+          deliveryCharge: 0, // >500 so no charge
+          expectedFinalAmount: 400 // 800 - 400 + 0 + 0
+        }
+      }
+    });
+  } catch (error: any) {
+    console.error('Error testing discount calculation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error testing discount calculation',
+      error: error.message || 'Unknown error'
+    });
+  }
+};
+
 export const fixOrderAmounts = async (req: Request, res: Response) => {
   try {
     console.log('Starting order amounts fix...');
@@ -403,17 +483,28 @@ export const fixOrderAmounts = async (req: Request, res: Response) => {
         const platformFee = discountedAmount > 500 ? 0 : 20;
         const deliveryCharge = discountedAmount > 500 ? 0 : 50;
 
-        // Calculate correct finalAmount
-        const correctFinalAmount = discountedAmount + platformFee + deliveryCharge;
+        // Apply coupon discount if available
+        const couponDiscount = order.couponDiscount || 0;
+        
+        // Calculate correct discount (only item-level, not including coupon)
+        const itemLevelDiscount = originalAmount - discountedAmount;
+
+        // Calculate correct finalAmount (discounted amount - coupon discount + fees)
+        let correctFinalAmount = discountedAmount - couponDiscount + platformFee + deliveryCharge;
+        if (correctFinalAmount < 0) {
+          correctFinalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
+        }
         const correctTotalAmount = originalAmount;
+        const correctDiscount = itemLevelDiscount;
 
         // Update the order if amounts are different
-        if (order.totalAmount !== correctTotalAmount || order.finalAmount !== correctFinalAmount) {
+        if (order.totalAmount !== correctTotalAmount || order.finalAmount !== correctFinalAmount || order.discount !== correctDiscount) {
           await Order.updateOne(
             { _id: order._id },
             {
               totalAmount: correctTotalAmount,
-              finalAmount: correctFinalAmount
+              finalAmount: correctFinalAmount,
+              discount: correctDiscount
             }
           );
 

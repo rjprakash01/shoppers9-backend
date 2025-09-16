@@ -3,7 +3,7 @@ import { IWishlist, IWishlistItem } from '../types';
 
 const wishlistItemSchema = new Schema<IWishlistItem>({
   product: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'Product'
   },
@@ -18,7 +18,7 @@ const wishlistItemSchema = new Schema<IWishlistItem>({
 
 const wishlistSchema = new Schema<IWishlist>({
   userId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'User',
     unique: true

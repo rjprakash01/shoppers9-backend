@@ -20,6 +20,11 @@ import productFilterValueRoutes from './routes/productFilterValue';
 import filterOptionRoutes from './routes/filterOption';
 import bannerRoutes from './routes/banner';
 import publicBannerRoutes from './routes/publicBanner';
+import inventoryRoutes from './routes/inventory';
+import notificationRoutes from './routes/notifications';
+import settingsRoutes from './routes/settings';
+import testimonialRoutes from './routes/testimonials';
+import { startScheduler } from './utils/scheduler';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +62,20 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
+// Test discount calculation endpoint
+app.post('/api/test-discount-calculation', async (req, res) => {
+  try {
+    const { testDiscountCalculation } = await import('./controllers/orderController');
+    await testDiscountCalculation(req, res);
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Error testing discount calculation',
+      error: error.message
+    });
+  }
+});
+
 // Serve static files from uploads directory with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -73,6 +92,37 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Public notification endpoint for testing
+app.post('/public/notifications', async (req, res) => {
+  try {
+    console.log('Public notification endpoint called:', req.body);
+    const { type, title, message, data } = req.body;
+    const { Notification } = require('./models/Notification');
+    
+    const notification = new Notification({
+      type,
+      title,
+      message,
+      data: data || {}
+    });
+    
+    await notification.save();
+    console.log('Notification saved successfully:', notification._id);
+    
+    res.status(201).json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({
+       success: false,
+       message: 'Failed to create notification',
+       error: error instanceof Error ? error.message : 'Unknown error'
+     });
+  }
 });
 
 // Test endpoint for frontend connectivity
@@ -232,6 +282,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 // Public banner routes (for frontend carousel access)
 app.use('/api/banners', publicBannerRoutes);
+// Public testimonial routes
+app.use('/api/testimonials', testimonialRoutes);
 
 // Temporary fix endpoint (no auth required)
 app.post('/api/fix-order-amounts', async (req, res) => {
@@ -261,17 +313,28 @@ app.post('/api/fix-order-amounts', async (req, res) => {
         const platformFee = discountedAmount > 500 ? 0 : 20;
         const deliveryCharge = discountedAmount > 500 ? 0 : 50;
 
-        // Calculate correct finalAmount
-        const correctFinalAmount = discountedAmount + platformFee + deliveryCharge;
+        // Apply coupon discount if available
+        const couponDiscount = order.couponDiscount || 0;
+        
+        // Calculate correct discount (only item-level, not including coupon)
+        const itemLevelDiscount = originalAmount - discountedAmount;
+
+        // Calculate correct finalAmount (discounted amount - coupon discount + fees)
+        let correctFinalAmount = discountedAmount - couponDiscount + platformFee + deliveryCharge;
+        if (correctFinalAmount < 0) {
+          correctFinalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
+        }
         const correctTotalAmount = originalAmount;
+        const correctDiscount = itemLevelDiscount;
 
         // Update the order if amounts are different
-        if (order.totalAmount !== correctTotalAmount || order.finalAmount !== correctFinalAmount) {
+        if (order.totalAmount !== correctTotalAmount || order.finalAmount !== correctFinalAmount || order.discount !== correctDiscount) {
           await Order.updateOne(
             { _id: order._id },
             {
               totalAmount: correctTotalAmount,
-              finalAmount: correctFinalAmount
+              finalAmount: correctFinalAmount,
+              discount: correctDiscount
             }
           );
 
@@ -308,12 +371,56 @@ app.use('/api/admin', variantRoutes); // Variant management routes
 app.use('/api/admin/users', userRoutes);
 app.use('/api/admin/orders', orderRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
+app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/admin/categories', categoryRoutes);
 app.use('/api/admin/filters', filterRoutes);
 app.use('/api/admin/filter-options', filterOptionRoutes);
 app.use('/api/admin', categoryFilterRoutes);
 app.use('/api/admin', productFilterValueRoutes);
 app.use('/api/admin/banners', bannerRoutes);
+// Public settings endpoint (no auth required)
+app.get('/api/settings/public', async (req, res) => {
+  try {
+    const { getSettings } = require('./controllers/settingsController');
+    await getSettings(req, res);
+  } catch (error) {
+    console.error('Error in public settings endpoint:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.use('/api/admin/settings', settingsRoutes);
+app.use('/api/admin/testimonials', testimonialRoutes);
+// Public notification endpoint for service-to-service communication
+app.post('/api/admin/notifications', async (req, res) => {
+  try {
+    const { type, title, message, data } = req.body;
+    const { Notification } = require('./models/Notification');
+    
+    const notification = new Notification({
+      type,
+      title,
+      message,
+      data: data || {}
+    });
+    
+    await notification.save();
+    
+    res.status(201).json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create notification'
+    });
+  }
+});
+
+// Protected notification routes
+app.use('/api/admin/notifications', notificationRoutes);
 // General admin routes (for admin management)
 app.use('/api/admin', adminRoutes);
 
@@ -324,6 +431,10 @@ app.use(errorHandler);
 // Start server
 app.listen(PORT, () => {
   console.log(`Admin backend server running on port ${PORT}`);
+  
+  // Start notification schedulers
+  startScheduler();
 });
 
 export default app;
+

@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Use relative URL in production to leverage nginx proxy, localhost in development
-const API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || '';
-const ADMIN_API_BASE_URL = import.meta.env.VITE_ADMIN_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
+const ADMIN_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
 
 export interface Banner {
   _id: string;

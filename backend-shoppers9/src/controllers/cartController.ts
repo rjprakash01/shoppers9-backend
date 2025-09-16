@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Cart } from '../models/Cart';
 import { Product } from '../models/Product';
 import { Wishlist } from '../models/Wishlist';
@@ -380,7 +381,7 @@ export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) =
 
     if (!existsInWishlist) {
       wishlist.items.push({
-        product: item.product,
+        product: new mongoose.Types.ObjectId(item.product),
         variantId: item.variantId,
         addedAt: new Date()
       });

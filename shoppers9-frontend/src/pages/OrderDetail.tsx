@@ -443,7 +443,7 @@ const OrderDetail: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-semibold">{formatPrice(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</span>
+              <span className="font-semibold">{formatPrice(order.items.reduce((sum, item) => sum + (item.originalPrice * item.quantity), 0))}</span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-green-600">

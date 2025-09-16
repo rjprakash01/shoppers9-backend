@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationDropdown from './NotificationDropdown';
 import {
   LayoutDashboard,
   Users,
@@ -11,6 +12,7 @@ import {
   Filter,
   Image,
   MessageCircle,
+  MessageSquare,
   Warehouse,
   Truck,
   Ticket,
@@ -18,7 +20,6 @@ import {
   X,
   LogOut,
   User,
-  Bell,
   Settings,
   ChevronDown,
   UserCircle,
@@ -87,6 +88,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Categories', href: '/categories', icon: FolderTree },
     { name: 'Filters', href: '/filters', icon: Filter },
     { name: 'Banners', href: '/banners', icon: Image },
+    { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
+    { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
@@ -194,10 +197,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               
               {/* Notification Bell */}
-              <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md transition-colors relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationDropdown />
               
               {/* Settings Dropdown */}
               <div className="relative" ref={settingsRef}>

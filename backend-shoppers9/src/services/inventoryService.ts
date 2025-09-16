@@ -51,7 +51,7 @@ class InventoryService {
   /**
    * Update stock for a specific product variant
    */
-  async updateStock(request: StockUpdateRequest): Promise<IProductVariant | null> {
+  async updateStock(request: StockUpdateRequest, session?: mongoose.ClientSession): Promise<IProductVariant | null> {
     const { productId, variantId, quantity, operation } = request;
 
     const product = await Product.findById(productId);
@@ -77,10 +77,23 @@ class InventoryService {
     }
 
     variant.stock = newStock;
-    await product.save();
+    
+    // Check if product should be deactivated when total stock reaches zero
+    const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+    
+    if (totalStock === 0 && product.isActive) {
+      product.isActive = false;
+      console.log(`Product ${product.name} (${productId}) automatically deactivated - total stock is zero`);
+    } else if (totalStock > 0 && !product.isActive) {
+      // Reactivate product if stock becomes available again
+      product.isActive = true;
+      console.log(`Product ${product.name} (${productId}) automatically reactivated - stock available`);
+    }
+    
+    await product.save({ session });
 
     // Log stock change
-    console.log(`Stock updated for ${variant.sku}: ${currentStock} → ${newStock} (${operation} ${quantity})`);
+    console.log(`Stock updated for ${variant.sku}: ${currentStock} → ${newStock} (${operation} ${quantity}). Total product stock: ${totalStock}`);
 
     return variant;
   }
@@ -89,27 +102,46 @@ class InventoryService {
    * Reserve stock for order processing
    */
   async reserveStock(items: Array<{ productId: string; variantId: string; quantity: number }>): Promise<boolean> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+    // Try with transactions first, fallback to regular operations if not supported
     try {
-      for (const item of items) {
-        await this.updateStock({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          operation: 'decrease',
-          reason: 'Order placement'
-        });
-      }
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-      await session.commitTransaction();
-      return true;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      try {
+        for (const item of items) {
+          await this.updateStock({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            operation: 'decrease',
+            reason: 'Order placement'
+          }, session);
+        }
+
+        await session.commitTransaction();
+        return true;
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (transactionError: any) {
+      // If transactions are not supported (standalone MongoDB), use regular operations
+      if (transactionError.code === 20 || transactionError.codeName === 'IllegalOperation') {
+        console.log('Transactions not supported, using regular operations');
+        for (const item of items) {
+          await this.updateStock({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            operation: 'decrease',
+            reason: 'Order placement'
+          });
+        }
+        return true;
+      }
+      throw transactionError;
     }
   }
 
@@ -117,27 +149,46 @@ class InventoryService {
    * Release reserved stock (for cancelled orders)
    */
   async releaseStock(items: Array<{ productId: string; variantId: string; quantity: number }>): Promise<boolean> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+    // Try with transactions first, fallback to regular operations if not supported
     try {
-      for (const item of items) {
-        await this.updateStock({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          operation: 'increase',
-          reason: 'Order cancellation'
-        });
-      }
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-      await session.commitTransaction();
-      return true;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      try {
+        for (const item of items) {
+          await this.updateStock({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            operation: 'increase',
+            reason: 'Order cancellation'
+          }, session);
+        }
+
+        await session.commitTransaction();
+        return true;
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (transactionError: any) {
+      // If transactions are not supported (standalone MongoDB), use regular operations
+      if (transactionError.code === 20 || transactionError.codeName === 'IllegalOperation') {
+        console.log('Transactions not supported, using regular operations');
+        for (const item of items) {
+          await this.updateStock({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            operation: 'increase',
+            reason: 'Order cancellation'
+          });
+        }
+        return true;
+      }
+      throw transactionError;
     }
   }
 
@@ -325,9 +376,22 @@ class InventoryService {
 
         const oldStock = variant.stock;
         variant.stock = Math.max(0, update.newStock);
+        
+        // Check if product should be deactivated when total stock reaches zero
+        const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+        
+        if (totalStock === 0 && product.isActive) {
+          product.isActive = false;
+          console.log(`Product ${product.name} (${product._id}) automatically deactivated - total stock is zero`);
+        } else if (totalStock > 0 && !product.isActive) {
+          // Reactivate product if stock becomes available again
+          product.isActive = true;
+          console.log(`Product ${product.name} (${product._id}) automatically reactivated - stock available`);
+        }
+        
         await product.save();
 
-        console.log(`Bulk stock update for ${update.sku}: ${oldStock} → ${variant.stock}`);
+        console.log(`Bulk stock update for ${update.sku}: ${oldStock} → ${variant.stock}. Total product stock: ${totalStock}`);
         successful++;
       } catch (error) {
         failed.push({ sku: update.sku, error: (error as Error).message });

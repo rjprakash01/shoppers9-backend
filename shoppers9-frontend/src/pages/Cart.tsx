@@ -7,6 +7,7 @@ import { useWishlist } from '../contexts/WishlistContext';
 import { formatPrice } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import AddressBook from '../components/AddressBook';
+import { settingsService, type PlatformSettings } from '../services/settings';
 import type { CartItem } from '../services/cart';
 
 interface Address {
@@ -37,6 +38,7 @@ const Cart: React.FC = () => {
   const [sizeModalOpen, setSizeModalOpen] = useState<string | null>(null);
   const [quantityModalOpen, setQuantityModalOpen] = useState<string | null>(null);
   const [selectedItemForChange, setSelectedItemForChange] = useState<CartItem | null>(null);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
 
 
   // Get current cart items based on authentication status
@@ -48,6 +50,19 @@ const Cart: React.FC = () => {
       refreshCart();
     }
   }, [isAuthenticated]);
+
+  // Load platform settings
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const platformSettings = await settingsService.getSettings();
+        setSettings(platformSettings);
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Set default address when user data is available
   React.useEffect(() => {
@@ -235,10 +250,23 @@ const Cart: React.FC = () => {
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const calculatePlatformFee = () => {
+    if (!settings) return 0;
+    const subtotal = calculateSelectedItemsTotal();
+    return settingsService.calculatePlatformFee(subtotal, settings);
+  };
+
+  const calculateDeliveryCharges = () => {
+    if (!settings) return 0;
+    const subtotal = calculateSelectedItemsTotal();
+    return settingsService.calculateDeliveryFee(subtotal, settings);
+  };
+
   const calculateTotal = () => {
     const subtotal = calculateSelectedItemsTotal();
-    const platformFee = 0; // FREE as shown in screenshot
-    return subtotal + platformFee;
+    const platformFee = calculatePlatformFee();
+    const deliveryCharges = calculateDeliveryCharges();
+    return subtotal + platformFee + deliveryCharges;
   };
 
   const getSelectedItemsCount = () => {
@@ -332,30 +360,7 @@ const Cart: React.FC = () => {
     <div className="min-h-screen" style={{
       backgroundColor: 'var(--light-grey)'
     }}>
-      {/* Desktop Header */}
-      <div className="hidden lg:block" style={{
-        backgroundColor: 'var(--cta-dark-purple)',
-        boxShadow: 'var(--premium-shadow)'
-      }}>
-        <div className="elite-container">
-          <div className="flex items-center h-16 py-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 mr-4 transition-colors duration-200 hover:bg-white/10 rounded-lg"
-              style={{
-                color: 'var(--base-white)',
-                backgroundColor: 'transparent'
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="text-xl font-bold" style={{
-              fontFamily: 'Playfair Display, serif',
-              color: 'var(--base-white)'
-            }}>My Cart</h1>
-          </div>
-        </div>
-      </div>
+
 
       {/* Mobile Cart Header - Clean */}
       <div className="lg:hidden p-4">
@@ -519,7 +524,7 @@ const Cart: React.FC = () => {
                     <img
                       src={getImageUrl(item.productData?.images?.[0] || item.variant?.images?.[0] || '/placeholder-image.svg')}
                       alt={productName}
-                      className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = '/placeholder-image.svg';
@@ -617,6 +622,8 @@ const Cart: React.FC = () => {
                     const product = item.product || item;
                     const wishlistItemId = item._id || `wishlist-${product._id || product.id}-${index}`;
                     
+
+                    
                     if (!product) return null;
                     
                     // Get the product price - try different sources
@@ -637,15 +644,25 @@ const Cart: React.FC = () => {
                         <div className="flex space-x-3">
                           {/* Product Image */}
                           <div className="flex-shrink-0">
-                            <img
-                              src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
-                              alt={product.name || 'Product'}
-                              className="w-16 h-16 sm:w-18 sm:h-18 object-cover rounded-lg"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/placeholder-image.svg';
-                              }}
-                            />
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                              <img
+                                 src={(() => {
+                                   const imageUrl = product.images?.[0] || product.variants?.[0]?.images?.[0];
+                                   // Check if it's a base64 data URL
+                                   if (imageUrl && imageUrl.startsWith('data:')) {
+                                     return imageUrl;
+                                   }
+                                   // Otherwise use getImageUrl for file paths
+                                   return getImageUrl(imageUrl || '/placeholder-image.svg');
+                                 })()}
+                                 alt={product.name || 'Product'}
+                                 className="w-full h-full object-cover"
+                                 onError={(e) => {
+                                   const target = e.target as HTMLImageElement;
+                                   target.src = '/placeholder-image.svg';
+                                 }}
+                               />
+                            </div>
                           </div>
 
                           {/* Product Details */}
@@ -714,11 +731,30 @@ const Cart: React.FC = () => {
                     <span className="text-sm text-gray-900">{formatPrice(calculateSelectedItemsTotal())}</span>
                   </div>
                  <div className="flex justify-between items-center">
-                   <span className="text-sm text-gray-600">Platform & Event Fee</span>
+                   <span className="text-sm text-gray-600">Platform Fee</span>
                    <div className="text-right">
-                     <span className="text-sm text-green-600">FREE</span>
+                     {calculatePlatformFee() === 0 ? (
+                       <span className="text-sm text-green-600">FREE</span>
+                     ) : (
+                       <span className="text-sm text-gray-900">{formatPrice(calculatePlatformFee())}</span>
+                     )}
                    </div>
                  </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-gray-600">Delivery Charges</span>
+                   <div className="text-right">
+                     {calculateDeliveryCharges() === 0 ? (
+                       <span className="text-sm text-green-600">FREE</span>
+                     ) : (
+                       <span className="text-sm text-gray-900">{formatPrice(calculateDeliveryCharges())}</span>
+                     )}
+                   </div>
+                 </div>
+                 {settings && calculateSelectedItemsTotal() < settings.freeDeliveryMinAmount && (
+                    <div className="text-xs text-gray-500">
+                      Add {formatPrice(settings.freeDeliveryMinAmount - calculateSelectedItemsTotal())} more for free delivery
+                    </div>
+                  )}
                  <div className="border-t pt-2 flex justify-between items-center">
                    <span className="text-base font-semibold text-gray-900">Total Amount</span>
                    <span className="text-base font-semibold text-gray-900">{formatPrice(calculateTotal())}</span>

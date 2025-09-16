@@ -156,7 +156,7 @@ export interface ICartItem {
 // Wishlist Types
 export interface IWishlist extends Document {
   _id: string;
-  userId: string;
+  userId: mongoose.Types.ObjectId;
   items: IWishlistItem[];
   createdAt: Date;
   updatedAt: Date;
@@ -164,7 +164,7 @@ export interface IWishlist extends Document {
 
 export interface IWishlistItem {
   _id?: string;
-  product: string;
+  product: mongoose.Types.ObjectId;
   variantId?: string;
   addedAt: Date;
 }

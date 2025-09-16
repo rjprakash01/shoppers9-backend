@@ -2,9 +2,9 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 export const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5001/api',
+  baseURL: import.meta.env.PROD 
+    ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
+    : import.meta.env.VITE_API_URL || 'http://localhost:5003/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

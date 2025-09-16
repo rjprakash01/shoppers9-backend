@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { IUser, IAddress } from '../types';
 
 const MAX_LOGIN_ATTEMPTS = 5;

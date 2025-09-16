@@ -17,6 +17,7 @@ interface CartContextType {
   moveToWishlist: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
+  isInCart: (productId: string, variantId: string, size: string) => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -279,6 +280,23 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   };
 
+  // Check if a specific variant is in cart
+  const isInCart = (productId: string, variantId: string, size: string): boolean => {
+    if (isAuthenticated && cart) {
+      return cart.items.some(item => 
+        item.product === productId && 
+        item.variantId === variantId && 
+        item.size === size
+      );
+    } else {
+      return localCart.some(item => 
+        (item.product === productId || item.productId === productId) && 
+        item.variantId === variantId && 
+        item.size === size
+      );
+    }
+  };
+
   // Calculate cart metrics
   const cartCount = isAuthenticated 
     ? (cart?.items.reduce((count, item) => count + (item?.quantity || 0), 0) || 0)
@@ -300,6 +318,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     moveToWishlist,
     clearCart,
     refreshCart,
+    isInCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -11,7 +11,7 @@ import { getImageUrls } from '../utils/imageUtils';
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart, cart, localCart, cartCount } = useCart();
+  const { addToCart, cart, localCart, cartCount, isInCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const { addToWishlist, removeFromWishlist, isInWishlist: checkIsInWishlist, isLoading: wishlistLoading } = useWishlist();
   const [product, setProduct] = useState<Product | null>(null);
@@ -94,7 +94,6 @@ const ProductDetail: React.FC = () => {
         variantOriginalPrice: selectedVariantData?.originalPrice
       });
       await addToCart(product, selectedVariant, selectedSize, quantity);
-      alert('Product added to cart successfully!');
     } catch (error) {
       console.error('Error adding to cart:', error);
       console.error('Error details:', {
@@ -144,6 +143,10 @@ const ProductDetail: React.FC = () => {
       }
       // For other errors, just log them - don't crash the UI
     }
+  };
+
+  const handleCheckout = () => {
+    navigate('/cart');
   };
 
   const getCurrentVariant = () => {
@@ -268,11 +271,16 @@ const ProductDetail: React.FC = () => {
                    })}
                  </div>
                  
-                 {/* Add to Cart Button */}
+                 {/* Add to Cart / Checkout Button */}
                  <button
                    onClick={() => {
                      if (selectedSize) {
-                       handleAddToCart();
+                       const variantInCart = product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize);
+                       if (variantInCart) {
+                         handleCheckout();
+                       } else {
+                         handleAddToCart();
+                       }
                        setShowSizeModal(false);
                      }
                    }}
@@ -280,7 +288,11 @@ const ProductDetail: React.FC = () => {
                    className="w-full bg-red-500 text-white py-4 px-6 rounded-xl font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors hover:bg-red-600"
                  >
                    <ShoppingCart className="h-5 w-5" />
-                   <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
+                   <span>
+                     {isAddingToCart ? 'Adding...' : 
+                      (product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize) ? 'Checkout' : 'Add')
+                     }
+                   </span>
                  </button>
                </div>
              </div>
@@ -385,7 +397,17 @@ const ProductDetail: React.FC = () => {
           </div>
 
           {/* Elite Product Info */}
-          <div className="postcard-box p-2 lg:p-4">
+          <div className="postcard-box p-2 lg:p-4 relative">
+            {/* Low Stock Urgency Message */}
+            {(() => {
+              const currentStock = currentSize?.stock || 0;
+              return currentStock > 0 && currentStock <= 5 ? (
+                <div className="absolute top-2 right-2 lg:top-4 lg:right-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+                  Only {currentStock} left!
+                </div>
+              ) : null;
+            })()}
+            
             <h1 className="font-playfair text-base lg:text-xl font-bold text-elite-charcoal-black mb-1 lg:mb-2">{product.name}</h1>
             <p className="font-inter text-xs lg:text-sm text-elite-medium-grey mb-2 lg:mb-3 leading-relaxed">{product.description}</p>
 
@@ -551,12 +573,23 @@ const ProductDetail: React.FC = () => {
             {/* Mobile Action Buttons - Below Quantity */}
             <div className="lg:hidden space-y-2 mb-3">
               <button
-                onClick={handleAddToCart}
+                onClick={() => {
+                  const variantInCart = product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize);
+                  if (variantInCart) {
+                    handleCheckout();
+                  } else {
+                    handleAddToCart();
+                  }
+                }}
                 disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
                 className="w-full text-white py-2 px-3 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors text-xs" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
               >
                 <ShoppingCart className="h-3 w-3" />
-                <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
+                <span>
+                  {isAddingToCart ? 'Adding...' : 
+                   (product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize) ? 'Checkout' : 'Add')
+                  }
+                </span>
               </button>
               
               <button 
@@ -583,12 +616,23 @@ const ProductDetail: React.FC = () => {
             {/* Desktop Add to Cart - Hidden on Mobile */}
             <div className="hidden lg:block space-y-3">
               <button
-                onClick={handleAddToCart}
+                onClick={() => {
+                  const variantInCart = product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize);
+                  if (variantInCart) {
+                    handleCheckout();
+                  } else {
+                    handleAddToCart();
+                  }
+                }}
                 disabled={!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)}
                 className="w-full text-white py-2 px-4 rounded-lg font-medium disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors text-sm" style={{backgroundColor: (!selectedVariant || !selectedSize || isAddingToCart || (currentSize?.stock === 0)) ? '#d1d5db' : '#322F61'}}
               >
                 <ShoppingCart className="h-4 w-4" />
-                <span>{isAddingToCart ? 'Adding...' : 'Add'}</span>
+                <span>
+                  {isAddingToCart ? 'Adding...' : 
+                   (product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize) ? 'Checkout' : 'Add')
+                  }
+                </span>
               </button>
               
               <button 
@@ -758,7 +802,9 @@ const ProductDetail: React.FC = () => {
               }}
             >
               <ShoppingCart className="h-4 w-4" />
-              <span>Add</span>
+              <span>
+                {product && selectedVariant && selectedSize && isInCart(product._id, selectedVariant, selectedSize) ? 'Checkout' : 'Add'}
+              </span>
             </button>
           </div>
         </div>

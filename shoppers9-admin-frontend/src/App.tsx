@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -17,13 +18,16 @@ import Inventory from './pages/Inventory';
 import Shipping from './pages/Shipping';
 import Coupons from './pages/Coupons';
 import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
+import Testimonials from './pages/Testimonials';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
+      <NotificationProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={
@@ -133,11 +137,26 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/testimonials" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Testimonials />
+                </Layout>
+              </ProtectedRoute>
+            } />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </div>
-      </Router>
+          </div>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
