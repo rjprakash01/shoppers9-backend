@@ -143,9 +143,15 @@ class AnalyticsService {
     } = filters;
 
     try {
-      // Check if we have any data, if not generate sample data
-      const orderCount = await Order.countDocuments();
-      if (orderCount === 0) {
+      // Check if we have any data in the specified date range
+      const orderCount = await Order.countDocuments({
+        createdAt: { $gte: startDate, $lte: endDate },
+        orderStatus: { $ne: 'CANCELLED' }
+      });
+      
+      // If no orders in date range, check if we have any orders at all
+      const totalOrderCount = await Order.countDocuments();
+      if (totalOrderCount === 0) {
         await this.generateSampleData();
       }
 
@@ -347,22 +353,7 @@ class AnalyticsService {
         customers: trend.customers
       }));
 
-      // If no trends data, generate sample trend data
-      if (formattedTrends.length === 0) {
-        const sampleTrends = [];
-        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        for (let i = 0; i < Math.min(daysDiff, 30); i++) {
-          const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-          sampleTrends.push({
-            date: date.toISOString().split('T')[0],
-            revenue: Math.floor(Math.random() * 50000) + 10000, // ₹10k to ₹60k
-            orders: Math.floor(Math.random() * 20) + 5, // 5 to 25 orders
-            customers: Math.floor(Math.random() * 15) + 3 // 3 to 18 customers
-          });
-        }
-        return sampleTrends;
-      }
+      // Return actual data even if empty for the date range
 
       return formattedTrends;
     } catch (error) {
@@ -464,16 +455,7 @@ class AnalyticsService {
         }
       ]);
 
-      // If no customer segments data, return sample data
-      if (segments.length === 0) {
-        return [
-          { segment: 'new', count: 120, percentage: 40, averageValue: 2500 },
-          { segment: 'regular', count: 90, percentage: 30, averageValue: 4500 },
-          { segment: 'vip', count: 45, percentage: 15, averageValue: 12000 },
-          { segment: 'at_risk', count: 30, percentage: 10, averageValue: 3200 },
-          { segment: 'churned', count: 15, percentage: 5, averageValue: 1800 }
-        ];
-      }
+      // Return actual data even if empty
 
       const totalCustomers = segments.reduce((sum, segment) => sum + segment.count, 0);
       
@@ -587,16 +569,7 @@ class AnalyticsService {
         }
       ]);
 
-      // If no traffic sources data, return sample data
-      if (sources.length === 0) {
-        return [
-          { source: 'direct', visitors: 450, conversions: 135, revenue: 67500 },
-          { source: 'search', visitors: 320, conversions: 96, revenue: 48000 },
-          { source: 'social', visitors: 180, conversions: 36, revenue: 18000 },
-          { source: 'email', visitors: 120, conversions: 30, revenue: 15000 },
-          { source: 'referral', visitors: 80, conversions: 16, revenue: 8000 }
-        ];
-      }
+      // Return actual data even if empty for the date range
 
       return sources;
     } catch (error) {
@@ -1217,23 +1190,7 @@ class AnalyticsService {
         ])
       ]);
 
-      // If no real data, provide sample real-time data
-      const hasData = activeUsers > 0 || recentOrders.length > 0 || liveEvents.length > 0;
-      
-      if (!hasData) {
-        return {
-          activeUsers: Math.floor(Math.random() * 50) + 20, // 20-70 active users
-          ordersLast24h: Math.floor(Math.random() * 30) + 15, // 15-45 orders
-          revenueLast24h: Math.floor(Math.random() * 100000) + 50000, // ₹50k-₹150k
-          topEvents: [
-            { _id: 'page_view', count: Math.floor(Math.random() * 200) + 100 },
-            { _id: 'product_view', count: Math.floor(Math.random() * 150) + 50 },
-            { _id: 'add_to_cart', count: Math.floor(Math.random() * 80) + 20 },
-            { _id: 'purchase', count: Math.floor(Math.random() * 30) + 10 }
-          ],
-          timestamp: now
-        };
-      }
+      // Return actual real-time data
 
       return {
         activeUsers,
