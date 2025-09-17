@@ -57,11 +57,12 @@ class AnalyticsService {
    */
   async generateSampleData(): Promise<void> {
     try {
+      const now = new Date();
+      
       // Generate sample orders if none exist
       const orderCount = await Order.countDocuments();
       if (orderCount === 0) {
         const sampleOrders = [];
-        const now = new Date();
         
         for (let i = 0; i < 50; i++) {
           const orderDate = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000);
