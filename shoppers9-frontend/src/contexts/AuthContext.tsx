@@ -40,13 +40,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const storedUser = authService.getCurrentUser();
           if (storedUser) {
             setUser(storedUser);
-            // Validate token with server in background
+            // Validate token with server in background and always fetch fresh data
             try {
               const freshUser = await authService.fetchCurrentUser();
+              // Always update with fresh user data to ensure addresses are current
               setUser(freshUser);
             } catch (error) {
-              // If validation fails, keep the stored user but don't redirect
-              
+              // If validation fails, clear auth data
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('user');
+              setUser(null);
             }
           } else {
             // No stored user, try to fetch from server

@@ -26,7 +26,7 @@ interface Address {
 const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { cart, localCart, cartCount, cartTotal, updateCartItem, removeFromCart, refreshCart, addToCart, moveToWishlist } = useCart();
-  const { isAuthenticated, user, updateUser } = useAuth();
+  const { isAuthenticated, user, updateUser, setUser, isLoading } = useAuth();
   const { wishlist, localWishlist, addToWishlist, removeFromWishlist, clearWishlist, isInWishlist, refreshWishlist } = useWishlist();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
@@ -66,7 +66,8 @@ const Cart: React.FC = () => {
 
   // Set default address when user data is available
   React.useEffect(() => {
-    if (user?.addresses && user.addresses.length > 0 && !selectedAddress) {
+    if (user?.addresses && user.addresses.length > 0) {
+      // Always update the selected address when user data changes
       // If user has only one address, automatically set it as default
       if (user.addresses.length === 1) {
         const singleAddress = { ...user.addresses[0], isDefault: true };
@@ -76,8 +77,34 @@ const Cart: React.FC = () => {
         const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0];
         setSelectedAddress(defaultAddress);
       }
+    } else if (user && (!user.addresses || user.addresses.length === 0)) {
+      // Clear selected address if user has no addresses
+      setSelectedAddress(null);
     }
-  }, [user, selectedAddress]);
+  }, [user]);
+
+  // Refresh user data when component mounts to ensure addresses are loaded
+  React.useEffect(() => {
+    const refreshUserData = async () => {
+      if (isAuthenticated && !isLoading) {
+        try {
+          // Fetch fresh user data to ensure addresses are loaded
+           const { authService } = await import('../services/auth');
+           const freshUser = await authService.fetchCurrentUser();
+           // Use the setUser function from auth context to update user data
+           setUser(freshUser);
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
+      }
+    };
+
+    // Always refresh user data when cart component mounts and user is authenticated
+    // This ensures we have the latest user data including addresses
+    if (isAuthenticated && !isLoading) {
+      refreshUserData();
+    }
+  }, [isAuthenticated, isLoading]);
 
   // Initialize all cart items as selected by default
   React.useEffect(() => {
