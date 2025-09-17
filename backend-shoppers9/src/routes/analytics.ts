@@ -26,6 +26,16 @@ import Joi from 'joi';
 
 const router = express.Router();
 
+// Disable caching for all analytics endpoints
+router.use((req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  next();
+});
+
 // Validation schemas
 const trackEventSchema = Joi.object({
   sessionId: Joi.string().required(),

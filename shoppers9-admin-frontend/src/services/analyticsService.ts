@@ -184,8 +184,14 @@ class AnalyticsService {
     period?: string;
   } = {}): Promise<AnalyticsDashboard> {
     try {
+      // Add timestamp to prevent caching
+      const params = {
+        ...filters,
+        _t: Date.now()
+      };
+      
       const response = await analyticsApi.get<ApiResponse<AnalyticsDashboard>>('/analytics/dashboard', {
-        params: filters
+        params
       });
       
       if (response.data.success) {
@@ -616,6 +622,7 @@ class AnalyticsService {
     conversionRate: number;
   }>> {
     try {
+      const params = { ...filters, _t: Date.now() };
       const response = await analyticsApi.get<ApiResponse<Array<{
         country: string;
         city: string;
@@ -624,7 +631,7 @@ class AnalyticsService {
         revenue: number;
         conversionRate: number;
       }>>>('/analytics/geographic', {
-        params: filters
+        params
       });
       
       if (response.data.success) {
@@ -650,12 +657,13 @@ class AnalyticsService {
     byOS: Record<string, { visitors: number; conversions: number; revenue: number }>;
   }> {
     try {
+      const params = { ...filters, _t: Date.now() };
       const response = await analyticsApi.get<ApiResponse<{
         byDevice: Record<string, { visitors: number; conversions: number; revenue: number }>;
         byBrowser: Record<string, { visitors: number; conversions: number; revenue: number }>;
         byOS: Record<string, { visitors: number; conversions: number; revenue: number }>;
       }>>('/analytics/devices', {
-        params: filters
+        params
       });
       
       if (response.data.success) {
@@ -682,13 +690,14 @@ class AnalyticsService {
     conversionRate: number;
   }>> {
     try {
+      const params = { ...filters, _t: Date.now() };
       const response = await analyticsApi.get<ApiResponse<Array<{
         hour: number;
         visitors: number;
         conversions: number;
         conversionRate: number;
       }>>>('/analytics/hourly-trends', {
-        params: filters
+        params
       });
       
       if (response.data.success) {
@@ -715,13 +724,14 @@ class AnalyticsService {
     avgLifetimeValue: number;
   }>> {
     try {
+      const params = { ...filters, _t: Date.now() };
       const response = await analyticsApi.get<ApiResponse<Array<{
         cohort: string;
         customers: number;
         totalRevenue: number;
         avgLifetimeValue: number;
       }>>>('/analytics/cohort-analysis', {
-        params: filters
+        params
       });
       
       if (response.data.success) {
@@ -749,6 +759,7 @@ class AnalyticsService {
     recommendations: string[];
   }> {
     try {
+      const params = { ...filters, _t: Date.now() };
       const response = await analyticsApi.get<ApiResponse<{
         revenueGrowthTrend: number;
         predictedNextMonthRevenue: number;
@@ -756,7 +767,7 @@ class AnalyticsService {
         seasonalTrends: Array<{ _id: { month: number }; avgRevenue: number }>;
         recommendations: string[];
       }>>('/analytics/predictive-insights', {
-        params: filters
+        params
       });
       
       if (response.data.success) {

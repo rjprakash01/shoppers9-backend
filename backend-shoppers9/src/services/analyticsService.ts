@@ -24,7 +24,7 @@ import mongoose from 'mongoose';
 export interface AnalyticsFilters {
   startDate?: Date;
   endDate?: Date;
-  period?: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  period?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'range';
   categoryId?: string;
   productId?: string;
   customerId?: string;
@@ -958,6 +958,12 @@ class AnalyticsService {
         return {
           year: { $year: '$createdAt' }
         };
+      case 'range':
+        return {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+          day: { $dayOfMonth: '$createdAt' }
+        };
       default:
         return {
           year: { $year: '$createdAt' },
@@ -968,7 +974,7 @@ class AnalyticsService {
   }
 
   private formatDate(dateObj: any, period: string): string {
-    if (period === 'daily') {
+    if (period === 'daily' || period === 'range') {
       return `${dateObj.year}-${String(dateObj.month).padStart(2, '0')}-${String(dateObj.day).padStart(2, '0')}`;
     } else if (period === 'weekly') {
       return `${dateObj.year}-W${String(dateObj.week).padStart(2, '0')}`;

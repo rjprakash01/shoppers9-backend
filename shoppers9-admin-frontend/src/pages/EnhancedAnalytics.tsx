@@ -79,7 +79,7 @@ const EnhancedAnalytics: React.FC = () => {
     startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 90 days to include existing orders
     endDate: new Date().toISOString().split('T')[0]
   });
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'range'>('daily');
   const [autoRefresh, setAutoRefresh] = useState(false);
   
   // Data states
@@ -144,6 +144,42 @@ const EnhancedAnalytics: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Smart date range logic
+  const handlePeriodChange = (newPeriod: 'daily' | 'weekly' | 'monthly' | 'range') => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    if (newPeriod === 'daily') {
+      setDateRange({
+        startDate: todayStr,
+        endDate: todayStr
+      });
+    } else if (newPeriod === 'weekly') {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 7);
+      setDateRange({
+        startDate: weekAgo.toISOString().split('T')[0],
+        endDate: todayStr
+      });
+    } else if (newPeriod === 'monthly') {
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      setDateRange({
+        startDate: firstOfMonth.toISOString().split('T')[0],
+        endDate: todayStr
+      });
+    }
+    
+    setPeriod(newPeriod);
+  };
+  
+  const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    // Auto-switch to 'range' when dates are manually changed
+    if (period !== 'range') {
+      setPeriod('range');
+    }
+  };
 
   // Auto-reload data when date range or period changes
   useEffect(() => {
@@ -245,25 +281,26 @@ const EnhancedAnalytics: React.FC = () => {
             <input
               type="date"
               value={dateRange.startDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+              onChange={(e) => handleDateChange('startDate', e.target.value)}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
             <span className="text-gray-500">to</span>
             <input
               type="date"
               value={dateRange.endDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+              onChange={(e) => handleDateChange('endDate', e.target.value)}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
           </div>
           <select
             value={period}
-            onChange={(e) => setPeriod(e.target.value as 'daily' | 'weekly' | 'monthly')}
+            onChange={(e) => handlePeriodChange(e.target.value as 'daily' | 'weekly' | 'monthly' | 'range')}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
+            <option value="range">Date Range</option>
           </select>
           <button
             onClick={loadData}

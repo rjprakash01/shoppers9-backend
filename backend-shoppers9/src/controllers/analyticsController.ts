@@ -24,14 +24,27 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
     const filters: any = { period };
     
     if (startDate) {
-      filters.startDate = new Date(startDate as string);
+      // Parse start date and set to beginning of day in local timezone
+      const start = new Date(startDate as string);
+      start.setHours(0, 0, 0, 0);
+      filters.startDate = start;
     }
     
     if (endDate) {
-      filters.endDate = new Date(endDate as string);
+      // Parse end date and set to end of day in local timezone
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      filters.endDate = end;
     }
 
     const dashboard = await analyticsService.getDashboard(filters);
+
+    // Disable caching for analytics data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
     res.json({
       success: true,
@@ -556,7 +569,14 @@ export const generateDailyAnalytics = async (req: Request, res: Response, next: 
 export const getRealtimeAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const realtimeData = await analyticsService.getRealtimeAnalytics();
-
+    
+    // Disable caching for real-time data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     res.json({
       success: true,
       message: 'Real-time analytics retrieved successfully',
