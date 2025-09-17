@@ -116,7 +116,7 @@ class AnalyticsService {
           mobileTrafficPercentage: trafficData.mobilePercentage
         },
         salesTrends: salesData.trends,
-        topProducts: await this.getTopProducts(10),
+        topProducts: await this.getTopProducts(startDate, endDate, 10),
         customerSegments: customerData.segments,
         conversionFunnel: conversionData.funnel,
         trafficSources: trafficData.sources,
@@ -841,7 +841,7 @@ class AnalyticsService {
       });
 
       const totalCustomers = customers.length;
-      const newCustomers = customers.filter(c => c.firstOrderDate >= startDate && c.firstOrderDate <= endDate).length;
+      const newCustomers = customers.filter(c => c.firstOrderDate && c.firstOrderDate >= startDate && c.firstOrderDate <= endDate).length;
       const returningCustomers = totalCustomers - newCustomers;
 
       const segments = await this.getCustomerSegments();
@@ -1267,10 +1267,20 @@ class AnalyticsService {
   }
 
   private async getTopCustomers(limit: number) {
-    return CustomerAnalytics.find()
+    const customers = await CustomerAnalytics.find()
       .sort({ totalSpent: -1 })
       .limit(limit)
       .populate('customerId', 'firstName lastName email');
+    
+    return customers.map(customer => ({
+      customerId: customer.customerId?.toString() || '',
+      customerName: customer.customerId ? 
+        `${(customer.customerId as any)?.firstName || ''} ${(customer.customerId as any)?.lastName || ''}`.trim() || 'Unknown' 
+        : 'Unknown',
+      totalSpent: customer.totalSpent || 0,
+      totalOrders: customer.totalOrders || 0,
+      lastOrderDate: customer.lastOrderDate || new Date()
+    }));
   }
 
   private async getOverallConversionRate(startDate: Date, endDate: Date) {
