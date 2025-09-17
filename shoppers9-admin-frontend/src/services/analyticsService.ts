@@ -4,7 +4,7 @@ import axios from 'axios';
 const analyticsApi = axios.create({
   baseURL: import.meta.env.PROD 
     ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : import.meta.env.VITE_API_URL || 'http://localhost:5003/api',
+    : 'http://localhost:5002/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
