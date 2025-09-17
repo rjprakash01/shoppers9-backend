@@ -551,6 +551,128 @@ export const generateDailyAnalytics = async (req: Request, res: Response, next: 
 };
 
 /**
+ * Get real-time analytics
+ */
+export const getRealtimeAnalytics = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const realtimeData = await analyticsService.getRealtimeAnalytics();
+
+    res.json({
+      success: true,
+      message: 'Real-time analytics retrieved successfully',
+      data: realtimeData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get geographic analytics
+ */
+export const getGeographicAnalytics = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const geoData = await analyticsService.getGeographicAnalytics(start, end);
+
+    res.json({
+      success: true,
+      message: 'Geographic analytics retrieved successfully',
+      data: geoData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get device analytics
+ */
+export const getDeviceAnalytics = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const deviceData = await analyticsService.getDeviceAnalytics(start, end);
+
+    res.json({
+      success: true,
+      message: 'Device analytics retrieved successfully',
+      data: deviceData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get hourly trends
+ */
+export const getHourlyTrends = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const hourlyData = await analyticsService.getHourlyTrends(start, end);
+
+    res.json({
+      success: true,
+      message: 'Hourly trends retrieved successfully',
+      data: hourlyData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get cohort analysis
+ */
+export const getCohortAnalysis = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const cohortData = await analyticsService.getCohortAnalysis(start, end);
+
+    res.json({
+      success: true,
+      message: 'Cohort analysis retrieved successfully',
+      data: cohortData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get predictive insights
+ */
+export const getPredictiveInsights = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const insights = await analyticsService.getPredictiveInsights(start, end);
+
+    res.json({
+      success: true,
+      message: 'Predictive insights retrieved successfully',
+      data: insights
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get analytics summary
  */
 export const getAnalyticsSummary = async (req: Request, res: Response, next: NextFunction) => {

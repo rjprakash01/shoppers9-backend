@@ -2,9 +2,9 @@ import axios from 'axios';
 
 // Create API instance for analytics operations
 const analyticsApi = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5002/api',
+  baseURL: import.meta.env.PROD 
+    ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
+    : import.meta.env.VITE_API_URL || 'http://localhost:5003/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -572,40 +572,218 @@ class AnalyticsService {
   }
 
   /**
+   * Get real-time analytics
+   */
+  async getRealtimeAnalytics(): Promise<{
+    activeUsers: number;
+    ordersLast24h: number;
+    revenueLast24h: number;
+    topEvents: Array<{ _id: string; count: number }>;
+    timestamp: Date;
+  }> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<{
+        activeUsers: number;
+        ordersLast24h: number;
+        revenueLast24h: number;
+        topEvents: Array<{ _id: string; count: number }>;
+        timestamp: Date;
+      }>>('/analytics/realtime');
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch real-time analytics');
+    } catch (error: any) {
+      console.error('Error fetching real-time analytics:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch real-time analytics');
+    }
+  }
+
+  /**
+   * Get geographic analytics
+   */
+  async getGeographicAnalytics(filters: {
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<Array<{
+    country: string;
+    city: string;
+    visitors: number;
+    conversions: number;
+    revenue: number;
+    conversionRate: number;
+  }>> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<Array<{
+        country: string;
+        city: string;
+        visitors: number;
+        conversions: number;
+        revenue: number;
+        conversionRate: number;
+      }>>>('/analytics/geographic', {
+        params: filters
+      });
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch geographic analytics');
+    } catch (error: any) {
+      console.error('Error fetching geographic analytics:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch geographic analytics');
+    }
+  }
+
+  /**
+   * Get device analytics
+   */
+  async getDeviceAnalytics(filters: {
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<{
+    byDevice: Record<string, { visitors: number; conversions: number; revenue: number }>;
+    byBrowser: Record<string, { visitors: number; conversions: number; revenue: number }>;
+    byOS: Record<string, { visitors: number; conversions: number; revenue: number }>;
+  }> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<{
+        byDevice: Record<string, { visitors: number; conversions: number; revenue: number }>;
+        byBrowser: Record<string, { visitors: number; conversions: number; revenue: number }>;
+        byOS: Record<string, { visitors: number; conversions: number; revenue: number }>;
+      }>>('/analytics/devices', {
+        params: filters
+      });
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch device analytics');
+    } catch (error: any) {
+      console.error('Error fetching device analytics:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch device analytics');
+    }
+  }
+
+  /**
+   * Get hourly trends
+   */
+  async getHourlyTrends(filters: {
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<Array<{
+    hour: number;
+    visitors: number;
+    conversions: number;
+    conversionRate: number;
+  }>> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<Array<{
+        hour: number;
+        visitors: number;
+        conversions: number;
+        conversionRate: number;
+      }>>>('/analytics/hourly-trends', {
+        params: filters
+      });
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch hourly trends');
+    } catch (error: any) {
+      console.error('Error fetching hourly trends:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch hourly trends');
+    }
+  }
+
+  /**
+   * Get cohort analysis
+   */
+  async getCohortAnalysis(filters: {
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<Array<{
+    cohort: string;
+    customers: number;
+    totalRevenue: number;
+    avgLifetimeValue: number;
+  }>> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<Array<{
+        cohort: string;
+        customers: number;
+        totalRevenue: number;
+        avgLifetimeValue: number;
+      }>>>('/analytics/cohort-analysis', {
+        params: filters
+      });
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch cohort analysis');
+    } catch (error: any) {
+      console.error('Error fetching cohort analysis:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch cohort analysis');
+    }
+  }
+
+  /**
+   * Get predictive insights
+   */
+  async getPredictiveInsights(filters: {
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<{
+    revenueGrowthTrend: number;
+    predictedNextMonthRevenue: number;
+    customerSegmentInsights: Array<{ _id: string; count: number; avgValue: number }>;
+    seasonalTrends: Array<{ _id: { month: number }; avgRevenue: number }>;
+    recommendations: string[];
+  }> {
+    try {
+      const response = await analyticsApi.get<ApiResponse<{
+        revenueGrowthTrend: number;
+        predictedNextMonthRevenue: number;
+        customerSegmentInsights: Array<{ _id: string; count: number; avgValue: number }>;
+        seasonalTrends: Array<{ _id: { month: number }; avgRevenue: number }>;
+        recommendations: string[];
+      }>>('/analytics/predictive-insights', {
+        params: filters
+      });
+      
+      if (response.data.success) {
+        return response.data.data;
+      }
+      
+      throw new Error(response.data.message || 'Failed to fetch predictive insights');
+    } catch (error: any) {
+      console.error('Error fetching predictive insights:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch predictive insights');
+    }
+  }
+
+  /**
    * Export analytics data
    */
   async exportData(type: 'dashboard' | 'revenue' | 'customer' | 'conversion', format: 'csv' | 'json' = 'csv'): Promise<Blob> {
     try {
-      let data;
+      const response = await analyticsApi.get(`/analytics/export/${type}`, {
+        params: { format },
+        responseType: 'blob'
+      });
       
-      switch (type) {
-        case 'dashboard':
-          data = await this.getDashboard();
-          break;
-        case 'revenue':
-          data = await this.getRevenueReport();
-          break;
-        case 'customer':
-          data = await this.getCustomerReport();
-          break;
-        case 'conversion':
-          data = await this.getConversionReport();
-          break;
-        default:
-          throw new Error('Invalid export type');
-      }
-      
-      if (format === 'csv') {
-        // Convert to CSV format
-        const csvContent = this.convertToCSV(data, type);
-        return new Blob([csvContent], { type: 'text/csv' });
-      } else {
-        const jsonContent = JSON.stringify(data, null, 2);
-        return new Blob([jsonContent], { type: 'application/json' });
-      }
+      return response.data;
     } catch (error: any) {
-      console.error('Error exporting data:', error);
-      throw new Error('Failed to export analytics data');
+      console.error('Error exporting analytics data:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to export analytics data');
     }
   }
 

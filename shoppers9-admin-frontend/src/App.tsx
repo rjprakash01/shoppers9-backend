@@ -17,7 +17,7 @@ import SupportDetail from './pages/SupportDetail';
 import Inventory from './pages/Inventory';
 import Shipping from './pages/Shipping';
 import Coupons from './pages/Coupons';
-import Analytics from './pages/Analytics';
+import EnhancedAnalytics from './pages/EnhancedAnalytics';
 import Settings from './pages/Settings';
 import Testimonials from './pages/Testimonials';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -133,7 +133,7 @@ function App() {
             <Route path="/analytics" element={
               <ProtectedRoute>
                 <Layout>
-                  <Analytics />
+                  <EnhancedAnalytics />
                 </Layout>
               </ProtectedRoute>
             } />

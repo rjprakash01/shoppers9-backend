@@ -12,7 +12,13 @@ import {
   generateReport,
   updateCustomerAnalytics,
   generateDailyAnalytics,
-  getAnalyticsSummary
+  getAnalyticsSummary,
+  getRealtimeAnalytics,
+  getGeographicAnalytics,
+  getDeviceAnalytics,
+  getHourlyTrends,
+  getCohortAnalysis,
+  getPredictiveInsights
 } from '../controllers/analyticsController';
 import { authenticateToken, requireVerification, authenticateUserOrAdmin } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
@@ -75,6 +81,72 @@ router.post(
   '/track',
   validateRequest(trackEventSchema),
   trackEvent
+);
+
+/**
+ * @route GET /api/analytics/realtime
+ * @desc Get real-time analytics
+ * @access Private (Admin)
+ */
+router.get(
+  '/realtime',
+  authenticateUserOrAdmin,
+  getRealtimeAnalytics
+);
+
+/**
+ * @route GET /api/analytics/geographic
+ * @desc Get geographic analytics
+ * @access Private (Admin)
+ */
+router.get(
+  '/geographic',
+  authenticateUserOrAdmin,
+  getGeographicAnalytics
+);
+
+/**
+ * @route GET /api/analytics/devices
+ * @desc Get device analytics
+ * @access Private (Admin)
+ */
+router.get(
+  '/devices',
+  authenticateUserOrAdmin,
+  getDeviceAnalytics
+);
+
+/**
+ * @route GET /api/analytics/hourly-trends
+ * @desc Get hourly trends
+ * @access Private (Admin)
+ */
+router.get(
+  '/hourly-trends',
+  authenticateUserOrAdmin,
+  getHourlyTrends
+);
+
+/**
+ * @route GET /api/analytics/cohort-analysis
+ * @desc Get cohort analysis
+ * @access Private (Admin)
+ */
+router.get(
+  '/cohort-analysis',
+  authenticateUserOrAdmin,
+  getCohortAnalysis
+);
+
+/**
+ * @route GET /api/analytics/predictive-insights
+ * @desc Get predictive insights
+ * @access Private (Admin)
+ */
+router.get(
+  '/predictive-insights',
+  authenticateUserOrAdmin,
+  getPredictiveInsights
 );
 
 // Protected routes (require authentication)

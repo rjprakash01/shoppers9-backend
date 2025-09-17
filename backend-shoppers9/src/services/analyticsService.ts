@@ -87,6 +87,53 @@ class AnalyticsService {
   }
 
   /**
+   * Get comprehensive dashboard analytics
+   */
+  async getDashboardAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const [salesData, customerData, conversionData, trafficData, realtimeData] = await Promise.all([
+        this.getSalesOverview(startDate, endDate),
+        this.getCustomerOverview(startDate, endDate),
+        this.getConversionOverview(startDate, endDate),
+        this.getTrafficAnalytics(startDate, endDate),
+        this.getRealtimeAnalytics()
+      ]);
+
+      return {
+        overview: {
+          totalRevenue: salesData.totalRevenue,
+          totalOrders: salesData.totalOrders,
+          totalCustomers: customerData.totalCustomers,
+          totalVisitors: trafficData.totalVisitors,
+          conversionRate: conversionData.conversionRate,
+          averageOrderValue: salesData.averageOrderValue,
+          growthRate: salesData.growthRate,
+          bounceRate: trafficData.bounceRate,
+          sessionDuration: trafficData.avgSessionDuration,
+          pageViewsPerSession: trafficData.pageViewsPerSession,
+          newVsReturning: customerData.newVsReturning,
+          topTrafficSource: trafficData.topSource,
+          mobileTrafficPercentage: trafficData.mobilePercentage
+        },
+        salesTrends: salesData.trends,
+        topProducts: await this.getTopProducts(10),
+        customerSegments: customerData.segments,
+        conversionFunnel: conversionData.funnel,
+        trafficSources: trafficData.sources,
+        realtimeMetrics: realtimeData,
+        geographicData: await this.getGeographicAnalytics(startDate, endDate),
+        deviceAnalytics: await this.getDeviceAnalytics(startDate, endDate),
+        hourlyTrends: await this.getHourlyTrends(startDate, endDate),
+        cohortAnalysis: await this.getCohortAnalysis(startDate, endDate),
+        predictiveInsights: await this.getPredictiveInsights(startDate, endDate)
+      };
+    } catch (error) {
+      console.error('Error getting dashboard analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get overview metrics
    */
   async getOverviewMetrics(startDate: Date, endDate: Date) {
@@ -740,6 +787,457 @@ class AnalyticsService {
     return 'awareness';
   }
 
+  /**
+   * Get sales overview
+   */
+  async getSalesOverview(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const orders = await Order.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        orderStatus: { $ne: 'CANCELLED' }
+      });
+
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.finalAmount || order.totalAmount), 0);
+      const totalOrders = orders.length;
+      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      // Calculate growth rate
+      const previousPeriodStart = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()));
+      const previousOrders = await Order.find({
+        createdAt: { $gte: previousPeriodStart, $lt: startDate },
+        orderStatus: { $ne: 'CANCELLED' }
+      });
+      const previousRevenue = previousOrders.reduce((sum, order) => sum + (order.finalAmount || order.totalAmount), 0);
+      const growthRate = previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+
+      const trends = await this.getSalesTrends(startDate, endDate, 'daily');
+
+      return {
+        totalRevenue,
+        totalOrders,
+        averageOrderValue,
+        growthRate,
+        trends
+      };
+    } catch (error) {
+      console.error('Error getting sales overview:', error);
+      return {
+        totalRevenue: 0,
+        totalOrders: 0,
+        averageOrderValue: 0,
+        growthRate: 0,
+        trends: []
+      };
+    }
+  }
+
+  /**
+   * Get customer overview
+   */
+  async getCustomerOverview(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const customers = await CustomerAnalytics.find({
+        lastUpdated: { $gte: startDate, $lte: endDate }
+      });
+
+      const totalCustomers = customers.length;
+      const newCustomers = customers.filter(c => c.firstOrderDate >= startDate && c.firstOrderDate <= endDate).length;
+      const returningCustomers = totalCustomers - newCustomers;
+
+      const segments = await this.getCustomerSegments();
+      const newVsReturning = {
+        new: newCustomers,
+        returning: returningCustomers,
+        newPercentage: totalCustomers > 0 ? Math.round((newCustomers / totalCustomers) * 100) : 0
+      };
+
+      return {
+        totalCustomers,
+        newCustomers,
+        returningCustomers,
+        segments,
+        newVsReturning
+      };
+    } catch (error) {
+      console.error('Error getting customer overview:', error);
+      return {
+        totalCustomers: 0,
+        newCustomers: 0,
+        returningCustomers: 0,
+        segments: [],
+        newVsReturning: { new: 0, returning: 0, newPercentage: 0 }
+      };
+    }
+  }
+
+  /**
+   * Get conversion overview
+   */
+  async getConversionOverview(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const sessions = await ConversionTracking.countDocuments({
+        createdAt: { $gte: startDate, $lte: endDate }
+      });
+      const conversions = await ConversionTracking.countDocuments({
+        createdAt: { $gte: startDate, $lte: endDate },
+        converted: true
+      });
+      const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+      const funnel = await this.getConversionFunnel(startDate, endDate);
+
+      return {
+        conversionRate,
+        funnel
+      };
+    } catch (error) {
+      console.error('Error getting conversion overview:', error);
+      return {
+        conversionRate: 0,
+        funnel: []
+      };
+    }
+  }
+
+  /**
+   * Get traffic analytics
+   */
+  async getTrafficAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const sessions = await ConversionTracking.find({
+        createdAt: { $gte: startDate, $lte: endDate }
+      });
+
+      const totalVisitors = sessions.length;
+      const totalPageViews = sessions.reduce((sum, session) => sum + session.pageViews, 0);
+      const bounceRate = sessions.filter(session => session.pageViews === 1).length / totalVisitors;
+      const avgSessionDuration = sessions.reduce((sum, session) => {
+        const duration = session.events.length > 1 ? 
+          (new Date(session.events[session.events.length - 1].timestamp).getTime() - 
+           new Date(session.events[0].timestamp).getTime()) / 1000 : 0;
+        return sum + duration;
+      }, 0) / totalVisitors;
+
+      const sourceAnalysis = await ConversionTracking.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: '$source', count: { $sum: 1 }, conversions: { $sum: { $cond: ['$converted', 1, 0] } } } },
+        { $sort: { count: -1 } }
+      ]);
+
+      const deviceAnalysis = await ConversionTracking.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: '$device', count: { $sum: 1 } } }
+      ]);
+
+      const mobileCount = deviceAnalysis.find(d => d._id === 'mobile')?.count || 0;
+      const mobilePercentage = (mobileCount / totalVisitors) * 100;
+
+      return {
+        totalVisitors,
+        bounceRate: Math.round(bounceRate * 100),
+        avgSessionDuration: Math.round(avgSessionDuration),
+        pageViewsPerSession: Math.round(totalPageViews / totalVisitors),
+        topSource: sourceAnalysis[0]?._id || 'direct',
+        mobilePercentage: Math.round(mobilePercentage),
+        sources: sourceAnalysis.map(source => ({
+          source: source._id,
+          visitors: source.count,
+          conversions: source.conversions,
+          conversionRate: Math.round((source.conversions / source.count) * 100)
+        }))
+      };
+    } catch (error) {
+      console.error('Error getting traffic analytics:', error);
+      return {
+        totalVisitors: 0,
+        bounceRate: 0,
+        avgSessionDuration: 0,
+        pageViewsPerSession: 0,
+        topSource: 'direct',
+        mobilePercentage: 0,
+        sources: []
+      };
+    }
+  }
+
+  /**
+   * Get real-time analytics
+   */
+  async getRealtimeAnalytics(): Promise<any> {
+    try {
+      const now = new Date();
+      const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const lastHour = new Date(now.getTime() - 60 * 60 * 1000);
+
+      const [activeUsers, recentOrders, liveEvents] = await Promise.all([
+        ConversionTracking.countDocuments({
+          createdAt: { $gte: lastHour }
+        }),
+        SalesAnalytics.aggregate([
+          { $match: { date: { $gte: last24Hours } } },
+          { $group: { _id: null, totalOrders: { $sum: '$totalOrders' }, totalRevenue: { $sum: '$totalRevenue' } } }
+        ]),
+        ConversionTracking.aggregate([
+          { $match: { createdAt: { $gte: lastHour } } },
+          { $unwind: '$events' },
+          { $match: { 'events.timestamp': { $gte: lastHour } } },
+          { $group: { _id: '$events.eventType', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ])
+      ]);
+
+      return {
+        activeUsers,
+        ordersLast24h: recentOrders[0]?.totalOrders || 0,
+        revenueLast24h: recentOrders[0]?.totalRevenue || 0,
+        topEvents: liveEvents,
+        timestamp: now
+      };
+    } catch (error) {
+      console.error('Error getting realtime analytics:', error);
+      return {
+        activeUsers: 0,
+        ordersLast24h: 0,
+        revenueLast24h: 0,
+        topEvents: [],
+        timestamp: new Date()
+      };
+    }
+  }
+
+  /**
+   * Get geographic analytics
+   */
+  async getGeographicAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const geoData = await ConversionTracking.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+          _id: { country: '$country', city: '$city' },
+          visitors: { $sum: 1 },
+          conversions: { $sum: { $cond: ['$converted', 1, 0] } },
+          revenue: { $sum: '$conversionValue' }
+        }},
+        { $sort: { visitors: -1 } },
+        { $limit: 20 }
+      ]);
+
+      return geoData.map(item => ({
+        country: item._id.country || 'Unknown',
+        city: item._id.city || 'Unknown',
+        visitors: item.visitors,
+        conversions: item.conversions,
+        revenue: item.revenue,
+        conversionRate: Math.round((item.conversions / item.visitors) * 100)
+      }));
+    } catch (error) {
+      console.error('Error getting geographic analytics:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get device analytics
+   */
+  async getDeviceAnalytics(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const deviceData = await ConversionTracking.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+          _id: { device: '$device', browser: '$browser', os: '$os' },
+          visitors: { $sum: 1 },
+          conversions: { $sum: { $cond: ['$converted', 1, 0] } },
+          revenue: { $sum: '$conversionValue' }
+        }},
+        { $sort: { visitors: -1 } }
+      ]);
+
+      return {
+        byDevice: deviceData.reduce((acc, item) => {
+          const device = item._id.device || 'Unknown';
+          if (!acc[device]) acc[device] = { visitors: 0, conversions: 0, revenue: 0 };
+          acc[device].visitors += item.visitors;
+          acc[device].conversions += item.conversions;
+          acc[device].revenue += item.revenue;
+          return acc;
+        }, {}),
+        byBrowser: deviceData.reduce((acc, item) => {
+          const browser = item._id.browser || 'Unknown';
+          if (!acc[browser]) acc[browser] = { visitors: 0, conversions: 0, revenue: 0 };
+          acc[browser].visitors += item.visitors;
+          acc[browser].conversions += item.conversions;
+          acc[browser].revenue += item.revenue;
+          return acc;
+        }, {}),
+        byOS: deviceData.reduce((acc, item) => {
+          const os = item._id.os || 'Unknown';
+          if (!acc[os]) acc[os] = { visitors: 0, conversions: 0, revenue: 0 };
+          acc[os].visitors += item.visitors;
+          acc[os].conversions += item.conversions;
+          acc[os].revenue += item.revenue;
+          return acc;
+        }, {})
+      };
+    } catch (error) {
+      console.error('Error getting device analytics:', error);
+      return { byDevice: {}, byBrowser: {}, byOS: {} };
+    }
+  }
+
+  /**
+   * Get hourly trends
+   */
+  async getHourlyTrends(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const hourlyData = await ConversionTracking.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+          _id: { $hour: '$createdAt' },
+          visitors: { $sum: 1 },
+          conversions: { $sum: { $cond: ['$converted', 1, 0] } }
+        }},
+        { $sort: { '_id': 1 } }
+      ]);
+
+      const hours = Array.from({ length: 24 }, (_, i) => {
+        const hourData = hourlyData.find(h => h._id === i);
+        return {
+          hour: i,
+          visitors: hourData?.visitors || 0,
+          conversions: hourData?.conversions || 0,
+          conversionRate: hourData ? Math.round((hourData.conversions / hourData.visitors) * 100) : 0
+        };
+      });
+
+      return hours;
+    } catch (error) {
+      console.error('Error getting hourly trends:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get cohort analysis
+   */
+  async getCohortAnalysis(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const cohorts = await CustomerAnalytics.aggregate([
+        { $match: { firstOrderDate: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+          _id: {
+            year: { $year: '$firstOrderDate' },
+            month: { $month: '$firstOrderDate' }
+          },
+          customers: { $sum: 1 },
+          totalRevenue: { $sum: '$totalSpent' },
+          avgLifetimeValue: { $avg: '$customerLifetimeValue' }
+        }},
+        { $sort: { '_id.year': 1, '_id.month': 1 } }
+      ]);
+
+      return cohorts.map(cohort => ({
+        cohort: `${cohort._id.year}-${String(cohort._id.month).padStart(2, '0')}`,
+        customers: cohort.customers,
+        totalRevenue: cohort.totalRevenue,
+        avgLifetimeValue: cohort.avgLifetimeValue
+      }));
+    } catch (error) {
+      console.error('Error getting cohort analysis:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get predictive insights
+   */
+  async getPredictiveInsights(startDate: Date, endDate: Date): Promise<any> {
+    try {
+      const [salesTrend, customerTrend, seasonalData] = await Promise.all([
+        SalesAnalytics.aggregate([
+          { $match: { date: { $gte: startDate, $lte: endDate } } },
+          { $group: {
+            _id: { $dayOfYear: '$date' },
+            avgRevenue: { $avg: '$totalRevenue' },
+            avgOrders: { $avg: '$totalOrders' }
+          }},
+          { $sort: { '_id': 1 } }
+        ]),
+        CustomerAnalytics.aggregate([
+          { $match: { lastUpdated: { $gte: startDate, $lte: endDate } } },
+          { $group: {
+            _id: '$customerSegment',
+            count: { $sum: 1 },
+            avgValue: { $avg: '$customerLifetimeValue' }
+          }}
+        ]),
+        SalesAnalytics.aggregate([
+          { $match: { date: { $gte: new Date(startDate.getFullYear() - 1, startDate.getMonth(), startDate.getDate()) } } },
+          { $group: {
+            _id: { month: { $month: '$date' } },
+            avgRevenue: { $avg: '$totalRevenue' }
+          }},
+          { $sort: { '_id.month': 1 } }
+        ])
+      ]);
+
+      // Simple trend analysis
+      const revenueGrowth = salesTrend.length > 1 ? 
+        ((salesTrend[salesTrend.length - 1]?.avgRevenue - salesTrend[0]?.avgRevenue) / salesTrend[0]?.avgRevenue) * 100 : 0;
+
+      const insights = {
+        revenueGrowthTrend: Math.round(revenueGrowth),
+        predictedNextMonthRevenue: salesTrend.length > 0 ? 
+          Math.round(salesTrend[salesTrend.length - 1]?.avgRevenue * (1 + revenueGrowth / 100)) : 0,
+        customerSegmentInsights: customerTrend,
+        seasonalTrends: seasonalData,
+        recommendations: this.generateRecommendations(salesTrend, customerTrend)
+      };
+
+      return insights;
+    } catch (error) {
+      console.error('Error getting predictive insights:', error);
+      return {
+        revenueGrowthTrend: 0,
+        predictedNextMonthRevenue: 0,
+        customerSegmentInsights: [],
+        seasonalTrends: [],
+        recommendations: []
+      };
+    }
+  }
+
+  /**
+   * Generate AI-powered recommendations
+   */
+  private generateRecommendations(salesTrend: any[], customerTrend: any[]): string[] {
+    const recommendations = [];
+
+    // Revenue trend analysis
+    if (salesTrend.length > 1) {
+      const recentRevenue = salesTrend.slice(-7).reduce((sum, day) => sum + day.avgRevenue, 0) / 7;
+      const previousRevenue = salesTrend.slice(-14, -7).reduce((sum, day) => sum + day.avgRevenue, 0) / 7;
+      
+      if (recentRevenue < previousRevenue * 0.9) {
+        recommendations.push('Revenue is declining. Consider launching promotional campaigns or reviewing pricing strategy.');
+      } else if (recentRevenue > previousRevenue * 1.1) {
+        recommendations.push('Revenue is growing strongly. Consider scaling marketing efforts to maintain momentum.');
+      }
+    }
+
+    // Customer segment analysis
+    const vipCustomers = customerTrend.find(c => c._id === 'vip');
+    const atRiskCustomers = customerTrend.find(c => c._id === 'at_risk');
+    
+    if (atRiskCustomers && atRiskCustomers.count > 0) {
+      recommendations.push(`You have ${atRiskCustomers.count} at-risk customers. Implement retention campaigns to prevent churn.`);
+    }
+    
+    if (vipCustomers && vipCustomers.count > 0) {
+      recommendations.push(`Leverage your ${vipCustomers.count} VIP customers with exclusive offers and referral programs.`);
+    }
+
+    return recommendations;
+  }
+
   // Additional helper methods for detailed reports
   private async getRevenueByCategory(startDate: Date, endDate: Date) {
     // Implementation for category revenue breakdown
@@ -769,28 +1267,77 @@ class AnalyticsService {
   }
 
   private async getTopCustomers(limit: number) {
-    // Implementation for top customers
-    return [];
+    return CustomerAnalytics.find()
+      .sort({ totalSpent: -1 })
+      .limit(limit)
+      .populate('customerId', 'firstName lastName email');
   }
 
   private async getOverallConversionRate(startDate: Date, endDate: Date) {
-    // Implementation for overall conversion rate
-    return 0;
+    const sessions = await ConversionTracking.countDocuments({
+      createdAt: { $gte: startDate, $lte: endDate }
+    });
+    const conversions = await ConversionTracking.countDocuments({
+      createdAt: { $gte: startDate, $lte: endDate },
+      converted: true
+    });
+    return sessions > 0 ? (conversions / sessions) * 100 : 0;
   }
 
   private async getDetailedConversionFunnel(startDate: Date, endDate: Date) {
-    // Implementation for detailed conversion funnel
-    return [];
+    return ConversionTracking.aggregate([
+      { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$events' },
+      { $group: {
+        _id: '$events.eventType',
+        count: { $sum: 1 },
+        uniqueSessions: { $addToSet: '$sessionId' }
+      }},
+      { $project: {
+        stage: '$_id',
+        count: { $size: '$uniqueSessions' },
+        totalEvents: '$count'
+      }},
+      { $sort: { count: -1 } }
+    ]);
   }
 
   private async getConversionBySource(startDate: Date, endDate: Date) {
-    // Implementation for conversion by traffic source
-    return [];
+    return ConversionTracking.aggregate([
+      { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+      { $group: {
+        _id: '$source',
+        visitors: { $sum: 1 },
+        conversions: { $sum: { $cond: ['$converted', 1, 0] } },
+        revenue: { $sum: '$conversionValue' }
+      }},
+      { $project: {
+        source: '$_id',
+        visitors: 1,
+        conversions: 1,
+        revenue: 1,
+        conversionRate: { $multiply: [{ $divide: ['$conversions', '$visitors'] }, 100] }
+      }},
+      { $sort: { visitors: -1 } }
+    ]);
   }
 
   private async getConversionByDevice(startDate: Date, endDate: Date) {
-    // Implementation for conversion by device
-    return [];
+    return ConversionTracking.aggregate([
+      { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+      { $group: {
+        _id: '$device',
+        visitors: { $sum: 1 },
+        conversions: { $sum: { $cond: ['$converted', 1, 0] } }
+      }},
+      { $project: {
+        device: '$_id',
+        visitors: 1,
+        conversions: 1,
+        conversionRate: { $multiply: [{ $divide: ['$conversions', '$visitors'] }, 100] }
+      }},
+      { $sort: { visitors: -1 } }
+    ]);
   }
 }
 
