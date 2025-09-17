@@ -76,7 +76,7 @@ const EnhancedAnalytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 90 days to include existing orders
     endDate: new Date().toISOString().split('T')[0]
   });
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -144,6 +144,11 @@ const EnhancedAnalytics: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-reload data when date range or period changes
+  useEffect(() => {
+    loadData();
+  }, [dateRange.startDate, dateRange.endDate, period]);
 
   // Auto-refresh for real-time data
   useEffect(() => {
