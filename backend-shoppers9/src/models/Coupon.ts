@@ -39,10 +39,6 @@ const couponSchema = new Schema<ICoupon>({
     type: Number,
     min: 0
   },
-  maxBonusCap: {
-    type: Number,
-    min: 0
-  },
   usageLimit: {
     type: Number,
     required: true,

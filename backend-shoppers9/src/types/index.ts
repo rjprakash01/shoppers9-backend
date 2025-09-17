@@ -341,7 +341,6 @@ export interface ICoupon extends Document {
   discountValue: number;
   minOrderAmount: number;
   maxDiscountAmount?: number;
-  maxBonusCap?: number;
   usageLimit: number;
   usedCount: number;
   isActive: boolean;

@@ -58,7 +58,6 @@ const Coupons: React.FC = () => {
     discountValue: 0,
     minOrderAmount: 0,
     maxDiscountAmount: 0,
-    maxBonusCap: 0,
     usageLimit: 1,
     validFrom: '',
     validUntil: '',
@@ -186,7 +185,6 @@ const Coupons: React.FC = () => {
       discountValue: 0,
       minOrderAmount: 0,
       maxDiscountAmount: 0,
-      maxBonusCap: 0,
       usageLimit: 1,
       validFrom: '',
       validUntil: '',
@@ -204,7 +202,6 @@ const Coupons: React.FC = () => {
       discountValue: coupon.discountValue,
       minOrderAmount: coupon.minOrderAmount,
       maxDiscountAmount: coupon.maxDiscountAmount || 0,
-      maxBonusCap: coupon.maxBonusCap || 0,
       usageLimit: coupon.usageLimit,
       validFrom: new Date(coupon.validFrom).toISOString().split('T')[0],
       validUntil: new Date(coupon.validUntil).toISOString().split('T')[0],
@@ -972,23 +969,7 @@ const Coupons: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Bonus Cap
-                </label>
-                <input
-                  type="number"
-                  value={couponForm.maxBonusCap}
-                  onChange={(e) => setCouponForm(prev => ({ ...prev, maxBonusCap: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  min="0"
-                  step="0.01"
-                  placeholder="Maximum bonus amount for this coupon"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Maximum bonus amount that can be earned from this coupon
-                </p>
-              </div>
+
 
               <div className="space-y-3">
                 <div className="flex items-center">
