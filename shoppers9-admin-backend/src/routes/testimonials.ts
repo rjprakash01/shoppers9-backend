@@ -16,6 +16,8 @@ import {
   getTestimonialStats
 } from '../controllers/testimonialController';
 import { auth, adminOnly } from '../middleware/auth';
+import { requirePermission } from '../middleware/permission';
+import { applyDataFilter } from '../middleware/dataFilter';
 
 const router = express.Router();
 
@@ -25,24 +27,24 @@ router.get('/category/:category', getTestimonialsByCategory);
 router.get('/rating', getTestimonialsByRating);
 router.get('/product/:productId', getTestimonialsByProduct);
 
-// Admin routes - require authentication
+// Admin routes - require authentication, permissions, and data filtering
 router.use(auth);
-router.use(adminOnly);
+router.use(applyDataFilter);
 
 // CRUD operations
-router.get('/', getTestimonials);
-router.post('/', createTestimonial);
-router.get('/stats', getTestimonialStats);
-router.get('/:id', getTestimonialById);
-router.put('/:id', updateTestimonial);
-router.delete('/:id', deleteTestimonial);
+router.get('/', requirePermission('testimonials', 'read'), getTestimonials);
+router.post('/', requirePermission('testimonials', 'create'), createTestimonial);
+router.get('/stats', requirePermission('testimonials', 'read'), getTestimonialStats);
+router.get('/:id', requirePermission('testimonials', 'read'), getTestimonialById);
+router.put('/:id', requirePermission('testimonials', 'edit'), updateTestimonial);
+router.delete('/:id', requirePermission('testimonials', 'delete'), deleteTestimonial);
 
-// Special actions
-router.patch('/:id/verify', verifyTestimonial);
-router.patch('/:id/toggle-feature', toggleFeature);
-router.patch('/:id/toggle-active', toggleActive);
+// Status management
+router.patch('/:id/verify', requirePermission('testimonials', 'edit'), verifyTestimonial);
+router.patch('/:id/toggle-feature', requirePermission('testimonials', 'edit'), toggleFeature);
+router.patch('/:id/toggle-active', requirePermission('testimonials', 'edit'), toggleActive);
 
 // Bulk operations
-router.patch('/bulk/update', bulkUpdateTestimonials);
+router.patch('/bulk/update', requirePermission('testimonials', 'edit'), bulkUpdateTestimonials);
 
 export default router;

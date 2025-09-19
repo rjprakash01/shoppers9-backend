@@ -3,34 +3,44 @@ import User from '../models/User';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import Admin from '../models/Admin';
-import { DashboardStats, SalesAnalytics, UserAnalytics } from '../types';
+import { AuthRequest, DashboardStats, SalesAnalytics, UserAnalytics } from '../types';
 
-export const getDashboardStats = async (req: Request, res: Response) => {
+export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
     const { period = '30' } = req.query;
     const days = parseInt(period as string);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Basic counts
-    const totalUsers = await User.countDocuments();
-    const totalProducts = await Product.countDocuments();
-    const totalOrders = await Order.countDocuments();
-    const totalAdmins = await Admin.countDocuments();
+    // Apply data filtering for role-based access
+    // Only super_admin should see all data, admin should see only their own data
+    const userRole = req.admin?.primaryRole;
+    const userId = req.admin?._id;
+    
+    const productFilter = userRole === 'super_admin' ? {} : (userRole === 'admin' ? { createdBy: userId } : (req.dataFilter?.getFilter('Product') || {}));
+    const orderFilter = userRole === 'super_admin' ? {} : (userRole === 'admin' ? { 'items.sellerId': userId } : (req.dataFilter?.getFilter('Order') || {}));
+    const userFilter = userRole === 'super_admin' ? {} : (userRole === 'admin' ? { primaryRole: 'customer' } : (req.dataFilter?.getFilter('User') || {}));
 
-    // Revenue calculation
+    // Basic counts with filtering
+    const totalUsers = await User.countDocuments(userFilter);
+    const totalProducts = await Product.countDocuments(productFilter);
+    const totalOrders = await Order.countDocuments(orderFilter);
+    const totalAdmins = await Admin.countDocuments(); // Admin count remains global for super admin
+
+    // Revenue calculation with filtering
     const revenueResult = await Order.aggregate([
-      { $match: { orderStatus: { $ne: 'cancelled' }, paymentStatus: 'completed' } },
+      { $match: { ...orderFilter, orderStatus: { $ne: 'cancelled' }, paymentStatus: 'completed' } },
       { $group: { _id: null, total: { $sum: '$finalAmount' } } }
     ]);
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
-    // Recent period stats
-    const recentUsers = await User.countDocuments({ createdAt: { $gte: startDate } });
-    const recentOrders = await Order.countDocuments({ createdAt: { $gte: startDate } });
+    // Recent period stats with filtering
+    const recentUsers = await User.countDocuments({ ...userFilter, createdAt: { $gte: startDate } });
+    const recentOrders = await Order.countDocuments({ ...orderFilter, createdAt: { $gte: startDate } });
     const recentRevenueResult = await Order.aggregate([
       { 
         $match: { 
+          ...orderFilter,
           createdAt: { $gte: startDate },
           orderStatus: { $ne: 'cancelled' },
           paymentStatus: 'completed'
@@ -40,16 +50,16 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     ]);
     const recentRevenue = recentRevenueResult.length > 0 ? recentRevenueResult[0].total : 0;
 
-    // Recent orders for display
-    const latestOrders = await Order.find()
+    // Recent orders for display with filtering
+    const latestOrders = await Order.find(orderFilter)
       .populate('userId', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .limit(5)
       .select('orderNumber totalAmount orderStatus createdAt userId');
 
-    // Top selling products
+    // Top selling products with filtering
     const topProducts = await Order.aggregate([
-      { $match: { status: { $ne: 'cancelled' } } },
+      { $match: { ...orderFilter, status: { $ne: 'cancelled' } } },
       { $unwind: '$items' },
       {
         $group: {
@@ -144,9 +154,12 @@ export const getDashboardStats = async (req: Request, res: Response) => {
   }
 };
 
-export const getSalesAnalytics = async (req: Request, res: Response) => {
+export const getSalesAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { startDate, endDate, period = 'daily' } = req.query;
+
+    // Apply data filtering for role-based access
+    const orderFilter = req.dataFilter?.getFilter('Order') || {};
 
     const dateFilter: any = {};
     if (startDate || endDate) {
@@ -155,9 +168,9 @@ export const getSalesAnalytics = async (req: Request, res: Response) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
     }
 
-    // Overall sales metrics
+    // Overall sales metrics with filtering
     const salesMetrics = await Order.aggregate([
-      { $match: { ...dateFilter, status: { $ne: 'cancelled' } } },
+      { $match: { ...orderFilter, ...dateFilter, status: { $ne: 'cancelled' } } },
       {
         $group: {
           _id: null,
@@ -293,7 +306,7 @@ export const getSalesAnalytics = async (req: Request, res: Response) => {
   }
 };
 
-export const getUserAnalytics = async (req: Request, res: Response) => {
+export const getUserAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -389,17 +402,21 @@ export const getUserAnalytics = async (req: Request, res: Response) => {
   }
 };
 
-export const getProductAnalytics = async (req: Request, res: Response) => {
+export const getProductAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const totalProducts = await Product.countDocuments();
-    const activeProducts = await Product.countDocuments({ isActive: true });
-    const featuredProducts = await Product.countDocuments({ isFeatured: true });
-    const outOfStock = await Product.countDocuments({ stock: 0 });
-    const lowStock = await Product.countDocuments({ stock: { $lte: 10, $gt: 0 } });
+    // Apply data filtering for role-based access
+    const productFilter = req.dataFilter?.getFilter('Product') || {};
+    const orderFilter = req.dataFilter?.getFilter('Order') || {};
 
-    // Product performance
+    const totalProducts = await Product.countDocuments(productFilter);
+    const activeProducts = await Product.countDocuments({ ...productFilter, isActive: true });
+    const featuredProducts = await Product.countDocuments({ ...productFilter, isFeatured: true });
+    const outOfStock = await Product.countDocuments({ ...productFilter, stock: 0 });
+    const lowStock = await Product.countDocuments({ ...productFilter, stock: { $lte: 10, $gt: 0 } });
+
+    // Product performance with filtering
     const productPerformance = await Order.aggregate([
-      { $match: { status: { $ne: 'cancelled' } } },
+      { $match: { ...orderFilter, status: { $ne: 'cancelled' } } },
       { $unwind: '$items' },
       {
         $group: {
@@ -472,7 +489,7 @@ export const getProductAnalytics = async (req: Request, res: Response) => {
   }
 };
 
-export const getRevenueAnalytics = async (req: Request, res: Response) => {
+export const getRevenueAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { period = 'monthly' } = req.query;
 
@@ -545,7 +562,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
   }
 };
 
-export const getTrafficAnalytics = async (req: Request, res: Response) => {
+export const getTrafficAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     // This would typically integrate with analytics services like Google Analytics
     // For now, we'll provide basic user activity data

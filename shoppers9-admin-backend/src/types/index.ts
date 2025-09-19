@@ -25,9 +25,34 @@ export interface IAdmin extends Document {
   getPermissions(): string[];
 }
 
-// Extended Request interface with admin
+// Extended Request interface with admin (using User model for admin users)
 export interface AuthRequest extends Request {
-  admin?: IAdmin;
+  admin?: IUser;
+  permissions?: {
+    module: string;
+    action: string;
+    resource: string;
+    scope?: 'own' | 'all';
+    restrictions?: {
+      partialView?: string[];
+      sellerScope?: string[];
+      regionScope?: string[];
+      timeRestriction?: {
+        startTime?: string;
+        endTime?: string;
+        days?: number[];
+      };
+      scopeRestricted?: boolean;
+      requiredScope?: string;
+    };
+  };
+  dataFilter?: {
+    role: string;
+    userId: string;
+    getFilter: (modelType: string) => any;
+    applyFilter: (query: any, modelType: string) => any;
+  };
+  resourceFilter?: any;
 }
 
 // Extended Request interface with authenticated user
@@ -105,6 +130,8 @@ export interface IProduct extends Document {
   isActive: boolean;
   isFeatured: boolean;
   isTrending: boolean;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   
@@ -137,8 +164,82 @@ export interface IUser extends Document {
   isActive: boolean;
   isVerified: boolean;
   lastLogin?: Date;
+  
+  // RBAC fields
+  roles: mongoose.Types.ObjectId[];
+  primaryRole: 'super_admin' | 'admin' | 'sub_admin' | 'seller' | 'customer';
+  
+  // Seller-specific fields
+  sellerInfo?: {
+    businessName?: string;
+    gstNumber?: string;
+    panNumber?: string;
+    bankDetails?: {
+      accountNumber?: string;
+      ifscCode?: string;
+      bankName?: string;
+      accountHolderName?: string;
+    };
+    businessAddress?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      country?: string;
+    };
+    approvalStatus: 'pending' | 'approved' | 'rejected' | 'suspended';
+    approvedBy?: mongoose.Types.ObjectId;
+    approvedAt?: Date;
+    commissionRate?: number;
+  };
+  
+  // Admin-specific fields
+  adminInfo?: {
+    employeeId?: string;
+    department?: string;
+    managerId?: mongoose.Types.ObjectId;
+    accessLevel?: number;
+  };
+  
+  // Security fields
+  security?: {
+    lastPasswordChange?: Date;
+    failedLoginAttempts?: number;
+    lockedUntil?: Date;
+    twoFactorEnabled?: boolean;
+    twoFactorSecret?: string;
+    sessionTokens?: {
+      token: string;
+      createdAt: Date;
+      expiresAt: Date;
+      ipAddress: string;
+      userAgent: string;
+    }[];
+  };
+  
+  // Metadata fields
+  createdBy?: mongoose.Types.ObjectId;
+  suspendedBy?: mongoose.Types.ObjectId;
+  suspendedAt?: Date;
+  suspensionReason?: string;
+  
   createdAt: Date;
   updatedAt: Date;
+  
+  // Virtual properties
+  fullName: string;
+  defaultAddress: any;
+  isLocked: boolean;
+  isApprovedSeller: boolean;
+  
+  // Methods
+  hasRole(roleName: string): boolean;
+  isAdmin(): boolean;
+  canManage(targetUser: any): boolean;
+  incrementFailedAttempts(): Promise<any>;
+  resetFailedAttempts(): Promise<any>;
+  addSessionToken(token: string, ipAddress: string, userAgent: string): Promise<any>;
+  removeSessionToken(token: string): Promise<any>;
 }
 
 // Order interface
@@ -150,6 +251,7 @@ export interface IOrderItem {
   price: number;
   originalPrice: number;
   discount: number;
+  sellerId: mongoose.Types.ObjectId;
 }
 
 export interface IAddress {

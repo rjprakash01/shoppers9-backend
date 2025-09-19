@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import Admin from '../models/Admin';
+import User from '../models/User';
 import { AuthRequest } from '../types';
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -18,7 +18,8 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
     
-    const admin = await Admin.findById(decoded.id).select('-password');
+    // Use userId from token and User model
+    const admin = await User.findById(decoded.userId).select('-password');
 
     if (!admin) {
       res.status(401).json({
@@ -36,6 +37,14 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
       return;
     }
 
+    // Check if admin has valid role
+    if (!['super_admin', 'admin', 'sub_admin'].includes(admin.primaryRole)) {
+      res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+      return;
+    }
     req.admin = admin;
     next();
   } catch (error) {
@@ -60,7 +69,7 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction): 
 };
 
 export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.admin || req.admin.role !== 'super_admin') {
+  if (!req.admin || (req.admin.role !== 'super_admin' && req.admin.primaryRole !== 'super_admin')) {
     res.status(403).json({
       success: false,
       message: 'Access denied. Super admin privileges required.'
@@ -72,7 +81,7 @@ export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 export const managerOrAbove = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.admin || !['manager', 'super_admin'].includes(req.admin.role)) {
+  if (!req.admin || !['admin', 'super_admin'].includes(req.admin.primaryRole)) {
     res.status(403).json({
       success: false,
       message: 'Access denied. Manager privileges or above required.'

@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import { auth } from '../middleware/auth';
+import { requirePermission } from '../middleware/permission';
+import { applyDataFilter } from '../middleware/dataFilter';
 import { uploadBannerImage, handleUploadError } from '../middleware/upload';
 import { convertImageToSVG } from '../utils/imageConverter';
 import {
@@ -17,8 +19,9 @@ import fs from 'fs';
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication and data filtering
 router.use(auth);
+router.use(applyDataFilter);
 
 /**
  * @route POST /upload/banner
@@ -100,21 +103,21 @@ router.post('/upload/banner', auth, uploadBannerImage, handleUploadError, async 
 
 // Banner CRUD routes
 router.route('/')
-  .get(getAllBanners)
-  .post(createBanner);
+  .get(requirePermission('banners', 'read'), getAllBanners)
+  .post(requirePermission('banners', 'create'), createBanner);
 
 router.route('/active')
-  .get(getActiveBanners);
+  .get(requirePermission('banners', 'read'), getActiveBanners);
 
 router.route('/reorder')
-  .put(reorderBanners);
+  .put(requirePermission('banners', 'edit'), reorderBanners);
 
 router.route('/:id')
-  .get(getBannerById)
-  .put(updateBanner)
-  .delete(deleteBanner);
+  .get(requirePermission('banners', 'read'), getBannerById)
+  .put(requirePermission('banners', 'edit'), updateBanner)
+  .delete(requirePermission('banners', 'delete'), deleteBanner);
 
 router.route('/:id/status')
-  .put(updateBannerStatus);
+  .put(requirePermission('banners', 'edit'), updateBannerStatus);
 
 export default router;

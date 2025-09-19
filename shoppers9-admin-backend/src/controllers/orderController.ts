@@ -2,15 +2,24 @@ import { Request, Response } from 'express';
 import Order from '../models/Order';
 import { AuthRequest } from '../types';
 import { NotificationService } from '../utils/notificationService';
+import { applyPaginationWithFilter } from '../middleware/dataFilter';
 
-export const getAllOrders = async (req: Request, res: Response) => {
+export const getAllOrders = async (req: AuthRequest, res: Response) => {
   try {
     console.log('=== ADMIN ORDER API CALLED ===');
     console.log('Query params:', req.query);
+    console.log('Admin user:', req.admin ? {
+      id: req.admin._id,
+      email: req.admin.email,
+      role: req.admin.role,
+      primaryRole: req.admin.primaryRole
+    } : 'NO ADMIN USER');
+    console.log('Data filter:', req.dataFilter ? {
+      role: req.dataFilter.role,
+      userId: req.dataFilter.userId
+    } : 'NO DATA FILTER');
     
     const {
-      page = 1,
-      limit = 10,
       search,
       status,
       paymentStatus,
@@ -21,44 +30,49 @@ export const getAllOrders = async (req: Request, res: Response) => {
       sortOrder = 'desc'
     } = req.query;
 
-    const query: any = {};
+    // Build base query
+    const baseQuery: any = {};
 
     if (search) {
-      query.$or = [
+      baseQuery.$or = [
         { orderNumber: { $regex: search, $options: 'i' } }
       ];
     }
 
     if (status) {
-      query.orderStatus = status;
+      baseQuery.orderStatus = status;
     }
 
     if (paymentStatus) {
-      query.paymentStatus = paymentStatus;
+      baseQuery.paymentStatus = paymentStatus;
     }
 
     if (userId) {
-      query.userId = userId;
+      baseQuery.userId = userId;
     }
 
     if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate as string);
-      if (endDate) query.createdAt.$lte = new Date(endDate as string);
+      baseQuery.createdAt = {};
+      if (startDate) baseQuery.createdAt.$gte = new Date(startDate as string);
+      if (endDate) baseQuery.createdAt.$lte = new Date(endDate as string);
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
+    // Apply role-based filtering and pagination
+    console.log('Base query before filtering:', baseQuery);
+    const { query: filteredQuery, pagination } = applyPaginationWithFilter(req, baseQuery, 'Order');
+    console.log('Filtered query after role-based filtering:', filteredQuery);
     const sortOptions: any = {};
     sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+    console.log('Sort options:', sortOptions);
 
-    const orders = await Order.find(query)
+    const orders = await Order.find(filteredQuery)
       .populate('userId', 'firstName lastName email phone')
       .populate('items.product', 'name images brand variants')
       .sort(sortOptions)
-      .skip(skip)
-      .limit(Number(limit));
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
-    const total = await Order.countDocuments(query);
+    const total = await Order.countDocuments(filteredQuery);
 
     // Debug: Log order data
     console.log('Orders found:', orders.length);
@@ -79,10 +93,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
       data: {
         orders,
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
+          page: pagination.page,
+          limit: pagination.limit,
           total,
-          pages: Math.ceil(total / Number(limit))
+          pages: Math.ceil(total / pagination.limit)
         }
       }
     });

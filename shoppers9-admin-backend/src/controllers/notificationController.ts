@@ -3,20 +3,44 @@ import { Notification, NotificationType, INotification } from '../models/Notific
 import Product from '../models/Product';
 
 // Get all notifications with pagination
-export const getNotifications = async (req: Request, res: Response) => {
+export const getNotifications = async (req: any, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
 
-    const notifications = await Notification.find()
+    // Build query based on user role
+    let query: any = {};
+    
+    if (req.admin) {
+      const userRole = req.admin.primaryRole;
+      const userId = req.admin._id.toString();
+      
+      if (userRole === 'super_admin') {
+        // Super admin sees all notifications
+        query = {};
+      } else if (userRole === 'admin') {
+        // Admin sees global notifications + their own seller-specific notifications
+        query = {
+          $or: [
+            { isSellerSpecific: { $ne: true } }, // Global notifications
+            { targetUserId: userId } // Their own notifications
+          ]
+        };
+      } else {
+        // Other roles see only global notifications
+        query = { isSellerSpecific: { $ne: true } };
+      }
+    }
+
+    const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const totalCount = await Notification.countDocuments();
-    const unreadCount = await Notification.countDocuments({ isRead: false });
+    const totalCount = await Notification.countDocuments(query);
+    const unreadCount = await Notification.countDocuments({ ...query, isRead: false });
 
     res.json({
       success: true,
@@ -43,9 +67,34 @@ export const getNotifications = async (req: Request, res: Response) => {
 };
 
 // Get unread notifications count
-export const getUnreadCount = async (req: Request, res: Response) => {
+export const getUnreadCount = async (req: any, res: Response) => {
   try {
-    const count = await Notification.countDocuments({ isRead: false });
+    // Build query based on user role (same logic as getNotifications)
+    let query: any = { isRead: false };
+    
+    if (req.admin) {
+      const userRole = req.admin.primaryRole;
+      const userId = req.admin._id.toString();
+      
+      if (userRole === 'super_admin') {
+        // Super admin sees all unread notifications
+        query = { isRead: false };
+      } else if (userRole === 'admin') {
+        // Admin sees global + their own unread notifications
+        query = {
+          isRead: false,
+          $or: [
+            { isSellerSpecific: { $ne: true } }, // Global notifications
+            { targetUserId: userId } // Their own notifications
+          ]
+        };
+      } else {
+        // Other roles see only global unread notifications
+        query = { isRead: false, isSellerSpecific: { $ne: true } };
+      }
+    }
+    
+    const count = await Notification.countDocuments(query);
     
     res.json({
       success: true,

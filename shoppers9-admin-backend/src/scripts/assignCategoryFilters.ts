@@ -60,7 +60,7 @@ const assignCategoryFilters = async (): Promise<void> => {
         const filterNames = filterAssignments[categorySlug] || [];
         
         if (filterNames.length > 0) {
-          `);
+          console.log(`Assigning ${filterNames.length} filters to ${category.name}`);
           
           for (let i = 0; i < filterNames.length; i++) {
             const filterName = filterNames[i];

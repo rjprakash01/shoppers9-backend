@@ -156,6 +156,16 @@ const productSchema = new Schema<IProduct>({
   isTrending: {
     type: Boolean,
     default: false
+  },
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  updatedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
   }
 }, {
   timestamps: true,
@@ -187,6 +197,8 @@ productSchema.index({ isFeatured: 1 });
 productSchema.index({ isTrending: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ 'variants.price': 1 });
+productSchema.index({ createdBy: 1 });
+productSchema.index({ createdBy: 1, isActive: 1 });
 
 // Virtual for minimum price calculation
 productSchema.virtual('minPrice').get(function() {

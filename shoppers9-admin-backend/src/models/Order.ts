@@ -35,6 +35,11 @@ const orderItemSchema = new Schema({
     type: Number,
     default: 0,
     min: 0
+  },
+  sellerId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 });
 
@@ -177,6 +182,8 @@ orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ trackingId: 1 });
+orderSchema.index({ 'items.sellerId': 1 });
+orderSchema.index({ 'items.sellerId': 1, createdAt: -1 });
 
 // Pre-save middleware to generate order number
 orderSchema.pre('save', function(next) {

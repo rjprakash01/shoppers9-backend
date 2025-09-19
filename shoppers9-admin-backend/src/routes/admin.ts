@@ -8,21 +8,22 @@ import {
   toggleAdminStatus
 } from '../controllers/adminController';
 import { auth, superAdminOnly } from '../middleware/auth';
+import { requirePermission } from '../middleware/permission';
 
 const router = express.Router();
 
-// All routes are protected and require authentication only
+// All routes require authentication
 router.use(auth);
 
 router.route('/')
-  .get(getAllAdmins)
-  .post(createAdmin);
+  .get(requirePermission('admin_management', 'read'), getAllAdmins)
+  .post(requirePermission('admin_management', 'create'), createAdmin);
 
 router.route('/:id')
-  .get(getAdmin)
-  .put(updateAdmin)
-  .delete(deleteAdmin);
+  .get(requirePermission('admin_management', 'read'), getAdmin)
+  .put(requirePermission('admin_management', 'edit'), updateAdmin)
+  .delete(requirePermission('admin_management', 'delete'), deleteAdmin);
 
-router.put('/:id/toggle-status', toggleAdminStatus);
+router.put('/:id/toggle-status', requirePermission('admin_management', 'edit'), toggleAdminStatus);
 
 export default router;

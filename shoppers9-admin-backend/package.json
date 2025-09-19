@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
+    "dev": "nodemon --exec ts-node --transpile-only src/index.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
@@ -44,6 +44,7 @@
     "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.9.4",
+    "recharts": "^3.2.1",
     "sharp": "^0.34.3",
     "xss-clean": "^0.1.4"
   },

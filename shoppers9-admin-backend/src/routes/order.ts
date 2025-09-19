@@ -8,7 +8,9 @@ import {
   bulkUpdateOrders,
   fixOrderAmounts
 } from '../controllers/orderController';
-import { auth, adminOnly } from '../middleware/auth';
+import { auth } from '../middleware/auth';
+import { requirePermission } from '../middleware/permission';
+import { applyDataFilter } from '../middleware/dataFilter';
 
 const router = express.Router();
 
@@ -20,25 +22,29 @@ router.get('/test', (req, res) => {
 // Fix order amounts (temporary endpoint - no auth required)
 router.post('/fix-amounts', fixOrderAmounts);
 
-// All other routes require authentication
+// All other routes require authentication and data filtering
 router.use(auth);
+router.use(applyDataFilter);
 
 // Get all orders with pagination, search, filter, sort
 router.get('/', getAllOrders);
 
+// Test route with permissions (original)
+router.get('/with-permissions', requirePermission('orders', 'read'), getAllOrders);
+
 // Get order analytics
-router.get('/analytics', getOrderAnalytics);
+router.get('/analytics', requirePermission('analytics', 'read'), getOrderAnalytics);
 
 // Export orders
-router.get('/export', exportOrders);
+router.get('/export', requirePermission('orders', 'export'), exportOrders);
 
 // Bulk update orders
-router.patch('/bulk-update', bulkUpdateOrders);
+router.patch('/bulk-update', requirePermission('orders', 'edit'), bulkUpdateOrders);
 
 // Get single order by ID
-router.get('/:id', getOrder);
+router.get('/:id', requirePermission('orders', 'read'), getOrder);
 
 // Update order status
-router.patch('/:id/status', updateOrderStatus);
+router.patch('/:id/status', requirePermission('orders', 'edit'), updateOrderStatus);
 
 export default router;

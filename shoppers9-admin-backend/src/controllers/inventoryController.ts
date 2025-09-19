@@ -2,14 +2,19 @@ import { Request, Response } from 'express';
 import Product from '../models/Product';
 import { AuthRequest } from '../types';
 import { NotificationService } from '../utils/notificationService';
+import { applyPaginationWithFilter } from '../middleware/dataFilter';
 
-export const getInventoryReport = async (req: Request, res: Response): Promise<Response | void> => {
+export const getInventoryReport = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
-    const totalProducts = await Product.countDocuments();
-    const activeProducts = await Product.countDocuments({ isActive: true });
+    // Apply data filtering for role-based access
+    const filter = req.dataFilter?.getFilter('Product') || {};
+    
+    const totalProducts = await Product.countDocuments(filter);
+    const activeProducts = await Product.countDocuments({ ...filter, isActive: true });
     
     // Calculate total variants and stock across all products
     const stockAggregation = await Product.aggregate([
+      { $match: filter },
       {
         $project: {
           variantCount: { $size: '$variants' },
@@ -30,6 +35,7 @@ export const getInventoryReport = async (req: Request, res: Response): Promise<R
 
     // Count products with different stock levels
     const stockLevels = await Product.aggregate([
+      { $match: filter },
       { $unwind: '$variants' },
       {
         $group: {
@@ -129,9 +135,13 @@ export const getInventoryReport = async (req: Request, res: Response): Promise<R
   }
 };
 
-export const getLowStockAlerts = async (req: Request, res: Response): Promise<Response | void> => {
+export const getLowStockAlerts = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
+    // Apply data filtering for role-based access
+    const filter = req.dataFilter?.getFilter('Product') || {};
+    
     const alerts = await Product.aggregate([
+      { $match: filter },
       { $unwind: '$variants' },
       {
         $match: {
@@ -212,15 +222,14 @@ export const getLowStockAlerts = async (req: Request, res: Response): Promise<Re
   }
 };
 
-export const getDetailedInventory = async (req: Request, res: Response): Promise<Response | void> => {
+export const getDetailedInventory = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
     const category = req.query.category as string;
     const stockStatus = req.query.stockStatus as string;
 
-    const query: any = {};
+    // Build base query
+    const baseQuery: any = {};
     const andConditions: any[] = [];
 
     if (search) {
@@ -238,14 +247,15 @@ export const getDetailedInventory = async (req: Request, res: Response): Promise
     }
 
     if (andConditions.length > 0) {
-      query.$and = andConditions;
+      baseQuery.$and = andConditions;
     }
 
-    const skip = (page - 1) * limit;
+    // Apply role-based filtering and pagination
+    const { query: filteredQuery, pagination } = applyPaginationWithFilter(req, baseQuery, 'Product');
 
     // Build aggregation pipeline
     const pipeline: any[] = [
-      { $match: query },
+      { $match: filteredQuery },
       {
         $lookup: {
           from: 'categories',
@@ -370,8 +380,8 @@ export const getDetailedInventory = async (req: Request, res: Response): Promise
     // Add pagination
     pipeline.push(
       { $sort: { name: 1 } },
-      { $skip: skip },
-      { $limit: limit }
+      { $skip: pagination.skip },
+      { $limit: pagination.limit }
     );
 
     const [products, totalCount] = await Promise.all([
@@ -383,15 +393,15 @@ export const getDetailedInventory = async (req: Request, res: Response): Promise
     ]);
 
     const total = totalCount[0]?.total || 0;
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / pagination.limit);
 
     res.json({
       success: true,
       data: {
         products,
         pagination: {
-          page,
-          limit,
+          page: pagination.page,
+          limit: pagination.limit,
           total,
           pages: totalPages
         }
@@ -508,11 +518,15 @@ export const updateVariantStock = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-export const getReorderSuggestions = async (req: Request, res: Response): Promise<Response | void> => {
+export const getReorderSuggestions = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     const threshold = parseInt(req.query.threshold as string) || 10;
     
+    // Apply data filtering for role-based access
+    const filter = req.dataFilter?.getFilter('Product') || {};
+    
     const suggestions = await Product.aggregate([
+      { $match: filter },
       { $unwind: '$variants' },
       {
         $match: {

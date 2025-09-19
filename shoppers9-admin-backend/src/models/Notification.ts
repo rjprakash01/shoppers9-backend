@@ -24,6 +24,8 @@ export interface INotification extends Document {
     [key: string]: any;
   };
   isRead: boolean;
+  targetUserId?: string; // Specific admin/seller this notification is for
+  isSellerSpecific?: boolean; // Whether this is a seller-specific notification
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,16 @@ const notificationSchema = new Schema<INotification>({
   isRead: {
     type: Boolean,
     default: false
+  },
+  targetUserId: {
+    type: String,
+    trim: true,
+    index: true
+  },
+  isSellerSpecific: {
+    type: Boolean,
+    default: false,
+    index: true
   }
 }, {
   timestamps: true

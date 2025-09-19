@@ -6,27 +6,39 @@ import CategoryFilter from '../models/CategoryFilter';
 import FilterOption from '../models/FilterOption';
 import { AuthRequest } from '../types';
 import { convertMultipleImagesToSVG } from '../utils/imageConverter';
+import { applyPaginationWithFilter } from '../middleware/dataFilter';
 import path from 'path';
 import mongoose from 'mongoose';
+import AuditLog from '../models/AuditLog';
 
-export const getAllProducts = async (req: Request, res: Response): Promise<Response | void> => {
+export const getAllProducts = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    console.log('=== ADMIN PRODUCT API CALLED ===');
+    console.log('User role:', req.admin?.primaryRole);
+    console.log('Query params:', req.query);
+    console.log('Request headers:', req.headers.authorization ? 'Token present' : 'No token');
+    console.log('Admin object:', req.admin ? 'Admin present' : 'No admin');
+    
     const search = req.query.search as string;
     const category = req.query.category as string;
     const status = req.query.status as string;
+    const featured = req.query.featured as string;
+    const trending = req.query.trending as string;
+    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
     const sortBy = req.query.sortBy as string || 'createdAt';
     const sortOrder = req.query.sortOrder as string || 'desc';
 
-    const query: any = {};
+    // Build base query
+    let baseQuery: any = {};
     const andConditions: any[] = [];
 
     if (search) {
       andConditions.push({
         $or: [
           { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } }
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $in: [new RegExp(search, 'i')] } }
         ]
       });
     }
@@ -36,26 +48,48 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
     }
 
     if (andConditions.length > 0) {
-      query.$and = andConditions;
+      baseQuery.$and = andConditions;
     }
 
     if (status) {
-      query.isActive = status === 'active';
+      baseQuery.isActive = status === 'active';
     }
 
-    const skip = (page - 1) * limit;
+    if (featured) {
+      baseQuery.isFeatured = featured === 'true';
+    }
+
+    if (trending) {
+      baseQuery.isTrending = trending === 'true';
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      baseQuery.minPrice = {};
+      if (minPrice !== undefined) baseQuery.minPrice.$gte = minPrice;
+      if (maxPrice !== undefined) baseQuery.minPrice.$lte = maxPrice;
+    }
+
+    // Apply role-based filtering and pagination
+    const { query: filteredQuery, pagination } = applyPaginationWithFilter(req, baseQuery, 'Product');
+
     const sortOptions: any = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const products = await Product.find(query)
+    const products = await Product.find(filteredQuery)
       .populate('category', 'name slug level parentCategory')
       .populate('subCategory', 'name slug level parentCategory')
       .populate('subSubCategory', 'name slug level parentCategory')
+      .populate('createdBy', 'firstName lastName email')
       .sort(sortOptions)
-      .skip(skip)
-      .limit(limit);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
-    const total = await Product.countDocuments(query);
+    const total = await Product.countDocuments(filteredQuery);
+    
+    console.log('Filtered query:', JSON.stringify(filteredQuery, null, 2));
+    console.log('Products found:', products.length);
+    console.log('Total products in DB:', total);
+    console.log('=== END ADMIN PRODUCT API ===');
 
     // Transform products to match admin frontend expectations
     const transformedProducts = products.map(product => {
@@ -102,21 +136,62 @@ export const getAllProducts = async (req: Request, res: Response): Promise<Respo
       };
     });
 
+    // Log access for audit trail
+    if (req.admin) {
+      await AuditLog.logAction({
+        userId: req.admin._id,
+        action: 'read',
+        module: 'product_management',
+        resource: 'product',
+        details: {
+          method: req.method,
+          endpoint: req.originalUrl,
+          userAgent: req.get('User-Agent'),
+          ipAddress: req.ip,
+          filters: filteredQuery,
+          resultCount: products.length
+        },
+        status: 'success'
+      });
+    }
+
     res.json({
       success: true,
       data: {
         products: transformedProducts,
         pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(total / limit),
+          currentPage: pagination.page,
+          totalPages: Math.ceil(total / pagination.limit),
           totalItems: total,
-          limit,
-          hasPrev: page > 1,
-          hasNext: page < Math.ceil(total / limit)
-        }
+          limit: pagination.limit,
+          hasPrev: pagination.page > 1,
+          hasNext: pagination.page < Math.ceil(total / pagination.limit)
+        },
+        userRole: req.admin?.primaryRole,
+        dataScope: req.dataFilter?.role === 'super_admin' ? 'global' : 'own'
       }
     });
   } catch (error) {
+    console.error('Get all products error:', error);
+    
+    // Log failed access attempt
+    if (req.admin) {
+      await AuditLog.logAction({
+        userId: req.admin._id,
+        action: 'read',
+        module: 'product_management',
+        resource: 'product',
+        details: {
+          method: req.method,
+          endpoint: req.originalUrl,
+          userAgent: req.get('User-Agent'),
+          ipAddress: req.ip
+        },
+        status: 'failed',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Error fetching products',
@@ -361,7 +436,9 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
         (Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map((tag: string) => tag.trim())) : [],
       isActive: req.body.isActive === 'true' || req.body.isActive === true,
       isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
-      isTrending: req.body.isTrending === 'true' || req.body.isTrending === true
+      isTrending: req.body.isTrending === 'true' || req.body.isTrending === true,
+      createdBy: req.admin?._id,
+      updatedBy: req.admin?._id
     };
 
     // Add subSubCategory if provided

@@ -12,24 +12,37 @@ import {
   getCategoryTree,
   getCategoryPath
 } from '../controllers/categoryController';
-import { auth, adminOnly } from '../middleware/auth';
+import { auth } from '../middleware/auth';
+import { requirePermission } from '../middleware/permission';
+import { applyDataFilter } from '../middleware/dataFilter';
 import { uploadCategoryImage, handleUploadError } from '../middleware/upload';
 
 const router = express.Router();
 
 // Public routes (if needed for frontend display)
-router.get('/', getAllCategories);
-router.get('/tree', getCategoryTree);
-router.get('/level/:level', getCategoriesByLevel);
-router.get('/analytics', auth, getCategoryAnalytics);
-router.get('/:id', getCategory);
-router.get('/:id/path', getCategoryPath);
+router.get('/public', getAllCategories);
+router.get('/public/tree', getCategoryTree);
+router.get('/public/level/:level', getCategoriesByLevel);
+router.get('/public/:id', getCategory);
+router.get('/public/:id/path', getCategoryPath);
 
-// Protected routes - require authentication only
-router.post('/', auth, uploadCategoryImage, handleUploadError, createCategory);
-router.put('/:id', auth, uploadCategoryImage, handleUploadError, updateCategory);
-router.patch('/:id/status', auth, toggleCategoryStatus);
-router.patch('/bulk-update', auth, bulkUpdateCategories);
-router.delete('/:id', auth, deleteCategory);
+// Apply authentication and data filtering to all admin routes
+router.use(auth);
+router.use(applyDataFilter);
+
+// Protected admin routes
+router.get('/', requirePermission('categories', 'read'), getAllCategories);
+router.get('/tree', requirePermission('categories', 'read'), getCategoryTree);
+router.get('/level/:level', requirePermission('categories', 'read'), getCategoriesByLevel);
+router.get('/:id', requirePermission('categories', 'read'), getCategory);
+router.get('/:id/path', requirePermission('categories', 'read'), getCategoryPath);
+router.get('/analytics', requirePermission('analytics', 'read'), getCategoryAnalytics);
+router.post('/', requirePermission('categories', 'create'), uploadCategoryImage, handleUploadError, createCategory);
+router.get('/:id', requirePermission('categories', 'read'), getCategory);
+router.get('/:id/path', requirePermission('categories', 'read'), getCategoryPath);
+router.put('/:id', requirePermission('categories', 'edit'), uploadCategoryImage, handleUploadError, updateCategory);
+router.patch('/:id/status', requirePermission('categories', 'edit'), toggleCategoryStatus);
+router.patch('/bulk-update', requirePermission('categories', 'edit'), bulkUpdateCategories);
+router.delete('/:id', requirePermission('categories', 'delete'), deleteCategory);
 
 export default router;

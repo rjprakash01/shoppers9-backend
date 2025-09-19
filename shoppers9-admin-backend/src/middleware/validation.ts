@@ -5,7 +5,7 @@ export const validateRequest = (
   schema: Joi.ObjectSchema,
   property: 'body' | 'query' | 'params' = 'body'
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const { error, value } = schema.validate(req[property], {
       abortEarly: false,
       allowUnknown: false,
@@ -13,11 +13,7 @@ export const validateRequest = (
     });
 
     if (error) {
-      const errorMessage = error.details
-        .map(detail => detail.message)
-        .join(', ');
-      
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Validation error',
         errors: error.details.map(detail => ({
@@ -25,6 +21,7 @@ export const validateRequest = (
           message: detail.message
         }))
       });
+      return;
     }
 
     // Replace the request property with the validated value

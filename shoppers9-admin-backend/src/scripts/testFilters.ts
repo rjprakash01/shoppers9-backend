@@ -18,7 +18,7 @@ const testFilters = async () => {
     const filters = await Filter.find({}).limit(5);
     
     if (filters.length > 0) {
-      );
+      console.log('✅ Filters found:', filters.length);
     }
     
     // Test 2: Check filter options
@@ -28,7 +28,7 @@ const testFilters = async () => {
     const categories = await Category.find({ level: { $in: [2, 3] } }).limit(5);
     
     if (categories.length > 0) {
-      `));
+      console.log('✅ Categories found:', categories.length);
     }
     
     // Test 4: Check category filters
@@ -66,14 +66,14 @@ const testFilters = async () => {
       finalCategoryFilters.forEach(cf => {
         const filter = cf.filter as any;
         const category = cf.category as any;
-        `);
+        console.log(`Filter: ${filter.name} -> Category: ${category.name}`);
       });
     }
     
   } catch (error) {
-    
+    console.error('❌ Error testing filters:', error);
   } finally {
-    
+    console.log('🔌 Disconnecting from database...');
     await mongoose.disconnect();
     process.exit(0);
   }

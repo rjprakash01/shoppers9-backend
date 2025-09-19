@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Admin from '../models/Admin';
+import User from '../models/User';
 import { AuthRequest } from '../types';
 import bcrypt from 'bcryptjs';
 
@@ -22,22 +22,25 @@ export const getAllAdmins = async (req: Request, res: Response) => {
     }
 
     if (role) {
-      query.role = role;
+      query.primaryRole = role;
     }
 
     if (status) {
       query.isActive = status === 'active';
     }
 
+    // Only get admin users
+    query.primaryRole = { $in: ['super_admin', 'admin', 'sub_admin'] };
+
     const skip = (page - 1) * limit;
 
-    const admins = await Admin.find(query)
-      .select('-password -refreshToken')
+    const admins = await User.find(query)
+      .select('-password')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await Admin.countDocuments(query);
+    const total = await User.countDocuments(query);
 
     res.json({
       success: true,
@@ -62,9 +65,9 @@ export const getAllAdmins = async (req: Request, res: Response) => {
 
 export const getAdmin = async (req: Request, res: Response) => {
   try {
-    const admin = await Admin.findById(req.params.id).select('-password -refreshToken');
+    const admin = await User.findById(req.params.id).select('-password');
 
-    if (!admin) {
+    if (!admin || !['super_admin', 'admin', 'sub_admin'].includes(admin.primaryRole)) {
       return res.status(404).json({
         success: false,
         message: 'Admin not found'
@@ -86,14 +89,14 @@ export const getAdmin = async (req: Request, res: Response) => {
 
 export const createAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, firstName, lastName, role, phone } = req.body;
+    const { email, password, firstName, lastName, primaryRole, phone } = req.body;
 
-    // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Admin with this email already exists'
+        message: 'User with this email already exists'
       });
     }
 
@@ -101,20 +104,21 @@ export const createAdmin = async (req: AuthRequest, res: Response) => {
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const admin = await Admin.create({
+    const admin = await User.create({
       email,
       password: hashedPassword,
       firstName,
       lastName,
-      role,
+      primaryRole: primaryRole || 'admin',
       phone,
+      isActive: true,
+      isVerified: true,
       createdBy: req.admin?.id
     });
 
     // Remove password from response
     const adminResponse = admin.toObject() as any;
     delete adminResponse.password;
-    delete adminResponse.refreshToken;
 
     return res.status(201).json({
       success: true,
@@ -142,11 +146,11 @@ export const updateAdmin = async (req: AuthRequest, res: Response) => {
 
     updateData.updatedBy = req.admin?.id;
 
-    const admin = await Admin.findByIdAndUpdate(
+    const admin = await User.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    ).select('-password -refreshToken');
+    ).select('-password');
 
     if (!admin) {
       return res.status(404).json({
@@ -171,7 +175,7 @@ export const updateAdmin = async (req: AuthRequest, res: Response) => {
 
 export const deleteAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const adminToDelete = await Admin.findById(req.params.id);
+    const adminToDelete = await User.findById(req.params.id);
 
     if (!adminToDelete) {
       return res.status(404).json({
@@ -189,14 +193,14 @@ export const deleteAdmin = async (req: AuthRequest, res: Response) => {
     }
 
     // Prevent deletion of super admin by non-super admin
-    if (adminToDelete.role === 'super_admin' && req.admin?.role !== 'super_admin') {
+    if (adminToDelete.primaryRole === 'super_admin' && req.admin?.primaryRole !== 'super_admin') {
       return res.status(403).json({
         success: false,
         message: 'Only super admin can delete super admin accounts'
       });
     }
 
-    await Admin.findByIdAndDelete(req.params.id);
+    await User.findByIdAndDelete(req.params.id);
 
     return res.json({
       success: true,
@@ -213,7 +217,7 @@ export const deleteAdmin = async (req: AuthRequest, res: Response) => {
 
 export const toggleAdminStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const admin = await Admin.findById(req.params.id);
+    const admin = await User.findById(req.params.id);
 
     if (!admin) {
       return res.status(404).json({
@@ -231,7 +235,7 @@ export const toggleAdminStatus = async (req: AuthRequest, res: Response) => {
     }
 
     // Prevent status change of super admin by non-super admin
-    if (admin.role === 'super_admin' && req.admin?.role !== 'super_admin') {
+    if (admin.primaryRole === 'super_admin' && req.admin?.primaryRole !== 'super_admin') {
       return res.status(403).json({
         success: false,
         message: 'Only super admin can change super admin status'
@@ -239,12 +243,10 @@ export const toggleAdminStatus = async (req: AuthRequest, res: Response) => {
     }
 
     admin.isActive = !admin.isActive;
-    admin.updatedBy = req.admin?.id;
     await admin.save();
 
     const adminResponse = admin.toObject() as any;
     delete adminResponse.password;
-    delete adminResponse.refreshToken;
 
     return res.json({
       success: true,
@@ -262,21 +264,24 @@ export const toggleAdminStatus = async (req: AuthRequest, res: Response) => {
 
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
-    const totalAdmins = await Admin.countDocuments();
-    const activeAdmins = await Admin.countDocuments({ isActive: true });
-    const inactiveAdmins = await Admin.countDocuments({ isActive: false });
+    const adminQuery = { primaryRole: { $in: ['super_admin', 'admin', 'sub_admin'] } };
+    
+    const totalAdmins = await User.countDocuments(adminQuery);
+    const activeAdmins = await User.countDocuments({ ...adminQuery, isActive: true });
+    const inactiveAdmins = await User.countDocuments({ ...adminQuery, isActive: false });
 
-    const roleStats = await Admin.aggregate([
+    const roleStats = await User.aggregate([
+      { $match: adminQuery },
       {
         $group: {
-          _id: '$role',
+          _id: '$primaryRole',
           count: { $sum: 1 }
         }
       }
     ]);
 
-    const recentAdmins = await Admin.find()
-      .select('-password -refreshToken')
+    const recentAdmins = await User.find(adminQuery)
+      .select('-password')
       .sort({ createdAt: -1 })
       .limit(5);
 
