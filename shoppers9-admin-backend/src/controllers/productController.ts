@@ -4,12 +4,15 @@ import Category from '../models/Category';
 import ProductFilterValue from '../models/ProductFilterValue';
 import CategoryFilter from '../models/CategoryFilter';
 import FilterOption from '../models/FilterOption';
-import { AuthRequest } from '../types';
+import { AuthRequest, ReviewStatus } from '../types';
 import { convertMultipleImagesToSVG } from '../utils/imageConverter';
 import { applyPaginationWithFilter } from '../middleware/dataFilter';
 import path from 'path';
 import mongoose from 'mongoose';
 import AuditLog from '../models/AuditLog';
+import ProductReview from '../models/ProductReview';
+import Notification, { NotificationType } from '../models/Notification';
+import { NotificationService } from '../utils/notificationService';
 
 export const getAllProducts = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
@@ -53,6 +56,13 @@ export const getAllProducts = async (req: AuthRequest, res: Response): Promise<R
 
     if (status) {
       baseQuery.isActive = status === 'active';
+    } else {
+      // By default, only show approved products for non-super admin roles
+      // Super admins can see all products but with clear status indicators
+      if (req.admin?.primaryRole !== 'super_admin') {
+        baseQuery.reviewStatus = ReviewStatus.APPROVED;
+        baseQuery.isActive = true;
+      }
     }
 
     if (featured) {
@@ -129,10 +139,15 @@ export const getAllProducts = async (req: AuthRequest, res: Response): Promise<R
         images: defaultImage ? [defaultImage] : (product.images || []),
         stock: product.totalStock || 0,
         isActive: product.isActive,
+        reviewStatus: product.reviewStatus,
+        approvalStatus: product.approvalStatus,
+        submittedForReviewAt: product.submittedForReviewAt,
+        approvedAt: product.approvedAt,
         rating: 0, // Default rating
         reviewCount: 0, // Default review count
         createdAt: product.createdAt,
-        updatedAt: product.updatedAt
+        updatedAt: product.updatedAt,
+        createdBy: product.createdBy
       };
     });
 
@@ -371,16 +386,33 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           : req.body.variants;
         
         if (Array.isArray(variantsData) && variantsData.length > 0) {
-          variants = variantsData.map((variant: any, index: number) => ({
-            color: variant.color,
-            colorCode: variant.colorCode,
-            size: variant.size || 'One Size',
-            price: parseFloat(variant.price || 0),
-            originalPrice: parseFloat(variant.originalPrice || variant.price || 0),
-            stock: parseInt(variant.stock || 0),
-            sku: variant.sku || `${req.body.name?.replace(/\s+/g, '-').toUpperCase()}-${variant.color}-${variant.size}-${index + 1}`,
-            images: variant.images || images
-          }));
+          variants = variantsData.map((variant: any, index: number) => {
+            const price = parseFloat(variant.price || 0);
+            const originalPrice = parseFloat(variant.originalPrice || variant.price || 0);
+            const stock = parseInt(variant.stock || 0);
+            
+            // Validate numeric values
+            if (isNaN(price) || price <= 0) {
+              throw new Error(`Invalid price for variant ${index + 1}: ${variant.price}`);
+            }
+            if (isNaN(originalPrice) || originalPrice <= 0) {
+              throw new Error(`Invalid original price for variant ${index + 1}: ${variant.originalPrice}`);
+            }
+            if (isNaN(stock) || stock < 0) {
+              throw new Error(`Invalid stock for variant ${index + 1}: ${variant.stock}`);
+            }
+            
+            return {
+              color: variant.color,
+              colorCode: variant.colorCode,
+              size: variant.size || 'One Size',
+              price: price,
+              originalPrice: originalPrice,
+              stock: stock,
+              sku: variant.sku || `${req.body.name?.replace(/\s+/g, '-').toUpperCase()}-${variant.color}-${variant.size}-${index + 1}`,
+              images: variant.images || images
+            };
+          });
         }
       } catch (error) {
         
@@ -434,7 +466,11 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
         (typeof req.body.specifications === 'string' ? JSON.parse(req.body.specifications) : req.body.specifications) : {},
       tags: req.body.tags ? 
         (Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map((tag: string) => tag.trim())) : [],
-      isActive: req.body.isActive === 'true' || req.body.isActive === true,
+      // Products created by admin users require super admin approval
+      reviewStatus: ReviewStatus.PENDING_REVIEW,
+      submittedForReviewAt: new Date(), // Set submission date for review queue sorting
+      approvalStatus: 'pending',
+      isActive: false, // Will be set to true only after super admin approval
       isFeatured: req.body.isFeatured === 'true' || req.body.isFeatured === true,
       isTrending: req.body.isTrending === 'true' || req.body.isTrending === true,
       createdBy: req.admin?._id,
@@ -450,6 +486,14 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
     delete productData.sku;
 
     const product = await Product.create(productData);
+
+    // Create ProductReview record since product is created with PENDING_REVIEW status
+    await ProductReview.create({
+      product: product._id,
+      status: ReviewStatus.PENDING_REVIEW,
+      submittedBy: req.admin?._id,
+      submittedAt: new Date()
+    });
 
     // Create filter values if provided
     if (processedFilterValues.length > 0) {
@@ -478,6 +522,34 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<Re
           { path: 'filterOption', select: 'value displayValue colorCode' }
         ]
       });
+
+    // Notify Super Admins about new product creation by admin users
+    try {
+      await Notification.createNotification({
+        type: NotificationType.PRODUCT_SUBMITTED,
+        title: 'New Product Created - Pending Approval',
+        message: `Admin ${req.admin?.firstName} ${req.admin?.lastName} has created a new product "${product.name}" that requires approval`,
+        data: {
+          productId: product._id.toString(),
+          productName: product.name,
+          createdBy: req.admin?._id.toString(),
+          createdByName: `${req.admin?.firstName} ${req.admin?.lastName}`,
+          approvalStatus: 'pending'
+        },
+        isRead: false
+      });
+
+      // Send notification via notification service to super admins
+      await NotificationService.createProductSubmittedNotification({
+        productId: product._id.toString(),
+        productName: product.name,
+        sellerName: `${req.admin?.firstName} ${req.admin?.lastName}`,
+        sellerId: req.admin?._id.toString()
+      });
+    } catch (notificationError) {
+      console.error('Failed to create product creation notification:', notificationError);
+      // Continue with product creation even if notification fails
+    }
     
     return res.status(201).json({
       success: true,
@@ -1032,4 +1104,855 @@ export const getAvailableFilterOptionsForCategory = async (req: Request, res: Re
      error: error instanceof Error ? error.message : 'Unknown error'
    });
  }
+};
+
+// Product Review Workflow Functions
+
+// Submit product for review
+export const submitProductForReview = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    // Check if product is in draft status
+    if (product.reviewStatus !== ReviewStatus.DRAFT) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only draft products can be submitted for review'
+      });
+    }
+
+    // Validate required fields
+    const requiredFields = ['name', 'description', 'category', 'variants'];
+    const missingFields = requiredFields.filter(field => !product[field] || (Array.isArray(product[field]) && product[field].length === 0));
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
+    }
+
+    // Update product status
+    product.reviewStatus = ReviewStatus.PENDING_REVIEW;
+    product.submittedForReviewAt = new Date();
+    await product.save();
+
+    // Create review record
+    await ProductReview.create({
+      product: product._id,
+      status: ReviewStatus.PENDING_REVIEW,
+      submittedBy: adminId,
+      submittedAt: new Date()
+    });
+
+    // Log audit trail
+    await AuditLog.logAction({
+      userId: adminId,
+      action: 'product_submitted_for_review',
+      module: 'product_management',
+      resource: 'product',
+      resourceId: product._id,
+      details: {
+        method: req.method,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip,
+        productName: product.name
+      },
+      status: 'success'
+    });
+
+    // Notify Super Admins
+    // Note: This would typically query for Super Admins, but for now we'll create a general notification
+    await Notification.createNotification({
+      type: NotificationType.REVIEW_SUBMITTED,
+      title: 'New Product Submitted for Review',
+      message: `Product "${product.name}" has been submitted for review by ${req.admin?.firstName} ${req.admin?.lastName}`,
+      data: {
+        productId: product._id.toString(),
+        productName: product.name,
+        submittedBy: adminId.toString()
+      },
+      isRead: false
+    });
+
+    // Send notification via notification service
+    await NotificationService.createProductSubmittedNotification({
+      productId: product._id.toString(),
+      productName: product.name,
+      sellerName: `${req.admin?.firstName} ${req.admin?.lastName}`,
+      sellerId: adminId.toString()
+    });
+
+    return res.json({
+      success: true,
+      message: 'Product submitted for review successfully',
+      data: {
+        productId: product._id,
+        reviewStatus: product.reviewStatus,
+        submittedAt: product.submittedForReviewAt
+      }
+    });
+  } catch (error) {
+    console.error('Submit product for review error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error submitting product for review',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Approve product
+export const approveProduct = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const { comments } = req.body;
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    // Check if admin has Super Admin role
+    if (req.admin?.primaryRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can approve products'
+      });
+    }
+
+    const product = await Product.findById(id).populate('createdBy', 'firstName lastName email');
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    if (product.reviewStatus !== ReviewStatus.PENDING_REVIEW) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only products pending review can be approved'
+      });
+    }
+
+    // Update product status
+    product.reviewStatus = ReviewStatus.APPROVED;
+    product.approvalStatus = 'approved'; // Set approval status for main backend filtering
+    product.approvedAt = new Date();
+    product.approvedBy = adminId;
+    product.isActive = true; // Make product visible on main site
+    await product.save();
+
+    // Update review record
+    await ProductReview.findOneAndUpdate(
+      { product: product._id, status: ReviewStatus.PENDING_REVIEW },
+      {
+        status: ReviewStatus.APPROVED,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        $push: {
+          comments: {
+            comment: comments || 'Product approved',
+            commentedBy: adminId,
+            commentedAt: new Date()
+          }
+        }
+      }
+    );
+
+    // Log audit trail
+    await AuditLog.logAction({
+      userId: adminId,
+      action: 'product_review_approved',
+      module: 'product_management',
+      resource: 'product',
+      resourceId: product._id,
+      details: {
+        method: req.method,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip,
+        productName: product.name,
+        comments: comments
+      },
+      status: 'success'
+    });
+
+    // Notify product creator
+    if (product.createdBy) {
+      await Notification.createNotification({
+        recipient: product.createdBy._id,
+        type: NotificationType.PRODUCT_APPROVED,
+        title: 'Product Approved',
+        message: `Your product "${product.name}" has been approved and is now live on the website.`,
+        data: {
+          productId: product._id.toString(),
+          productName: product.name,
+          approvedBy: adminId.toString(),
+          comments: comments
+        },
+        isRead: false
+      });
+
+      // Send notification via notification service
+      await NotificationService.createProductApprovedNotification({
+        productId: product._id.toString(),
+        productName: product.name,
+        sellerName: `${product.createdBy.firstName} ${product.createdBy.lastName}`,
+        sellerId: product.createdBy._id.toString(),
+        comments: comments
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Product approved successfully',
+      data: {
+        productId: product._id,
+        reviewStatus: product.reviewStatus,
+        approvedAt: product.approvedAt,
+        approvedBy: product.approvedBy
+      }
+    });
+  } catch (error) {
+    console.error('Approve product error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error approving product',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Reject product
+export const rejectProduct = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const { reason, comments } = req.body;
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    // Check if admin has Super Admin role
+    if (req.admin?.primaryRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can reject products'
+      });
+    }
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejection reason is required'
+      });
+    }
+
+    const product = await Product.findById(id).populate('createdBy', 'firstName lastName email');
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    if (product.reviewStatus !== ReviewStatus.PENDING_REVIEW) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only products pending review can be rejected'
+      });
+    }
+
+    // Update product status
+    product.reviewStatus = ReviewStatus.REJECTED;
+    product.approvalStatus = 'rejected'; // Ensure main backend filtering recognizes rejection
+    product.isActive = false; // Deactivate rejected products
+    await product.save();
+
+    // Update review record
+    await ProductReview.findOneAndUpdate(
+      { product: product._id, status: ReviewStatus.PENDING_REVIEW },
+      {
+        status: ReviewStatus.REJECTED,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        rejectionReason: reason,
+        $push: {
+          comments: {
+            comment: comments || reason,
+            commentedBy: adminId,
+            commentedAt: new Date()
+          }
+        }
+      }
+    );
+
+    // Log audit trail
+    await AuditLog.logAction({
+      userId: adminId,
+      action: 'product_review_rejected',
+      module: 'product_management',
+      resource: 'product',
+      resourceId: product._id,
+      details: {
+        method: req.method,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip,
+        productName: product.name,
+        reason: reason,
+        comments: comments
+      },
+      status: 'success'
+    });
+
+    // Notify product creator
+    if (product.createdBy) {
+      await Notification.createNotification({
+        recipient: product.createdBy._id,
+        type: NotificationType.PRODUCT_REJECTED,
+        title: 'Product Rejected',
+        message: `Your product "${product.name}" has been rejected. Reason: ${reason}`,
+        data: {
+          productId: product._id.toString(),
+          productName: product.name,
+          rejectedBy: adminId.toString(),
+          reason: reason,
+          comments: comments
+        },
+        isRead: false
+      });
+
+      // Send notification via notification service
+      await NotificationService.createProductRejectedNotification({
+        productId: product._id.toString(),
+        productName: product.name,
+        sellerName: `${product.createdBy.firstName} ${product.createdBy.lastName}`,
+        sellerId: product.createdBy._id.toString(),
+        reason: reason,
+        comments: comments
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Product rejected successfully',
+      data: {
+        productId: product._id,
+        reviewStatus: product.reviewStatus,
+        rejectionReason: reason
+      }
+    });
+  } catch (error) {
+    console.error('Reject product error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error rejecting product',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Request changes for product
+export const requestProductChanges = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const { changes, comments } = req.body;
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    // Check if admin has Super Admin role
+    if (req.admin?.primaryRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can request product changes'
+      });
+    }
+
+    if (!changes) {
+      return res.status(400).json({
+        success: false,
+        message: 'Change requests are required'
+      });
+    }
+
+    const product = await Product.findById(id).populate('createdBy', 'firstName lastName email');
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    if (product.reviewStatus !== ReviewStatus.PENDING_REVIEW) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only products pending review can have changes requested'
+      });
+    }
+
+    // Update product status
+    product.reviewStatus = ReviewStatus.NEEDS_INFO;
+    product.approvalStatus = 'needs_changes'; // Ensure main backend filtering recognizes status
+    product.isActive = false; // Deactivate products needing changes
+    await product.save();
+
+    // Update review record
+    await ProductReview.findOneAndUpdate(
+      { product: product._id, status: ReviewStatus.PENDING_REVIEW },
+      {
+        status: ReviewStatus.NEEDS_INFO,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        changesRequested: changes,
+        $push: {
+          comments: {
+            comment: comments || changes,
+            commentedBy: adminId,
+            commentedAt: new Date()
+          }
+        }
+      }
+    );
+
+    // Log audit trail
+    await AuditLog.logAction({
+      userId: adminId,
+      action: 'product_review_changes_requested',
+      module: 'product_management',
+      resource: 'product',
+      resourceId: product._id,
+      details: {
+        method: req.method,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip,
+        productName: product.name,
+        changes: changes,
+        comments: comments
+      },
+      status: 'success'
+    });
+
+    // Notify product creator
+    if (product.createdBy) {
+      await Notification.createNotification({
+        recipient: product.createdBy._id,
+        type: NotificationType.PRODUCT_NEEDS_CHANGES,
+        title: 'Product Changes Requested',
+        message: `Changes have been requested for your product "${product.name}". Please review and resubmit.`,
+        data: {
+          productId: product._id.toString(),
+          productName: product.name,
+          reviewedBy: adminId.toString(),
+          changes: changes,
+          comments: comments
+        },
+        isRead: false
+      });
+
+      // Send notification via notification service
+      await NotificationService.createProductChangesRequestedNotification({
+        productId: product._id.toString(),
+        productName: product.name,
+        sellerName: `${product.createdBy.firstName} ${product.createdBy.lastName}`,
+        sellerId: product.createdBy._id.toString(),
+        reason: changes,
+        comments: comments
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Changes requested successfully',
+      data: {
+        productId: product._id,
+        reviewStatus: product.reviewStatus,
+        changesRequested: changes
+      }
+    });
+  } catch (error) {
+    console.error('Request product changes error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error requesting product changes',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get review queue for Super Admins
+export const getReviewQueue = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    // Check if admin has Super Admin role
+    if (req.admin?.primaryRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can access the review queue'
+      });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const status = req.query.status as string;
+    const sortBy = req.query.sortBy as string || 'submittedForReviewAt';
+    const sortOrder = req.query.sortOrder as string || 'desc';
+
+    // Build query
+    let query: any = {};
+    if (status && Object.values(ReviewStatus).includes(status as ReviewStatus)) {
+      query.reviewStatus = status;
+    } else {
+      // Default to pending review
+      query.reviewStatus = ReviewStatus.PENDING_REVIEW;
+    }
+
+    const skip = (page - 1) * limit;
+    const sortOptions: any = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const products = await Product.find(query)
+      .populate('category', 'name slug')
+      .populate('subCategory', 'name slug')
+      .populate('createdBy', 'firstName lastName email')
+      .populate('approvedBy', 'firstName lastName email')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Product.countDocuments(query);
+
+    // Transform products for review queue
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      subCategory: product.subCategory,
+      reviewStatus: product.reviewStatus,
+      submittedAt: product.submittedForReviewAt,
+      approvedAt: product.approvedAt,
+      createdBy: product.createdBy,
+      approvedBy: product.approvedBy,
+      images: product.images || [],
+      variants: product.variants || [],
+      availableColors: product.availableColors || [],
+      specifications: product.specifications || [],
+      tags: product.tags || [],
+      brand: product.brand || '',
+      price: product.price || 0,
+      discountedPrice: product.discountedPrice,
+      totalStock: product.totalStock || 0,
+      submittedBy: {
+        id: product.createdBy?._id || product.createdBy?.id || '',
+        name: product.createdBy?.firstName && product.createdBy?.lastName 
+          ? `${product.createdBy.firstName} ${product.createdBy.lastName}`
+          : product.createdBy?.name || 'Unknown'
+      },
+      submissionNotes: product.submissionNotes || '',
+      reviewComments: product.reviewComments || [],
+      rejectionReason: product.rejectionReason || '',
+      createdAt: product.createdAt
+    }));
+
+    // Log access for audit trail
+    await AuditLog.logAction({
+      userId: adminId,
+      action: 'read',
+      module: 'product_management',
+      resource: 'review_queue',
+      details: {
+        method: req.method,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip,
+        filters: query,
+        resultCount: products.length
+      },
+      status: 'success'
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        products: transformedProducts,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          limit: limit,
+          hasPrev: page > 1,
+          hasNext: page < Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get review queue error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching review queue',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Bulk review actions
+export const bulkReviewAction = async (req: AuthRequest, res: Response): Promise<Response> => {
+  try {
+    const { productIds, action, reason, comments } = req.body;
+    const adminId = req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin authentication required'
+      });
+    }
+
+    // Check if admin has Super Admin role
+    if (req.admin?.primaryRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can perform bulk review actions'
+      });
+    }
+
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product IDs array is required'
+      });
+    }
+
+    if (!['approve', 'reject', 'request_changes'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action. Must be approve, reject, or request_changes'
+      });
+    }
+
+    if ((action === 'reject' || action === 'request_changes') && !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reason is required for reject and request_changes actions'
+      });
+    }
+
+    const products = await Product.find({
+      _id: { $in: productIds },
+      reviewStatus: ReviewStatus.PENDING_REVIEW
+    }).populate('createdBy', 'firstName lastName email');
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No pending products found for the provided IDs'
+      });
+    }
+
+    const results = [];
+
+    for (const product of products) {
+      try {
+        let newStatus: ReviewStatus;
+        let updateData: any = {};
+
+        switch (action) {
+          case 'approve':
+            newStatus = ReviewStatus.APPROVED;
+            updateData = {
+              reviewStatus: newStatus,
+              approvalStatus: 'approved',
+              approvedAt: new Date(),
+              approvedBy: adminId,
+              isActive: true
+            };
+            break;
+          case 'reject':
+            newStatus = ReviewStatus.REJECTED;
+            updateData = {
+              reviewStatus: newStatus,
+              approvalStatus: 'rejected',
+              isActive: false // Deactivate rejected products
+            };
+            break;
+          case 'request_changes':
+            newStatus = ReviewStatus.NEEDS_INFO;
+            updateData = {
+              reviewStatus: newStatus,
+              approvalStatus: 'needs_changes',
+              isActive: false // Deactivate products needing changes
+            };
+            break;
+        }
+
+        // Update product
+        await Product.findByIdAndUpdate(product._id, updateData);
+
+        // Update review record
+        const reviewUpdateData: any = {
+          status: newStatus,
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+          $push: {
+            comments: {
+              comment: comments || reason || `Bulk ${action}`,
+              commentedBy: adminId,
+              commentedAt: new Date()
+            }
+          }
+        };
+
+        if (action === 'reject') {
+          reviewUpdateData.rejectionReason = reason;
+        } else if (action === 'request_changes') {
+          reviewUpdateData.changesRequested = reason;
+        }
+
+        await ProductReview.findOneAndUpdate(
+          { product: product._id, status: ReviewStatus.PENDING_REVIEW },
+          reviewUpdateData
+        );
+
+        // Log audit trail
+        await AuditLog.logAction({
+          userId: adminId,
+          action: `product_review_${action === 'request_changes' ? 'changes_requested' : action === 'approve' ? 'approved' : 'rejected'}`,
+          module: 'product_management',
+          resource: 'product',
+          resourceId: product._id,
+          details: {
+            method: req.method,
+            endpoint: req.originalUrl,
+            userAgent: req.get('User-Agent'),
+            ipAddress: req.ip,
+            productName: product.name,
+            bulkAction: true,
+            reason: reason,
+            comments: comments
+          },
+          status: 'success'
+        });
+
+        // Send notification
+        if (product.createdBy) {
+          let notificationType: NotificationType;
+          let title: string;
+          let message: string;
+
+          switch (action) {
+            case 'approve':
+              notificationType = NotificationType.PRODUCT_APPROVED;
+              title = 'Product Approved';
+              message = `Your product "${product.name}" has been approved and is now live.`;
+              break;
+            case 'reject':
+              notificationType = NotificationType.PRODUCT_REJECTED;
+              title = 'Product Rejected';
+              message = `Your product "${product.name}" has been rejected. Reason: ${reason}`;
+              break;
+            case 'request_changes':
+              notificationType = NotificationType.PRODUCT_NEEDS_CHANGES;
+              title = 'Product Changes Requested';
+              message = `Changes have been requested for your product "${product.name}".`;
+              break;
+          }
+
+          await Notification.createNotification({
+            recipient: product.createdBy._id,
+            type: notificationType,
+            title: title,
+            message: message,
+            data: {
+              productId: product._id.toString(),
+              productName: product.name,
+              reviewedBy: adminId.toString(),
+              reason: reason,
+              comments: comments,
+              bulkAction: true
+            },
+            isRead: false
+          });
+        }
+
+        results.push({
+          productId: product._id,
+          productName: product.name,
+          status: 'success',
+          newReviewStatus: newStatus
+        });
+      } catch (error) {
+        results.push({
+          productId: product._id,
+          productName: product.name,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.status === 'success').length;
+    const errorCount = results.filter(r => r.status === 'error').length;
+
+    return res.json({
+      success: true,
+      message: `Bulk ${action} completed. ${successCount} successful, ${errorCount} failed.`,
+      data: {
+        results: results,
+        summary: {
+          total: results.length,
+          successful: successCount,
+          failed: errorCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Bulk review action error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error performing bulk review action',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 };

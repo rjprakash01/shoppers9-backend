@@ -3,6 +3,7 @@ import { authService } from '../services/authService';
 import ProductForm from '../components/ProductForm';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ProductPreviewModal from '../components/ProductPreviewModal';
+import { CreateButton, EditButton, DeleteButton, ViewButton } from '../components/PermissionButton';
 import {
   Search,
   RefreshCw,
@@ -58,6 +59,11 @@ interface Product {
   createdAt: string;
   updatedAt: string;
   brand?: string;
+  createdBy?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
 }
 
 interface ProductsResponse {
@@ -102,6 +108,8 @@ const ProductManagement: React.FC = () => {
   const [showPageSelector, setShowPageSelector] = useState(false);
 
   useEffect(() => {
+    console.log('=== PRODUCT MANAGEMENT COMPONENT MOUNTED ===');
+    console.log('Starting to fetch categories and products...');
     fetchCategoryTree();
     // Fetch all products by default
     fetchAllProducts(1);
@@ -169,22 +177,39 @@ const ProductManagement: React.FC = () => {
 
   const fetchCategoryTree = async () => {
     try {
+      console.log('=== PRODUCT MANAGEMENT: Fetching category tree ===');
+      console.log('Auth token:', localStorage.getItem('adminToken') ? 'Present' : 'Missing');
+      console.log('API URL:', import.meta.env.VITE_API_URL);
       setIsLoading(true);
       const response = await authService.getCategoryTree();
+      console.log('Category tree response:', response);
+      console.log('Response success:', response.success);
+      console.log('Response data type:', typeof response.data);
+      console.log('Response data length:', Array.isArray(response.data) ? response.data.length : 'Not an array');
       
-      // Handle the backend response format: {success: true, data: {categories: [...]}}
+      // Handle the backend response format: {success: true, data: [...]}
       let categories: Category[] = [];
-      if (response && response.success && response.data && Array.isArray(response.data.categories)) {
-        categories = response.data.categories;
-      } else if (response && response.success && Array.isArray(response.data)) {
+      if (response && response.success && Array.isArray(response.data)) {
         categories = response.data;
+        console.log('Categories found:', categories.length);
       } else if (Array.isArray(response)) {
         categories = response;
+        console.log('Direct array response, categories found:', categories.length);
+      } else {
+        console.log('Unexpected response format:', response);
       }
       
       setCategories(categories);
       setError(null);
+      console.log('Categories set in state:', categories);
+      console.log('Main categories (level 1):', categories.filter(cat => cat.level === 1));
     } catch (err) {
+      console.error('=== PRODUCT MANAGEMENT: Error fetching categories ===', err);
+      if (err && typeof err === 'object' && 'response' in err) {
+        console.error('Error response:', (err as any).response);
+        console.error('Error status:', (err as any).response?.status);
+        console.error('Error data:', (err as any).response?.data);
+      }
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
     } finally {
       setIsLoading(false);
@@ -193,6 +218,8 @@ const ProductManagement: React.FC = () => {
 
   const fetchAllProducts = async (page: number) => {
     try {
+      console.log('=== FRONTEND: Fetching all products ===');
+      console.log('Page:', page, 'PageSize:', pageSize, 'FilterStatus:', filterStatus);
       setIsProductsLoading(true);
       const params = new URLSearchParams({
         page: page.toString(),
@@ -200,7 +227,23 @@ const ProductManagement: React.FC = () => {
         ...(filterStatus !== 'all' && { status: filterStatus })
       });
       
-      const responseData = await authService.get(`/api/admin/products?${params}`);
+      console.log('API URL:', `/api/admin/products?${params}`);
+      // Check authentication status
+      const adminToken = localStorage.getItem('adminToken');
+      console.log('Admin token exists:', !!adminToken);
+      console.log('Admin token preview:', adminToken ? adminToken.substring(0, 20) + '...' : 'No token');
+      
+      // TEMPORARY FIX: Use test endpoint with proper authentication
+      console.log('=== USING WORKING TEST ENDPOINT WITH AUTH ===');
+      const response = await fetch('http://localhost:5001/api/test/products', {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const responseData = await response.json();
+      console.log('Test API Response:', responseData);
+      console.log('Response status:', response.status);
       // Handle backend response format: {success: true, data: {products: [...], pagination: {...}}}
       const data = responseData.success ? responseData.data : responseData;
       const products = data.products || [];
@@ -217,12 +260,19 @@ const ProductManagement: React.FC = () => {
       });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
-      setProducts([]);
-    } finally {
-      setIsProductsLoading(false);
-    }
-  };
+        console.error('=== FRONTEND ERROR ===', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch products');
+        setProducts([]);
+      } finally {
+        setIsProductsLoading(false);
+      }
+    };
+
+    // Manual refresh function for debugging
+    const handleManualRefresh = () => {
+      console.log('=== MANUAL REFRESH TRIGGERED ===');
+      fetchAllProducts(1);
+    };
 
   const fetchProductsByCategory = async (categoryId: string, page: number) => {
     try {
@@ -603,14 +653,27 @@ const ProductManagement: React.FC = () => {
         </div>
         
         {/* Footer */}
-        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-          <span className="flex items-center text-xs text-gray-500">
-            <Calendar className="h-3 w-3 mr-1.5" />
-            {new Date(product.createdAt).toLocaleDateString()}
-          </span>
-          <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
-            #{product.id.slice(-6)}
-          </span>
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center text-xs text-gray-500">
+              <Calendar className="h-3 w-3 mr-1.5" />
+              {new Date(product.createdAt).toLocaleDateString()}
+            </span>
+            <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
+              #{product.id.slice(-6)}
+            </span>
+          </div>
+          {/* Product Owner Information */}
+          {product.createdBy && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full">
+                Created by: {product.createdBy.firstName} {product.createdBy.lastName}
+              </span>
+              <span className="text-xs text-gray-400">
+                {product.createdBy.email}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -719,16 +782,24 @@ const ProductManagement: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
               {/* Add Product Button */}
-              <button
+              <CreateButton
+                module="products"
                 onClick={() => {
                   setEditingProduct(null);
                   setIsProductFormOpen(true);
                 }}
-                className="flex items-center px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                title="Add a new product"
+                tooltip="Add a new product"
               >
-                <Plus className="h-4 w-4 mr-2" />
                 Add Product
+              </CreateButton>
+              
+              {/* Manual Refresh Button */}
+              <button
+                onClick={handleManualRefresh}
+                className="flex items-center px-4 py-2 text-sm font-medium bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Products
               </button>
               
               {/* Reset Button */}

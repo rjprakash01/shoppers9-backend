@@ -5,7 +5,7 @@ async function finalLoginVerification() {
   try {
     console.log('=== FINAL ADMIN LOGIN VERIFICATION ===');
     
-    const API_BASE_URL = 'http://localhost:5003/api';
+    const API_BASE_URL = 'http://localhost:5001/api';
     console.log('Testing API at:', API_BASE_URL);
     
     // Test all admin types with their credentials

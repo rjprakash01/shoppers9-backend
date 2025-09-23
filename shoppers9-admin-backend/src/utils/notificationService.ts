@@ -163,6 +163,96 @@ export class NotificationService {
       }
     );
   }
+
+  // Create notification for product submitted for review
+  static async createProductSubmittedNotification(productData: {
+    productId: string;
+    productName: string;
+    sellerName: string;
+    sellerId: string;
+  }) {
+    await createNotificationForEvent(
+      NotificationType.PRODUCT_SUBMITTED,
+      'Product Submitted for Review',
+      `${productData.sellerName} has submitted "${productData.productName}" for review`,
+      {
+        productId: productData.productId,
+        productName: productData.productName,
+        sellerId: productData.sellerId,
+        sellerName: productData.sellerName
+      }
+    );
+  }
+
+  // Create notification for product approved
+  static async createProductApprovedNotification(productData: {
+    productId: string;
+    productName: string;
+    sellerName: string;
+    sellerId: string;
+    comments?: string;
+  }) {
+    await createNotificationForEvent(
+      NotificationType.PRODUCT_APPROVED,
+      'Product Approved',
+      `Your product "${productData.productName}" has been approved and is now live${productData.comments ? `. Comments: ${productData.comments}` : ''}`,
+      {
+        productId: productData.productId,
+        productName: productData.productName,
+        sellerId: productData.sellerId,
+        sellerName: productData.sellerName,
+        comments: productData.comments
+      }
+    );
+  }
+
+  // Create notification for product rejected
+  static async createProductRejectedNotification(productData: {
+    productId: string;
+    productName: string;
+    sellerName: string;
+    sellerId: string;
+    reason?: string;
+    comments?: string;
+  }) {
+    await createNotificationForEvent(
+      NotificationType.PRODUCT_REJECTED,
+      'Product Rejected',
+      `Your product "${productData.productName}" has been rejected${productData.reason ? `. Reason: ${productData.reason}` : ''}${productData.comments ? `. Comments: ${productData.comments}` : ''}`,
+      {
+        productId: productData.productId,
+        productName: productData.productName,
+        sellerId: productData.sellerId,
+        sellerName: productData.sellerName,
+        reason: productData.reason,
+        comments: productData.comments
+      }
+    );
+  }
+
+  // Create notification for product changes requested
+  static async createProductChangesRequestedNotification(productData: {
+    productId: string;
+    productName: string;
+    sellerName: string;
+    sellerId: string;
+    reason?: string;
+    comments?: string;
+  }) {
+    await createNotificationForEvent(
+      NotificationType.PRODUCT_NEEDS_CHANGES,
+      'Product Changes Requested',
+      `Changes have been requested for your product "${productData.productName}"${productData.reason ? `. Reason: ${productData.reason}` : ''}${productData.comments ? `. Comments: ${productData.comments}` : ''}`,
+      {
+        productId: productData.productId,
+        productName: productData.productName,
+        sellerId: productData.sellerId,
+        sellerName: productData.sellerName,
+        reason: productData.reason,
+        comments: productData.comments
+      }
+    );
+  }
 }
 
 export default NotificationService;

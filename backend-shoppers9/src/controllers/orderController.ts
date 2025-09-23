@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { Order } from '../models/Order';
 import { Cart } from '../models/Cart';
 import { Product } from '../models/Product';
@@ -10,6 +11,7 @@ import { inventoryService } from '../services/inventoryService';
 import { shippingService } from '../services/shippingService';
 import { couponService } from '../services/couponService';
 import { notificationService } from '../services/notificationService';
+import { settingsService } from '../services/settingsService';
 
 // Create a new order from cart
 export const createOrder = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -78,20 +80,34 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     const orderCount = await Order.countDocuments();
     const orderNumber = `ORD${Date.now()}${(orderCount + 1).toString().padStart(4, '0')}`;
 
-    // Calculate totals correctly
+    // Calculate totals correctly with null safety
     // totalAmount should be the original amount before any discounts
     // cart.totalAmount is already discounted, so we need to calculate the original amount
     const originalAmount = cart.items.reduce((sum, item) => {
-      return sum + (item.originalPrice * item.quantity);
+      const originalPrice = item.originalPrice || 0;
+      const quantity = item.quantity || 1;
+      return sum + (originalPrice * quantity);
     }, 0);
     
-    const totalAmount = originalAmount; // Original amount before discounts
-    const discount = cart.totalDiscount; // Only item-level discounts, not coupon discount
-    const discountedAmount = cart.totalAmount; // This is the amount after item-level discounts
+    // Validate that we have valid amounts
+    if (originalAmount === 0 || isNaN(originalAmount)) {
+      console.error('Invalid original amount calculated:', originalAmount);
+      console.error('Cart items:', cart.items.map(item => ({
+        product: item.product,
+        originalPrice: item.originalPrice,
+        price: item.price,
+        quantity: item.quantity
+      })));
+      return next(new AppError('Invalid cart data - unable to calculate order amount', 400));
+    }
     
-    // Calculate fees based on discounted amount
-    const platformFee = discountedAmount > 500 ? 0 : 20;
-    const deliveryCharge = discountedAmount > 500 ? 0 : 50;
+    const totalAmount = originalAmount; // Original amount before discounts
+    const discount = cart.totalDiscount || 0; // Only item-level discounts, not coupon discount
+    const discountedAmount = cart.totalAmount || originalAmount; // This is the amount after item-level discounts
+    
+    // Calculate fees based on discounted amount using dynamic settings
+    const platformFee = await settingsService.calculatePlatformFee(discountedAmount);
+    const deliveryCharge = await settingsService.calculateDeliveryFee(discountedAmount);
     
     // Apply coupon discount if available
     let couponDiscount = 0;
@@ -104,12 +120,140 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
     if (finalAmount < 0) {
       finalAmount = platformFee + deliveryCharge; // Minimum amount should be fees only
     }
+    
+    // Validate final amount
+    if (isNaN(finalAmount) || finalAmount === null || finalAmount === undefined) {
+      console.error('Invalid final amount calculated:', finalAmount);
+      console.error('Calculation details:', {
+        discountedAmount,
+        couponDiscount,
+        platformFee,
+        deliveryCharge
+      });
+      return next(new AppError('Invalid order calculation - unable to determine final amount', 400));
+    }
+
+    // Fetch product details to set sellerId for each item
+    // Handle both populated objects and string IDs from cart items
+    const productIds = cart.items.map(item => {
+      // Extract the actual product ID whether it's a string, ObjectId, or populated object
+      let productId;
+      if (typeof item.product === 'string') {
+        productId = item.product;
+      } else if (item.product && (item.product as any)._id) {
+        // If it's a populated object, get the _id
+        productId = (item.product as any)._id.toString();
+      } else if (item.product && typeof item.product === 'object') {
+        // If it's an ObjectId, convert to string
+        productId = (item.product as any).toString();
+      } else {
+        productId = item.product;
+      }
+      
+      try {
+        return new mongoose.Types.ObjectId(productId);
+      } catch (error) {
+        console.log(`Warning: Invalid ObjectId format for product ${productId}`);
+        return productId;
+      }
+    });
+    
+    const products = await Product.find({ 
+      _id: { $in: productIds },
+      isActive: true,
+      approvalStatus: 'approved'
+    }).select('_id createdBy');
+    
+    console.log('Order creation - Product mapping debug:');
+    console.log('Cart items:', cart.items.length);
+    console.log('Products found:', products.length);
+    
+    // Add sellerId to each cart item with enhanced error handling
+    const itemsWithSeller = [];
+    
+    for (let index = 0; index < cart.items.length; index++) {
+      const item = cart.items[index];
+      
+      // Extract product ID consistently
+      let itemProductId;
+      if (typeof item.product === 'string') {
+        itemProductId = item.product;
+      } else if (item.product && (item.product as any)._id) {
+        itemProductId = (item.product as any)._id.toString();
+      } else if (item.product && typeof item.product === 'object') {
+        itemProductId = (item.product as any).toString();
+      } else {
+        itemProductId = item.product;
+      }
+      
+      const product = products.find(p => p._id.toString() === itemProductId);
+      
+      console.log(`Item ${index + 1}:`);
+      console.log(`  Product ID: ${itemProductId}`);
+      console.log(`  Product found: ${product ? 'YES' : 'NO'}`);
+      
+      if (product) {
+        console.log(`  Created By: ${product.createdBy}`);
+        console.log(`  Seller ID set to: ${product.createdBy}`);
+        itemsWithSeller.push({
+          ...item,
+          product: itemProductId, // Ensure we store the ID, not the populated object
+          sellerId: product.createdBy
+        });
+      } else {
+        console.log(`  ❌ WARNING: Product not found for ID ${itemProductId}`);
+        console.log(`  Available product IDs: ${products.map(p => p._id.toString()).join(', ')}`);
+        
+        // Try to find product with direct query as fallback
+        try {
+          const fallbackProduct = await Product.findOne({
+            _id: itemProductId,
+            isActive: true,
+            approvalStatus: 'approved'
+          }).select('_id createdBy');
+          if (fallbackProduct) {
+            console.log(`  ✅ Fallback: Found product with direct query`);
+            console.log(`  Fallback Created By: ${fallbackProduct.createdBy}`);
+            itemsWithSeller.push({
+              ...item,
+              product: itemProductId,
+              sellerId: fallbackProduct.createdBy
+            });
+          } else {
+            console.log(`  ❌ CRITICAL: Product not found even with fallback query`);
+            itemsWithSeller.push({
+              ...item,
+              product: itemProductId,
+              sellerId: null
+            });
+          }
+        } catch (fallbackError) {
+          console.log(`  ❌ ERROR in fallback query: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+          itemsWithSeller.push({
+            ...item,
+            product: itemProductId,
+            sellerId: null
+          });
+        }
+      }
+    }
+    
+    // Verify all items have sellerId
+    const itemsWithoutSeller = itemsWithSeller.filter(item => !item.sellerId);
+    if (itemsWithoutSeller.length > 0) {
+      console.log(`❌ WARNING: ${itemsWithoutSeller.length} items don't have sellerId set`);
+      itemsWithoutSeller.forEach((item, index) => {
+        console.log(`  Item ${index + 1}: Product ${item.product} - No seller ID`);
+      });
+    } else {
+      console.log(`✅ All ${itemsWithSeller.length} items have sellerId set`);
+    }
 
     // Create order
     const order = new Order({
       orderNumber,
       userId,
-      items: cart.items,
+      items: itemsWithSeller,
       shippingAddress,
       billingAddress: shippingAddress, // Use same as shipping for now
       paymentMethod,
@@ -125,11 +269,39 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
 
     await order.save();
 
-    // Create notification for admin panel
+    // Create notifications for admin panel - both super admin and product owners
     try {
       const user = await User.findById(userId).select('firstName lastName');
       const customerName = user ? `${(user as any).firstName} ${(user as any).lastName}` : 'Customer';
       
+      // Get product details to identify sellers
+      const productIds = order.items.map(item => item.product);
+      const products = await Product.find({ 
+        _id: { $in: productIds },
+        isActive: true,
+        approvalStatus: 'approved'
+      }).select('_id createdBy name');
+      
+      // Group items by seller
+      const sellerGroups = new Map();
+      
+      for (const item of order.items) {
+        const product = products.find(p => p._id.toString() === item.product.toString());
+        if (product && product.createdBy) {
+          const sellerId = product.createdBy.toString();
+          if (!sellerGroups.has(sellerId)) {
+            sellerGroups.set(sellerId, {
+              items: [],
+              totalAmount: 0
+            });
+          }
+          const group = sellerGroups.get(sellerId);
+          group.items.push({ ...item, productName: product.name });
+          group.totalAmount += item.price * item.quantity;
+        }
+      }
+      
+      // Send notification to super admin (global notification)
       await notificationService.createNewOrderNotification({
         orderId: order.orderNumber,
         customerName,
@@ -137,6 +309,19 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response, next
         totalAmount: order.finalAmount,
         itemCount: order.items.length
       });
+      
+      // Send individual notifications to each seller/admin
+      for (const [sellerId, group] of sellerGroups) {
+        await notificationService.createNewOrderNotification({
+          orderId: order.orderNumber,
+          customerName,
+          customerId: userId,
+          totalAmount: group.totalAmount,
+          itemCount: group.items.length,
+          sellerId: sellerId // Add seller-specific info
+        });
+      }
+      
     } catch (notificationError) {
       console.error('Failed to create new order notification:', notificationError);
       // Continue with order creation even if notification fails

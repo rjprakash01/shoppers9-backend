@@ -11,7 +11,6 @@ export const getAllOrders = async (req: AuthRequest, res: Response) => {
     console.log('Admin user:', req.admin ? {
       id: req.admin._id,
       email: req.admin.email,
-      role: req.admin.role,
       primaryRole: req.admin.primaryRole
     } : 'NO ADMIN USER');
     console.log('Data filter:', req.dataFilter ? {

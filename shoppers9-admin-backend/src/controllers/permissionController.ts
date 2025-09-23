@@ -239,10 +239,8 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
     if (req.admin?.primaryRole === 'super_admin') {
       const allPermissions = await Permission.find({ isActive: true });
       const formattedPermissions = allPermissions.map(perm => ({
-        key: `${perm.module}:${perm.action}:${perm.scope}`,
+        key: perm.module,
         module: perm.module,
-        action: perm.action,
-        scope: perm.scope,
         granted: true
       }));
       
@@ -252,18 +250,14 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Get user's specific permissions
+    // Get user's specific module access
     const userRole = await UserRole.findOne({ userId, isActive: true })
-      .populate({
-        path: 'permissions.permissionId',
-        select: 'module action scope description'
-      })
       .populate({
         path: 'roleId',
         select: 'name permissions',
         populate: {
           path: 'permissions',
-          select: 'module action scope description'
+          select: 'module description'
         }
       });
 
@@ -274,43 +268,36 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Get individual user permissions
-    const individualPermissions = userRole.permissions
-      .filter((p: any) => p.granted && p.permissionId)
-      .map((p: any) => {
-        const perm = p.permissionId;
-        return {
-          key: `${perm.module}:${perm.action}:${perm.scope}`,
-          module: perm.module,
-          action: perm.action,
-          scope: perm.scope,
-          granted: p.granted,
-          source: 'individual'
-        };
-      });
+    // Get individual user module access
+    const individualModuleAccess = userRole.moduleAccess
+      .filter((m: any) => m.hasAccess)
+      .map((m: any) => ({
+        key: m.module,
+        module: m.module,
+        granted: m.hasAccess,
+        source: 'individual'
+      }));
 
-    // Get role-based permissions
+    // Get role-based module permissions
     const role = userRole.roleId as any;
-    const rolePermissions = role && role.permissions ? role.permissions.map((perm: any) => ({
-      key: `${perm.module}:${perm.action}:${perm.scope}`,
+    const roleModulePermissions = role && role.permissions ? role.permissions.map((perm: any) => ({
+      key: perm.module,
       module: perm.module,
-      action: perm.action,
-      scope: perm.scope,
       granted: true,
       source: 'role'
     })) : [];
 
-    // Combine and deduplicate permissions (individual takes priority)
-    const allPermissions = [...individualPermissions];
-    const existingKeys = new Set(individualPermissions.map(p => p.key));
+    // Combine and deduplicate module access (individual takes priority)
+    const allModuleAccess = [...individualModuleAccess];
+    const existingModules = new Set(individualModuleAccess.map(p => p.key));
     
-    rolePermissions.forEach((rolePerm: any) => {
-      if (!existingKeys.has(rolePerm.key)) {
-        allPermissions.push(rolePerm);
+    roleModulePermissions.forEach((rolePerm: any) => {
+      if (!existingModules.has(rolePerm.key)) {
+        allModuleAccess.push(rolePerm);
       }
     });
 
-    const formattedPermissions = allPermissions;
+    const formattedPermissions = allModuleAccess;
 
     return res.status(200).json({
       success: true,
@@ -328,6 +315,8 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
 // Get all user permissions (for admin management)
 export const getAllUserPermissions = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 Starting getAllUserPermissions...');
+    
     const userRoles = await UserRole.find({ isActive: true })
       .populate({
         path: 'userId',
@@ -336,11 +325,9 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
       .populate({
         path: 'roleId',
         select: 'name displayName'
-      })
-      .populate({
-        path: 'permissions.permissionId',
-        select: 'module action description'
       });
+
+    console.log(`📊 Found ${userRoles.length} user roles`);
 
     const formattedData = userRoles
       .filter(userRole => {
@@ -353,21 +340,30 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
         const user = userRole.userId as any;
         const role = userRole.roleId as any;
         
+        // Convert moduleAccess to the format expected by frontend
+        const moduleAccess = userRole.moduleAccess?.map((access: any) => ({
+          module: access.module,
+          hasAccess: access.hasAccess
+        })) || [];
+        
         return {
           userId: user._id,
           userName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
           userEmail: user.email || '',
           roleId: role._id,
           roleName: role.displayName || role.name || '',
-          permissions: userRole.permissions || []
+          moduleAccess: moduleAccess
         };
       });
+
+    console.log(`✅ Formatted ${formattedData.length} user permissions`);
 
     return res.status(200).json({
       success: true,
       data: formattedData
     });
   } catch (error) {
+    console.error('❌ Error in getAllUserPermissions:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch user permissions',
@@ -376,11 +372,11 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
   }
 };
 
-// Update user permissions (single permission)
+// Update user module access (single module)
 export const updateUserPermissions = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
-    const { permissionId, granted } = req.body;
+    const { module, hasAccess } = req.body;
 
     // Find or create UserRole entry
     let userRole = await UserRole.findOne({ userId, isActive: true });
@@ -407,37 +403,34 @@ export const updateUserPermissions = async (req: AuthRequest, res: Response) => 
       userRole = await UserRole.create({
         userId,
         roleId: role._id,
-        permissions: [],
+        moduleAccess: [],
         isActive: true,
         assignedBy: req.admin?._id
       });
     }
 
-    const permission = await Permission.findById(permissionId);
-    if (!permission) {
+    // Validate module exists in permissions
+    const modulePermission = await Permission.findOne({ module, isActive: true });
+    if (!modulePermission) {
       return res.status(404).json({
         success: false,
-        message: 'Permission not found'
+        message: 'Module not found'
       });
     }
 
-    // Find existing permission in user's permissions array
-    const existingPermIndex = userRole.permissions.findIndex(
-      (p) => p.permissionId.toString() === permissionId
+    // Find existing module access
+    const existingModuleIndex = userRole.moduleAccess.findIndex(
+      (m: any) => m.module === module
     );
 
-    if (existingPermIndex >= 0) {
-      // Update existing permission
-      if (userRole.permissions[existingPermIndex]) {
-        userRole.permissions[existingPermIndex].granted = granted;
-      }
+    if (existingModuleIndex >= 0) {
+      // Update existing module access
+      userRole.moduleAccess[existingModuleIndex].hasAccess = hasAccess;
     } else {
-      // Add new permission
-      userRole.permissions.push({
-        permissionId,
-        granted,
-        restrictions: {},
-        source: 'individual'
+      // Add new module access
+      userRole.moduleAccess.push({
+        module,
+        hasAccess
       });
     }
 
@@ -445,13 +438,13 @@ export const updateUserPermissions = async (req: AuthRequest, res: Response) => 
 
     return res.status(200).json({
       success: true,
-      message: 'User permissions updated successfully',
+      message: 'User module access updated successfully',
       data: userRole
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to update user permissions',
+      message: 'Failed to update user module access',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -650,7 +643,7 @@ export const initializePermissions = async (req: AuthRequest, res: Response) => 
       'admin_management', 'settings', 'analytics'
     ];
 
-    const actions = ['read', 'write', 'edit', 'delete', 'export', 'import', 'approve', 'reject'];
+    const actions = ['read', 'edit', 'delete', 'create_assets'];
 
     const permissions = [];
 
@@ -658,8 +651,8 @@ export const initializePermissions = async (req: AuthRequest, res: Response) => 
       for (const action of actions) {
         // Skip certain action-module combinations that don't make sense
         if (
-          (module === 'dashboard' && ['write', 'edit', 'delete'].includes(action)) ||
-          (module === 'analytics' && ['write', 'edit', 'delete'].includes(action))
+          (module === 'dashboard' && ['edit', 'delete'].includes(action)) ||
+          (module === 'analytics' && ['edit', 'delete'].includes(action))
         ) {
           continue;
         }

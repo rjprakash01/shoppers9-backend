@@ -4,7 +4,7 @@ import axios from 'axios';
 export const api = axios.create({
   baseURL: import.meta.env.PROD 
     ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : import.meta.env.VITE_API_URL || 'http://localhost:5003/api',
+    : import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -25,16 +25,30 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and missing endpoints
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Only clear token, don't force redirect to avoid conflicts with AuthContext
+      // Let the AuthContext handle authentication state and redirects
       localStorage.removeItem('adminToken');
-      window.location.href = '/login';
+      localStorage.removeItem('adminUser');
+      // Don't force redirect here - let the app handle it naturally
+      // window.location.href = '/login';
+    } else if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
+      // Handle missing endpoints gracefully
+      console.warn(`API endpoint not found: ${error.config?.url}`);
+      // Return empty data structure to prevent app crashes
+      return Promise.resolve({
+        data: {
+          success: false,
+          message: 'Feature temporarily unavailable',
+          data: null
+        }
+      });
     }
     return Promise.reject(error);
   }

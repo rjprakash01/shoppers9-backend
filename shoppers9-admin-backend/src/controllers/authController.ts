@@ -12,7 +12,7 @@ const otpStore = new Map<string, { otp: string; expiresAt: Date; attempts: numbe
 
 // Generate JWT Token
 const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET!, {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET!, {
     expiresIn: process.env.JWT_EXPIRE || '24h'
   } as jwt.SignOptions);
 };
@@ -433,7 +433,6 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
           lastName: admin.lastName,
           email: admin.email,
           phone: admin.phone,
-          primaryRole: admin.role, // Admin model uses 'role' not 'primaryRole'
           role: admin.role,
           isActive: admin.isActive,
           lastLogin: admin.lastLogin

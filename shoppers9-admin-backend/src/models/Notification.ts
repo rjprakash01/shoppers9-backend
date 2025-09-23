@@ -7,7 +7,11 @@ export enum NotificationType {
   ORDER_DELIVERED = 'order_delivered',
   RETURN_PICKED = 'return_picked',
   LOW_STOCK = 'low_stock',
-  OUT_OF_STOCK = 'out_of_stock'
+  OUT_OF_STOCK = 'out_of_stock',
+  PRODUCT_APPROVED = 'product_approved',
+  PRODUCT_REJECTED = 'product_rejected',
+  PRODUCT_NEEDS_CHANGES = 'product_needs_changes',
+  REVIEW_SUBMITTED = 'review_submitted'
 }
 
 export interface INotification extends Document {

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Category from '../models/Category';
 import Product from '../models/Product';
+import User from '../models/User';
 import { AuthRequest } from '../types';
 import { autoAssignFiltersToCategory } from '../utils/categoryFilterAssignment';
 
@@ -490,11 +491,28 @@ export const getCategoriesByLevel = async (req: Request, res: Response): Promise
 };
 
 // Get category tree (hierarchical structure)
-export const getCategoryTree = async (req: Request, res: Response): Promise<void> => {
+export const getCategoryTree = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // For admin interface, show all categories regardless of status
-    const categories = await Category.find({})
+    // Get user role from authenticated request
+    const userRole = req.admin?.role;
+    
+    // Build category filter based on user role
+    let categoryFilter: any = { isActive: true };
+    
+    // For admin and sub_admin roles, only show categories created by super_admin
+    if (userRole === 'admin' || userRole === 'sub_admin') {
+      // Find super_admin users to filter categories by their createdBy field
+      const superAdmins = await User.find({ primaryRole: 'super_admin' }).select('_id');
+      const superAdminIds = superAdmins.map(admin => admin._id);
+      
+      categoryFilter.createdBy = { $in: superAdminIds };
+    }
+    // super_admin can see all categories (no additional filter needed)
+    
+    // Fetch categories with role-based filtering
+    const categories = await Category.find(categoryFilter)
       .populate('parentCategory', 'name level')
+      .populate('createdBy', 'firstName lastName primaryRole')
       .sort({ level: 1, sortOrder: 1, name: 1 });
 
     // Build hierarchical tree

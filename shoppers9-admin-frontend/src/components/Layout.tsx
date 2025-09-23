@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
+import PermissionBasedMenu from './PermissionBasedMenu';
 import {
   LayoutDashboard,
   Users,
@@ -76,22 +77,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []);
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Users', href: '/users', icon: Users },
-    { name: 'Products', href: '/products', icon: Package },
-    { name: 'Inventory', href: '/inventory', icon: Warehouse },
-    { name: 'Orders', href: '/orders', icon: ShoppingCart },
-    { name: 'Shipping', href: '/shipping', icon: Truck },
-    { name: 'Coupons', href: '/coupons', icon: Ticket },
-    { name: 'Support', href: '/support', icon: MessageCircle },
-    { name: 'Categories', href: '/categories', icon: FolderTree },
-    { name: 'Filters', href: '/filters', icon: Filter },
-    { name: 'Banners', href: '/banners', icon: Image },
-    { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
-    { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  ];
+  // Navigation is now handled by PermissionBasedMenu component
 
   const handleLogout = () => {
     logout();
@@ -114,34 +100,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </button>
         </div>
         
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-3 h-5 w-5 ${
-                      isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
-                  />
-                  {item.name}
-                </Link>
-              );
-            })}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto px-3 mt-6">
+            <PermissionBasedMenu />
           </div>
-        </nav>
-        
-        {/* User info and logout */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          
+          {/* User info and logout */}
+          <div className="flex-shrink-0 p-4 border-t border-gray-200">
           <div className="flex items-center mb-3">
             <div className="flex-shrink-0">
               <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
@@ -160,6 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <LogOut className="mr-3 h-4 w-4 text-gray-400" />
             Sign out
           </button>
+          </div>
         </div>
       </div>
 

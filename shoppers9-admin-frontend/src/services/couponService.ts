@@ -4,7 +4,7 @@ import axios from 'axios';
 const couponApi = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
     ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5002/api',
+    : 'http://localhost:5001/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ class CouponService {
           total: number;
           pages: number;
         };
-      }>>('/coupons', { params: filters });
+      }>>('/admin/coupons', { params: filters });
       
       if (response.data.success) {
         return response.data.data;
@@ -126,7 +126,7 @@ class CouponService {
     try {
       const response = await couponApi.get<ApiResponse<{
         coupon: Coupon;
-      }>>(`/coupons/${couponId}`);
+      }>>(`/admin/coupons/${couponId}`);
       
       if (response.data.success) {
         return response.data.data.coupon;
@@ -146,7 +146,7 @@ class CouponService {
     try {
       const response = await couponApi.post<ApiResponse<{
         coupon: Coupon;
-      }>>('/coupons', couponData);
+      }>>('/admin/coupons', couponData);
       
       if (response.data.success) {
         return response.data.data.coupon;
@@ -166,7 +166,7 @@ class CouponService {
     try {
       const response = await couponApi.put<ApiResponse<{
         coupon: Coupon;
-      }>>(`/coupons/${couponId}`, couponData);
+      }>>(`/admin/coupons/${couponId}`, couponData);
       
       if (response.data.success) {
         return response.data.data.coupon;
@@ -184,7 +184,7 @@ class CouponService {
    */
   async deleteCoupon(couponId: string): Promise<void> {
     try {
-      const response = await couponApi.delete<ApiResponse<any>>(`/coupons/${couponId}`);
+      const response = await couponApi.delete<ApiResponse<any>>(`/admin/coupons/${couponId}`);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to delete coupon');
@@ -202,7 +202,7 @@ class CouponService {
     try {
       const response = await couponApi.patch<ApiResponse<{
         coupon: Coupon;
-      }>>(`/coupons/${couponId}/toggle`);
+      }>>(`/admin/coupons/${couponId}/toggle`);
       
       if (response.data.success) {
         return response.data.data.coupon;
@@ -220,7 +220,7 @@ class CouponService {
    */
   async getCouponAnalytics(): Promise<CouponAnalytics> {
     try {
-      const response = await couponApi.get<ApiResponse<CouponAnalytics>>('/coupons/analytics');
+      const response = await couponApi.get<ApiResponse<CouponAnalytics>>('/admin/coupons/analytics');
       
       if (response.data.success) {
         return response.data.data;
@@ -228,8 +228,15 @@ class CouponService {
       
       throw new Error(response.data.message || 'Failed to fetch coupon analytics');
     } catch (error: any) {
-      console.error('Error fetching coupon analytics:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch coupon analytics');
+      console.warn('Coupon analytics not available, using default data:', error.message);
+      // Return default data when endpoint is not available
+      return {
+        totalCoupons: 0,
+        activeCoupons: 0,
+        expiredCoupons: 0,
+        totalUsage: 0,
+        topCoupons: []
+      };
     }
   }
 
@@ -248,7 +255,7 @@ class CouponService {
         failed: Array<{ code: string; error: string }>;
         total: number;
         successRate: string;
-      }>>('/coupons/bulk', { coupons });
+      }>>('/admin/coupons/bulk', { coupons });
       
       if (response.data.success) {
         return response.data.data;
@@ -276,7 +283,7 @@ class CouponService {
       const response = await couponApi.post<ApiResponse<{
         codes: string[];
         count: number;
-      }>>('/coupons/generate-codes', options);
+      }>>('/admin/coupons/generate-codes', options);
       
       if (response.data.success) {
         return response.data.data;

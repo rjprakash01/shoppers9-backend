@@ -224,21 +224,15 @@ export class PaymentService {
   }
 
   async calculatePlatformFee(amount: number): Promise<number> {
-    // Platform fee logic
-    if (amount >= 500) {
-      return 0; // Free delivery above ₹500
-    }
-    return 40; // ₹40 platform fee
+    // Use settings service for dynamic platform fee calculation
+    const { settingsService } = await import('./settingsService');
+    return await settingsService.calculatePlatformFee(amount);
   }
 
   async calculateDeliveryCharge(amount: number, pincode?: string): Promise<number> {
-    // Delivery charge logic
-    if (amount >= 500) {
-      return 0; // Free delivery above ₹500
-    }
-    
-    // You can add pincode-based delivery charges here
-    return 60; // ₹60 delivery charge
+    // Use settings service for dynamic delivery charge calculation
+    const { settingsService } = await import('./settingsService');
+    return await settingsService.calculateDeliveryFee(amount);
   }
 }
 

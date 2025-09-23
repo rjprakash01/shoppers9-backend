@@ -1,4 +1,14 @@
 import api from './api';
+import axios from 'axios';
+
+// Create a separate API instance for admin backend products
+const adminApi = axios.create({
+  baseURL: 'http://localhost:5001/api/public',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 // Available Color interface (from admin panel)
 export interface AvailableColor {
@@ -125,32 +135,40 @@ export interface FilterData {
 
 class ProductService {
   async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
-    const params = new URLSearchParams();
-    
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value.toString());
-      }
-    });
-
-    const response = await api.get(`/products?${params.toString()}`);
-    
-    // Handle the nested response structure from backend
-    if (response.data.success && response.data.data) {
-      return {
-        products: response.data.data.products,
-        pagination: {
-          totalItems: response.data.data.pagination.totalItems,
-          currentPage: response.data.data.pagination.currentPage,
-          totalPages: response.data.data.pagination.totalPages,
-          hasNext: response.data.data.pagination.hasNext,
-          hasPrev: response.data.data.pagination.hasPrev
+    try {
+      const params = new URLSearchParams();
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
         }
-      };
+      });
+
+      const response = await api.get(`/products?${params.toString()}`);
+      
+      // Handle the nested response structure from backend
+      if (response.data.success && response.data.data) {
+        return {
+          products: response.data.data.products,
+          pagination: {
+            totalItems: response.data.data.pagination.totalItems,
+            currentPage: response.data.data.pagination.currentPage,
+            totalPages: response.data.data.pagination.totalPages,
+            hasNext: response.data.data.pagination.hasNext,
+            hasPrev: response.data.data.pagination.hasPrev
+          }
+        };
+      }
+      
+      // Fallback for direct response structure
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error status:', error.response?.status);
+      console.error('API URL being called:', `${api.defaults.baseURL}/products`);
+      throw error;
     }
-    
-    // Fallback for direct response structure
-    return response.data;
   }
 
   async getProduct(id: string): Promise<Product> {
@@ -185,7 +203,10 @@ class ProductService {
       }
       return [];
     } catch (error) {
-      
+      console.error('Error fetching featured products:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error status:', error.response?.status);
+      console.error('API URL being called:', `${api.defaults.baseURL}/products/featured`);
       return [];
     }
   }

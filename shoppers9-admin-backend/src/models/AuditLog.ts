@@ -43,6 +43,7 @@ const auditLogSchema = new Schema<IAuditLog>({
       'seller_approved', 'seller_rejected', 'seller_suspended', 'seller_banned',
       // Product management actions
       'product_created', 'product_updated', 'product_deleted', 'product_approved', 'product_rejected',
+      'product_submitted_for_review', 'product_review_approved', 'product_review_rejected', 'product_review_changes_requested',
       // Order management actions
       'order_viewed', 'order_updated', 'order_cancelled', 'order_refunded',
       // Category management actions

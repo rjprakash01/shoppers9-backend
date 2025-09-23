@@ -18,18 +18,18 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
     
-    // Use userId from token and User model
-    const admin = await User.findById(decoded.userId).select('-password');
+    // Use id from token and User model
+    const user = await User.findById(decoded.id).select('-password');
 
-    if (!admin) {
+    if (!user) {
       res.status(401).json({
         success: false,
-        message: 'Invalid token. Admin not found.'
+        message: 'Invalid token. User not found.'
       });
       return;
     }
 
-    if (!admin.isActive) {
+    if (!user.isActive) {
       res.status(401).json({
         success: false,
         message: 'Account is deactivated.'
@@ -37,15 +37,15 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
       return;
     }
 
-    // Check if admin has valid role
-    if (!['super_admin', 'admin', 'sub_admin'].includes(admin.primaryRole)) {
+    // Check if user has valid admin role
+    if (!['super_admin', 'admin', 'sub_admin'].includes(user.primaryRole)) {
       res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
       });
       return;
     }
-    req.admin = admin;
+    req.admin = user;
     next();
   } catch (error) {
     res.status(401).json({
@@ -69,7 +69,7 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction): 
 };
 
 export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.admin || (req.admin.role !== 'super_admin' && req.admin.primaryRole !== 'super_admin')) {
+  if (!req.admin || req.admin.primaryRole !== 'super_admin') {
     res.status(403).json({
       success: false,
       message: 'Access denied. Super admin privileges required.'

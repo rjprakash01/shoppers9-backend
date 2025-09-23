@@ -4,7 +4,7 @@ import axios from 'axios';
 const supportApi = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
     ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5002/api',
+    : 'http://localhost:5000/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

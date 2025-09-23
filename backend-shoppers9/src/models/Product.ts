@@ -141,10 +141,19 @@ const productSchema = new Schema<IProduct>({
     type: Boolean,
     default: false
   },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'changes_requested'],
+    default: 'pending'
+  },
   displayFilters: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Filter'
-  }]
+  }],
+  createdBy: {
+    type: String,
+    trim: true
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -158,6 +167,8 @@ productSchema.index({ brand: 1 });
 productSchema.index({ isActive: 1 });
 productSchema.index({ isFeatured: 1 });
 productSchema.index({ isTrending: 1 });
+productSchema.index({ approvalStatus: 1 });
+productSchema.index({ isActive: 1, approvalStatus: 1 }); // Compound index for common queries
 productSchema.index({ createdAt: -1 });
 productSchema.index({ 'variants.sizes.price': 1 });
 

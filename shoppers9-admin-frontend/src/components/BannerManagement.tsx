@@ -95,7 +95,7 @@ const BannerManagement: React.FC = () => {
   const loadCategories = async () => {
     try {
       setLoadingCategories(true);
-      const response = await authService.get('/api/admin/categories/tree');
+      const response = await authService.getCategoryTree();
       
       // Flatten the category tree
       const flattenCategories = (cats: any[], level = 1): Category[] => {

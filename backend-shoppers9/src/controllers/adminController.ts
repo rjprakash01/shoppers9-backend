@@ -170,6 +170,251 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
   }
 };
 
+// Product Review Queue Management
+export const getReviewQueue = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page = 1, limit = 10, status, search } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build query
+    const query: any = {};
+    
+    if (status && status !== 'all') {
+      query.approvalStatus = status;
+    }
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get products with pagination
+    const [products, totalProducts] = await Promise.all([
+      Product.find(query)
+        .populate('category', 'name')
+        .populate('createdBy', 'firstName lastName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Product.countDocuments(query)
+    ]);
+
+    // Transform products for frontend
+    const transformedProducts = products.map(product => ({
+      id: product._id,
+      name: product.name,
+      description: product.description,
+      price: product.variants && product.variants.length > 0 ? product.variants[0].price : 0,
+      category: {
+        id: product.category?._id,
+        name: (product.category as any)?.name || 'Unknown'
+      },
+      images: product.images || [],
+      reviewStatus: 'pending',
+      submittedAt: product.createdAt,
+      submittedBy: {
+        id: product.createdBy || 'unknown',
+        name: 'Unknown'
+      },
+      reviewComments: []
+    }));
+
+    const totalPages = Math.ceil(totalProducts / limitNum);
+
+    res.json({
+      success: true,
+      data: {
+        products: transformedProducts,
+        pagination: {
+          currentPage: pageNum,
+          totalPages,
+          totalProducts,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const approveProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productId } = req.params;
+    const { comments } = req.body;
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      {
+        isActive: true
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return next(new AppError('Product not found', 404));
+    }
+
+    // Log audit trail
+    // const AuditService = require('../services/auditService').default;
+    // await AuditService.logProductApproval(
+    //   productId,
+    //   'admin',
+    //   comments,
+    //   req.ip,
+    //   req.get('User-Agent')
+    // );
+
+    res.json({
+      success: true,
+      message: 'Product approved successfully',
+      data: product
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rejectProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productId } = req.params;
+    const { reason, comments } = req.body;
+
+    if (!reason) {
+      return next(new AppError('Rejection reason is required', 400));
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      {
+        isActive: false
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return next(new AppError('Product not found', 404));
+    }
+
+    // Log audit trail
+    // const AuditService = require('../services/auditService').default;
+    // await AuditService.logProductRejection(
+    //   productId,
+    //   'admin',
+    //   reason,
+    //   comments,
+    //   req.ip,
+    //   req.get('User-Agent')
+    // );
+
+    res.json({
+      success: true,
+      message: 'Product rejected successfully',
+      data: product
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestProductChanges = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productId } = req.params;
+    const { reason, comments } = req.body;
+
+    if (!reason) {
+      return next(new AppError('Reason for changes is required', 400));
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      {
+        isActive: false
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return next(new AppError('Product not found', 404));
+    }
+
+    // Log audit trail
+    // const AuditService = require('../services/auditService').default;
+    // await AuditService.logProductChangesRequest(
+    //   productId,
+    //   'admin',
+    //   reason,
+    //   comments,
+    //   req.ip,
+    //   req.get('User-Agent')
+    // );
+
+    res.json({
+      success: true,
+      message: 'Changes requested successfully',
+      data: product
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkReviewAction = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productIds, action } = req.body;
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return next(new AppError('Product IDs are required', 400));
+    }
+
+    if (!['approve', 'reject'].includes(action)) {
+      return next(new AppError('Invalid action', 400));
+    }
+
+    const updateData: any = {
+      isActive: action === 'approve'
+    };
+
+    if (action === 'approve') {
+      updateData.approvalStatus = 'approved';
+    } else if (action === 'reject') {
+      updateData.approvalStatus = 'rejected';
+      updateData.rejectionReason = 'Bulk rejection';
+    }
+
+    const result = await Product.updateMany(
+      { _id: { $in: productIds } },
+      updateData
+    );
+
+    // Log audit trail for bulk action
+    // const AuditService = require('../services/auditService').default;
+    // await AuditService.logBulkReviewAction(
+    //   productIds,
+    //   'admin',
+    //   action,
+    //   req.ip,
+    //   req.get('User-Agent')
+    // );
+
+    res.json({
+      success: true,
+      message: `Bulk ${action} completed successfully`,
+      data: {
+        modifiedCount: result.modifiedCount
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // User Management
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {

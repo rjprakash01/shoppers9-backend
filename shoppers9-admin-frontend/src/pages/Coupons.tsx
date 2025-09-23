@@ -382,7 +382,7 @@ const Coupons: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h3 className="text-lg font-semibold mb-4">Top Performing Coupons</h3>
             <div className="space-y-3">
-              {analytics.topCoupons.map((coupon, index) => (
+              {(analytics?.topCoupons || []).map((coupon, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -461,7 +461,7 @@ const Coupons: React.FC = () => {
                 Top Performing Coupons
               </h3>
               <div className="space-y-3">
-                {analytics.topCoupons.map((coupon, index) => (
+                {(analytics?.topCoupons || []).map((coupon, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -497,7 +497,7 @@ const Coupons: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className="font-medium text-green-600">
-                      {analytics.totalCoupons > 0 ? Math.round((analytics.activeCoupons / analytics.totalCoupons) * 100) : 0}%
+                      {(analytics?.totalCoupons || 0) > 0 ? Math.round(((analytics?.activeCoupons || 0) / (analytics?.totalCoupons || 1)) * 100) : 0}%
                     </div>
                   </div>
                 </div>
@@ -509,7 +509,7 @@ const Coupons: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className="font-medium text-blue-600">
-                      {analytics.totalCoupons > 0 ? Math.round(analytics.totalUsage / analytics.totalCoupons) : 0}
+                      {(analytics?.totalCoupons || 0) > 0 ? Math.round((analytics?.totalUsage || 0) / (analytics?.totalCoupons || 1)) : 0}
                     </div>
                   </div>
                 </div>
@@ -521,7 +521,7 @@ const Coupons: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className="font-medium text-red-600">
-                      {analytics.totalCoupons > 0 ? Math.round((analytics.expiredCoupons / analytics.totalCoupons) * 100) : 0}%
+                      {(analytics?.totalCoupons || 0) > 0 ? Math.round(((analytics?.expiredCoupons || 0) / (analytics?.totalCoupons || 1)) * 100) : 0}%
                     </div>
                   </div>
                 </div>

@@ -281,7 +281,7 @@ function getVAPIDPublicKey(): string {
 
 async function sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
   try {
-    await fetch('/api/push-subscription', {
+    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/push-subscription`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

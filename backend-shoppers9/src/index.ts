@@ -190,6 +190,29 @@ app.use(notFoundHandler);
 // Global error handler (MUST be last)
 app.use(errorHandler);
 
+// Local SVG placeholder generator endpoint
+app.get('/api/placeholder/:text', (req, res) => {
+  const text = decodeURIComponent(req.params.text || 'Product');
+  const width = req.query.width || 300;
+  const height = req.query.height || 300;
+  const bgColor = req.query.bg || 'e3f2fd';
+  const textColor = req.query.color || '1976d2';
+  
+  const svg = `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="#${bgColor}"/>
+      <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="16" font-weight="bold" 
+            fill="#${textColor}" text-anchor="middle" dominant-baseline="middle">
+        ${text}
+      </text>
+    </svg>
+  `;
+  
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(svg);
+});
+
 // Start server
 app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);

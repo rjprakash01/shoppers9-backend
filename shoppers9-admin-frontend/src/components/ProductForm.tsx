@@ -114,6 +114,8 @@ interface ProductFormData {
   variants: ProductVariant[];
   availableColors: ProductColor[];
   availableSizes: ProductSizeOption[];
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  submissionNotes?: string;
 }
 
 interface ProductFormProps {
@@ -151,7 +153,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
     displayFilters: [],
     variants: [],
     availableColors: [],
-    availableSizes: []
+    availableSizes: [],
+    approvalStatus: 'pending',
+    submissionNotes: ''
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -188,7 +192,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
           displayFilters: initialData.displayFilters || [],
           variants: initialData.variants || [],
           availableColors: initialData.availableColors || [],
-          availableSizes: initialData.availableSizes || []
+          availableSizes: initialData.availableSizes || [],
+          approvalStatus: initialData.approvalStatus || 'pending',
+          submissionNotes: initialData.submissionNotes || ''
         });
       }
     } else {
@@ -226,20 +232,39 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   const fetchCategories = async () => {
     try {
+      console.log('=== PRODUCT FORM: Fetching categories ===');
+      console.log('Auth token:', localStorage.getItem('adminToken') ? 'Present' : 'Missing');
+      console.log('API URL:', import.meta.env.VITE_API_URL);
       
-      const response = await authService.get('/categories/tree');
+      const response = await authService.getCategoryTree();
+      console.log('Categories response:', response);
+      console.log('Response success:', response.success);
+      console.log('Response data type:', typeof response.data);
+      console.log('Response data length:', Array.isArray(response.data) ? response.data.length : 'Not an array');
+
+      if (!response.success) {
+        console.error('API returned success: false', response.message);
+        setCategories([]);
+        return;
+      }
+
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('Invalid response data format:', response.data);
+        setCategories([]);
+        return;
+      }
 
       const flattenCategories = (categories: any[]): Category[] => {
         let flattened: Category[] = [];
         
         categories.forEach(category => {
           const flatCategory: Category = {
-            id: category.id,
-            _id: category.id,
+            id: category._id || category.id,
+            _id: category._id || category.id,
             name: category.name,
             slug: category.slug,
             level: category.level,
-            parentCategory: category.parentCategory?.id || null,
+            parentCategory: category.parentCategory?._id || category.parentCategory?.id || null,
             isActive: category.isActive,
             children: []
           };
@@ -255,33 +280,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
         return flattened;
       };
       
-      const flatCategories = flattenCategories(response.data || []);
+      const flatCategories = flattenCategories(response.data);
+      console.log('Flattened categories count:', flatCategories.length);
+      console.log('Main categories (level 1):', flatCategories.filter(cat => cat.level === 1));
       
       setCategories(flatCategories);
     } catch (error) {
-      
+      console.error('=== PRODUCT FORM: Error fetching categories ===', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        console.error('Error response:', (error as any).response);
+        console.error('Error status:', (error as any).response?.status);
+        console.error('Error data:', (error as any).response?.data);
+      }
       setCategories([]);
     }
   };
 
   const fetchAvailableFilters = async (categoryId: string) => {
     try {
-      
-      const response = await authService.get(`/api/admin/categories/${categoryId}/filters`);
+      console.log('Fetching filters for category:', categoryId);
+      const filtersResponse = await authService.get(`/admin/categories/${categoryId}/filters`);
+      console.log('Filters response:', filtersResponse);
 
-      if (response.success && response.data && response.data.categoryFilters) {
+      if (filtersResponse.success && filtersResponse.data && filtersResponse.data.categoryFilters) {
+        console.log('Setting available filters:', filtersResponse.data.categoryFilters);
+        setAvailableFilters(filtersResponse.data.categoryFilters);
         
-        setAvailableFilters(response.data.categoryFilters);
-        
-        response.data.categoryFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
-          
+        filtersResponse.data.categoryFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
+          console.log(`Filter ${index}:`, categoryFilter);
         });
       } else {
-        
+        console.log('No filters found for category');
         setAvailableFilters([]);
       }
     } catch (error) {
-      
+      console.error('Error fetching filters:', error);
       setAvailableFilters([]);
     }
   };
@@ -307,7 +340,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
       displayFilters: [],
       variants: [],
       availableColors: [],
-      availableSizes: []
+      availableSizes: [],
+      approvalStatus: 'pending',
+      submissionNotes: ''
     });
     setErrors({});
     setSubCategories([]);
@@ -887,6 +922,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       placeholder="Enter detailed product description"
                     />
                     {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Submission Notes
+                    </label>
+                    <textarea
+                      value={formData.submissionNotes}
+                      onChange={(e) => handleInputChange('submissionNotes', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="Add any notes for the admin review process (optional)"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">These notes will be visible to admins during the review process</p>
                   </div>
                 </div>
 

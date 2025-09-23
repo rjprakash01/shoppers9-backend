@@ -190,9 +190,9 @@ const CategoryManagement: React.FC = () => {
     e.preventDefault();
     try {
       if (editingCategory) {
-        await authService.put(`/api/admin/categories/${editingCategory.id}`, formData);
+        await authService.put(`/admin/categories/${editingCategory.id}`, formData);
       } else {
-        await authService.post('/api/admin/categories', formData);
+        await authService.post('/admin/categories', formData);
       }
       await fetchCategoryTree();
       closeForm();
@@ -213,7 +213,7 @@ const CategoryManagement: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await authService.delete(`/api/admin/categories/${category.id}`);
+      await authService.delete(`/admin/categories/${category.id}`);
       await fetchCategoryTree();
       // Show success message
       setError(null);
@@ -228,7 +228,7 @@ const CategoryManagement: React.FC = () => {
 
   const toggleStatus = async (category: Category) => {
     try {
-      await authService.put(`/api/admin/categories/${category.id}/status`, { isActive: !category.isActive });
+      await authService.put(`/admin/categories/${category.id}/status`, { isActive: !category.isActive });
       await fetchCategoryTree();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update category status');

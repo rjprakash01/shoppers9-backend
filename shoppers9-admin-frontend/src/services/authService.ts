@@ -4,7 +4,7 @@ import { api } from './api';
 // Use the same API configuration as other services
 const API_BASE_URL = import.meta.env.PROD 
   ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-  : import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
+  : import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 class AuthService {
   private getErrorMessage(error: unknown, defaultMessage: string): string {
@@ -41,9 +41,9 @@ class AuthService {
         : { phone: loginField, password };
       
       console.log('Payload:', payload);
-      console.log('Making request to:', `/auth/admin/login`);
+      console.log('Making request to:', `/auth/login`);
       
-      const response = await api.post('/auth/admin/login', payload);
+      const response = await api.post('/auth/login', payload);
       
       console.log('Response received:', response.status, response.data);
       
@@ -196,6 +196,111 @@ class AuthService {
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to update product status'));
+    }
+  }
+
+  // Product Review Queue Methods
+  async getReviewQueue(page: number = 1, limit: number = 10, status?: string, search?: string) {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      if (status) {
+        params.append('status', status);
+      }
+      
+      if (search) {
+        params.append('search', search);
+      }
+      
+      const response = await api.get(`/admin/products/review-queue?${params.toString()}`);
+      
+      // Debug logging
+      console.log('🔍 AuthService getReviewQueue response:', {
+        success: response.data.success,
+        hasData: !!response.data.data,
+        hasProducts: !!response.data.data?.products,
+        hasPagination: !!response.data.data?.pagination,
+        productsLength: response.data.data?.products?.length || 0
+      });
+      
+      if (response.data.success && response.data.data) {
+        return {
+          products: response.data.data.products || [],
+          pagination: response.data.data.pagination || {
+            currentPage: 1,
+            totalPages: 1,
+            totalProducts: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        };
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error: unknown) {
+      console.error('🔍 AuthService getReviewQueue error:', error);
+      throw new Error(this.getErrorMessage(error, 'Failed to fetch review queue'));
+    }
+  }
+
+  async submitProductForReview(productId: string) {
+    try {
+      const response = await api.post(`/admin/products/${productId}/submit-for-review`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to submit product for review'));
+    }
+  }
+
+  async approveProduct(productId: string, comments?: string) {
+    try {
+      const response = await api.patch(`/admin/products/${productId}/approve`, {
+        comments
+      });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to approve product'));
+    }
+  }
+
+  async rejectProduct(productId: string, reason: string, comments?: string) {
+    try {
+      const response = await api.patch(`/admin/products/${productId}/reject`, {
+        reason,
+        comments
+      });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to reject product'));
+    }
+  }
+
+  async requestProductChanges(productId: string, reason: string, comments?: string) {
+    try {
+      const response = await api.patch(`/admin/products/${productId}/request-changes`, {
+        reason,
+        comments
+      });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to request product changes'));
+    }
+  }
+
+  async bulkReviewAction(productIds: string[], action: string, reason?: string, comments?: string) {
+    try {
+      const response = await api.post('/admin/products/bulk-review-action', {
+        productIds,
+        action,
+        reason,
+        comments
+      });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(this.getErrorMessage(error, 'Failed to perform bulk review action'));
     }
   }
 
@@ -429,7 +534,7 @@ class AuthService {
 
   async getCategoryTree() {
     try {
-      const response = await api.get('/categories/tree');
+      const response = await api.get('/admin/categories/tree');
       return response.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to get category tree'));

@@ -3,19 +3,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUserRole extends Document {
   userId: mongoose.Types.ObjectId;
   roleId: mongoose.Types.ObjectId;
-  permissions: {
-    permissionId: mongoose.Types.ObjectId;
-    granted: boolean;
-    restrictions?: {
-      partialView?: string[]; // Array of fields to show/hide
-      sellerScope?: mongoose.Types.ObjectId[]; // Specific sellers this user can manage
-      regionScope?: string[]; // Specific regions
-      timeRestriction?: {
-        startTime?: string;
-        endTime?: string;
-        days?: number[]; // 0-6 (Sunday-Saturday)
-      };
-    };
+  moduleAccess: {
+    module: string;
+    hasAccess: boolean;
   }[];
   isActive: boolean;
   assignedBy: mongoose.Types.ObjectId;
@@ -37,32 +27,31 @@ const userRoleSchema = new Schema<IUserRole>({
     ref: 'Role',
     required: true
   },
-  permissions: [{
-    permissionId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Permission',
-      required: true
+  moduleAccess: [{
+    module: {
+      type: String,
+      required: true,
+      enum: [
+        'dashboard',
+        'users',
+        'products',
+        'inventory',
+        'orders',
+        'shipping',
+        'coupons',
+        'support',
+        'categories',
+        'filters',
+        'banners',
+        'testimonials',
+        'admin_management',
+        'settings',
+        'analytics'
+      ]
     },
-    granted: {
+    hasAccess: {
       type: Boolean,
-      default: true
-    },
-    restrictions: {
-      partialView: [String],
-      sellerScope: [{
-        type: Schema.Types.ObjectId,
-        ref: 'User' // Reference to seller users
-      }],
-      regionScope: [String],
-      timeRestriction: {
-        startTime: String, // Format: "HH:MM"
-        endTime: String,   // Format: "HH:MM"
-        days: [{
-          type: Number,
-          min: 0,
-          max: 6
-        }]
-      }
+      default: false
     }
   }],
   isActive: {
@@ -100,48 +89,19 @@ userRoleSchema.virtual('isExpired').get(function() {
   return this.expiresAt && this.expiresAt < new Date();
 });
 
-// Method to check if user has specific permission
-userRoleSchema.methods.hasPermission = function(permissionKey: string): boolean {
+// Method to check if user has access to a specific module
+userRoleSchema.methods.hasModuleAccess = function(module: string): boolean {
   if (!this.isActive || this.isExpired) {
     return false;
   }
   
-  const permission = this.permissions.find((p: any) => {
-    // This would need to be populated to check the actual permission key
-    return p.granted;
-  });
-  
-  return !!permission;
+  const moduleAccess = this.moduleAccess.find((m: any) => m.module === module);
+  return moduleAccess ? moduleAccess.hasAccess : false;
 };
 
-// Method to check time restrictions
+// Method to check if access is allowed (simplified - no time restrictions in binary model)
 userRoleSchema.methods.isAccessAllowed = function(): boolean {
-  if (!this.isActive || this.isExpired) {
-    return false;
-  }
-  
-  const now = new Date();
-  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  const currentDay = now.getDay();
-  
-  // Check if any permission has time restrictions that block current access
-  for (const permission of this.permissions) {
-    if (permission.restrictions?.timeRestriction) {
-      const { startTime, endTime, days } = permission.restrictions.timeRestriction;
-      
-      if (days && days.length > 0 && !days.includes(currentDay)) {
-        continue; // This permission is not valid for today
-      }
-      
-      if (startTime && endTime) {
-        if (currentTime < startTime || currentTime > endTime) {
-          continue; // This permission is not valid for current time
-        }
-      }
-    }
-  }
-  
-  return true;
+  return this.isActive && !this.isExpired;
 };
 
 // Method to update last accessed time
@@ -150,8 +110,8 @@ userRoleSchema.methods.updateLastAccess = function() {
   return this.save();
 };
 
-// Static method to get user permissions
-userRoleSchema.statics.getUserPermissions = async function(userId: mongoose.Types.ObjectId) {
+// Static method to get user module access
+userRoleSchema.statics.getUserModuleAccess = async function(userId: mongoose.Types.ObjectId) {
   return this.find({ 
     userId, 
     isActive: true,
@@ -160,8 +120,25 @@ userRoleSchema.statics.getUserPermissions = async function(userId: mongoose.Type
       { expiresAt: { $gt: new Date() } }
     ]
   })
-  .populate('roleId')
-  .populate('permissions.permissionId');
+  .populate('roleId');
+};
+
+// Method to grant module access
+userRoleSchema.methods.grantModuleAccess = function(module: string) {
+  const existingAccess = this.moduleAccess.find((m: any) => m.module === module);
+  if (existingAccess) {
+    existingAccess.hasAccess = true;
+  } else {
+    this.moduleAccess.push({ module, hasAccess: true });
+  }
+};
+
+// Method to revoke module access
+userRoleSchema.methods.revokeModuleAccess = function(module: string) {
+  const existingAccess = this.moduleAccess.find((m: any) => m.module === module);
+  if (existingAccess) {
+    existingAccess.hasAccess = false;
+  }
 };
 
 export const UserRole = mongoose.model<IUserRole>('UserRole', userRoleSchema);

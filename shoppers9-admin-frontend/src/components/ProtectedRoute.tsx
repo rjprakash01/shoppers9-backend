@@ -9,7 +9,10 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, token, isLoading } = useAuth();
 
+  console.log('🛡️ ProtectedRoute: isLoading:', isLoading, 'user:', !!user, 'token:', !!token);
+  
   if (isLoading) {
+    console.log('🛡️ ProtectedRoute: Still loading, showing spinner...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -18,9 +21,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!user || !token) {
+    console.log('🛡️ ProtectedRoute: No user or token, redirecting to login...');
     return <Navigate to="/login" replace />;
   }
 
+  console.log('🛡️ ProtectedRoute: User authenticated, rendering protected content...');
   return <>{children}</>;
 };
 

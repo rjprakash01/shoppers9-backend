@@ -149,9 +149,9 @@ const FilterManagement: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await authService.get('/admin/categories/tree');
+      const responseData = await authService.get('/admin/categories/tree');
 
-      setCategories(response.data || []);
+      setCategories(responseData.data || []);
     } catch (error) {
       
     }
@@ -201,7 +201,7 @@ const FilterManagement: React.FC = () => {
         options: validOptions
       };
 
-      const response = await authService.post('/api/admin/filters', filterData);
+      const response = await authService.post('/admin/filters', filterData);
 
       if (response.success) {
         await fetchFilters();
@@ -253,7 +253,7 @@ const FilterManagement: React.FC = () => {
         options: validOptions
       };
 
-      const response = await authService.put(`/api/admin/filters/${editingFilter._id}`, filterData);
+      const response = await authService.put(`/admin/filters/${editingFilter._id}`, filterData);
 
       if (response.success) {
         await fetchFilters();

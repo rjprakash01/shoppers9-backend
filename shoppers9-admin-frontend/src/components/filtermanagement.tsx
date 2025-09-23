@@ -97,7 +97,7 @@ const FilterManagement: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await authService.get('/api/admin/categories/tree');
+      const response = await authService.getCategoryTree();
       if (response.success && response.data) {
         // Flatten the category tree
         const flattenCategories = (cats: any[], level = 1): Category[] => {
@@ -131,7 +131,7 @@ const FilterManagement: React.FC = () => {
       setError(null);
       
       const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
-      const response = await authService.get(`/api/admin/filters?page=${currentPage}&limit=${pageSize}${searchParam}`);
+      const response = await authService.get(`/admin/filters?page=${currentPage}&limit=${pageSize}${searchParam}`);
 
       // Handle the backend response format: {success: true, data: {filters: [...], pagination: {...}}}
       // Note: authService.get() returns response.data directly, so we access response.data.filters
@@ -167,9 +167,9 @@ const FilterManagement: React.FC = () => {
 
       let response;
       if (editingFilter) {
-        response = await authService.put(`/api/admin/filters/${editingFilter._id}`, formData);
+        response = await authService.put(`/admin/filters/${editingFilter._id}`, formData);
       } else {
-        response = await authService.post('/api/admin/filters', formData);
+        response = await authService.post('/admin/filters', formData);
         // Reset to page 1 to see the newly created filter
         setCurrentPage(1);
       }
@@ -208,7 +208,7 @@ const FilterManagement: React.FC = () => {
     try {
       setError(null);
       
-      await authService.delete(`/api/admin/filters/${filterId}`);
+      await authService.delete(`/admin/filters/${filterId}`);
       await fetchFilters();
     } catch (err: any) {
       
@@ -221,7 +221,7 @@ const FilterManagement: React.FC = () => {
     try {
       setError(null);
       
-      await authService.put(`/api/admin/filters/${filterId}/toggle-status`);
+      await authService.put(`/admin/filters/${filterId}/toggle-status`);
       await fetchFilters();
     } catch (err: any) {
       

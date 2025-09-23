@@ -1,11 +1,11 @@
 import mongoose, { Schema } from 'mongoose';
 import { IOrder, IOrderItem, IAddress, OrderStatus, OrderItemStatus, PaymentStatus, RefundStatus } from '../types';
 
-const orderItemSchema = new Schema<IOrderItem>({
+const orderItemSchema = new mongoose.Schema({
   product: {
-    type: String,
-    required: true,
-    ref: 'Product'
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true
   },
   variantId: {
     type: String,
@@ -13,8 +13,7 @@ const orderItemSchema = new Schema<IOrderItem>({
   },
   size: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   quantity: {
     type: Number,
@@ -40,6 +39,10 @@ const orderItemSchema = new Schema<IOrderItem>({
     type: String,
     enum: Object.values(OrderItemStatus),
     default: OrderItemStatus.PENDING
+  },
+  sellerId: {
+    type: String,
+    required: false // Optional field for admin/seller who created the product
   }
 });
 

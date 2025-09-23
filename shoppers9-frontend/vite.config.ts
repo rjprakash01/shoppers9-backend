@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5174,
+    port: 5175,
     allowedHosts: [
       'shoppers9-demo.loca.lt',
       '33a69b5388ed738c9b695e95fec85d15.serveo.net',
@@ -17,7 +17,7 @@ export default defineConfig({
     ],
     proxy: {
       '/api': {
-        target: 'http://192.168.1.5:5000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       },

@@ -5,6 +5,7 @@ import { Product } from '../models/Product';
 import { Wishlist } from '../models/Wishlist';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../types';
+import { settingsService } from '../services/settingsService';
 
 /**
  * Get user's cart
@@ -24,26 +25,77 @@ export const getCart = async (req: AuthenticatedRequest, res: Response) => {
     cart = await newCart.save();
   }
 
-  // Transform cart items to show correct variant images
+  // Transform cart items to show correct variant images with validation
   if (cart && cart.items) {
     cart.items = cart.items.map((item: any) => {
       const product = item.product;
+      let finalImages = [];
+      
       if (product && product.variants) {
         const variant = product.variants.find((v: any) => v._id?.toString() === item.variantId?.toString());
+        
+        // Validate variant images
         if (variant && variant.images && variant.images.length > 0) {
-          return {
-            ...item,
-            variant: {
-              ...variant,
-              images: variant.images
-            },
-            product: {
-              ...product,
-              images: variant.images // Use variant images for cart display
-            }
-          };
+          const validVariantImages = variant.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validVariantImages.length > 0) {
+            finalImages = validVariantImages;
+          }
         }
+        
+        // Fallback to product images if variant images are invalid
+        if (finalImages.length === 0 && product.images && product.images.length > 0) {
+          const validProductImages = product.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validProductImages.length > 0) {
+            finalImages = validProductImages;
+          }
+        }
+        
+        // Use local placeholder if no valid images
+        if (finalImages.length === 0) {
+          finalImages = [`http://localhost:5002/api/placeholder/${encodeURIComponent(product.name || 'Product')}`];
+        }
+        
+        return {
+          ...item,
+          variant: variant ? {
+            ...variant,
+            images: finalImages
+          } : null,
+          product: {
+            ...product,
+            images: finalImages // Use processed images for cart display
+          }
+        };
       }
+      
+      // Handle case where no variants exist
+      if (product) {
+        if (product.images && product.images.length > 0) {
+          const validProductImages = product.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validProductImages.length > 0) {
+            finalImages = validProductImages;
+          }
+        }
+        
+        if (finalImages.length === 0) {
+          finalImages = [`http://localhost:5002/api/placeholder/${encodeURIComponent(product.name || 'Product')}`];
+        }
+        
+        return {
+          ...item,
+          product: {
+            ...product,
+            images: finalImages
+          }
+        };
+      }
+      
       return item;
     });
   }
@@ -63,8 +115,12 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.userId;
   const { product: productId, variantId, size, quantity = 1 } = req.body;
 
-  // Validate product exists and is active
-  const product = await Product.findOne({ _id: productId, isActive: true });
+  // Validate product exists, is active, and is approved
+  const product = await Product.findOne({ 
+    _id: productId, 
+    isActive: true,
+    approvalStatus: 'approved'
+  });
   if (!product) {
     throw new AppError('Product not found', 404);
   }
@@ -193,19 +249,44 @@ export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
       const product = itemObj.product as any;
       if (product && product.variants) {
         const variant = product.variants.find((v: any) => v._id?.toString() === itemObj.variantId?.toString());
+        let finalImages = [];
+        
+        // Validate variant images
         if (variant && variant.images && variant.images.length > 0) {
-          return {
-            ...itemObj,
-            variant: {
-              ...variant,
-              images: variant.images
-            },
-            product: {
-              ...product,
-              images: variant.images // Use variant images for cart display
-            }
-          };
+          const validVariantImages = variant.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validVariantImages.length > 0) {
+            finalImages = validVariantImages;
+          }
         }
+        
+        // Fallback to product images if variant images are invalid
+        if (finalImages.length === 0 && product.images && product.images.length > 0) {
+          const validProductImages = product.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validProductImages.length > 0) {
+            finalImages = validProductImages;
+          }
+        }
+        
+        // Use local placeholder if no valid images
+        if (finalImages.length === 0) {
+          finalImages = [`http://localhost:5002/api/placeholder/${encodeURIComponent(product.name || 'Product')}`];
+        }
+        
+        return {
+          ...itemObj,
+          variant: variant ? {
+            ...variant,
+            images: finalImages
+          } : null,
+          product: {
+            ...product,
+            images: finalImages // Use processed images for cart display
+          }
+        };
       }
       return itemObj;
     })
@@ -263,9 +344,13 @@ export const updateQuantity = async (req: AuthenticatedRequest, res: Response) =
     item.product = itemObj.productId;
   }
   
-  const product = await Product.findById(productId);
+  const product = await Product.findOne({
+    _id: productId,
+    isActive: true,
+    approvalStatus: 'approved'
+  });
   if (!product) {
-    throw new AppError('Product not found', 404);
+    throw new AppError('Product not found or not available', 404);
   }
 
   const variant = product.variants.find(v => v._id?.toString() === item.variantId?.toString());
@@ -320,8 +405,53 @@ export const removeFromCart = async (req: AuthenticatedRequest, res: Response) =
 
   await cart.populate({
     path: 'items.product',
-    select: 'name images price discountPrice brand category subCategory isActive'
+    select: 'name images price discountPrice brand category subCategory isActive variants'
   });
+
+  // Apply image validation and processing to remaining cart items
+  if (cart && cart.items) {
+    cart.items = cart.items.map((item: any) => {
+      const product = item.product;
+      let finalImages = [];
+      
+      if (product && product.variants) {
+        const variant = product.variants.find((v: any) => v._id?.toString() === item.variantId?.toString());
+        
+        // Validate variant images
+        if (variant && variant.images && variant.images.length > 0) {
+          const validVariantImages = variant.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validVariantImages.length > 0) {
+            finalImages = validVariantImages;
+          }
+        }
+      }
+      
+      // Fallback to product images if variant images are invalid
+      if (finalImages.length === 0 && product && product.images && product.images.length > 0) {
+        const validProductImages = product.images.filter((img: any) => 
+          img && typeof img === 'string' && img.length > 10
+        );
+        if (validProductImages.length > 0) {
+          finalImages = validProductImages;
+        }
+      }
+      
+      // Use local placeholder if no valid images
+      if (finalImages.length === 0 && product) {
+        finalImages = [`http://localhost:5002/api/placeholder/${encodeURIComponent(product.name || 'Product')}`];
+      }
+      
+      return {
+        ...item,
+        product: product ? {
+          ...product,
+          images: finalImages
+        } : product
+      };
+    });
+  }
 
   res.json({
     success: true,
@@ -394,8 +524,53 @@ export const moveToWishlist = async (req: AuthenticatedRequest, res: Response) =
 
     await cart.populate({
       path: 'items.product',
-      select: 'name images price discountPrice brand category subCategory isActive'
+      select: 'name images price discountPrice brand category subCategory isActive variants'
     });
+
+    // Apply image validation and processing to remaining cart items
+    if (cart && cart.items) {
+      cart.items = cart.items.map((item: any) => {
+        const product = item.product;
+        let finalImages = [];
+        
+        if (product && product.variants) {
+          const variant = product.variants.find((v: any) => v._id?.toString() === item.variantId?.toString());
+          
+          // Validate variant images
+          if (variant && variant.images && variant.images.length > 0) {
+            const validVariantImages = variant.images.filter((img: any) => 
+              img && typeof img === 'string' && img.length > 10
+            );
+            if (validVariantImages.length > 0) {
+              finalImages = validVariantImages;
+            }
+          }
+        }
+        
+        // Fallback to product images if variant images are invalid
+        if (finalImages.length === 0 && product && product.images && product.images.length > 0) {
+          const validProductImages = product.images.filter((img: any) => 
+            img && typeof img === 'string' && img.length > 10
+          );
+          if (validProductImages.length > 0) {
+            finalImages = validProductImages;
+          }
+        }
+        
+        // Use local placeholder if no valid images
+        if (finalImages.length === 0 && product) {
+          finalImages = [`http://localhost:5002/api/placeholder/${encodeURIComponent(product.name || 'Product')}`];
+        }
+        
+        return {
+          ...item,
+          product: product ? {
+            ...product,
+            images: finalImages
+          } : product
+        };
+      });
+    }
 
     res.json({
       success: true,
@@ -516,9 +691,9 @@ export const getCartSummary = async (req: AuthenticatedRequest, res: Response) =
     throw new AppError('Cart is empty', 400);
   }
 
-  // Calculate summary
-  const platformFee = 20; // Fixed platform fee
-  const deliveryFee = cart.subtotal >= 500 ? 0 : 50; // Free delivery above ₹500
+  // Calculate summary using dynamic settings
+  const platformFee = await settingsService.calculatePlatformFee(cart.subtotal);
+  const deliveryFee = await settingsService.calculateDeliveryFee(cart.subtotal);
   
   // Calculate total with protection against negative amounts
   let total = cart.subtotal - (cart.couponDiscount || 0) + platformFee + deliveryFee;

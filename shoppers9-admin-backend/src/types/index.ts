@@ -30,21 +30,6 @@ export interface AuthRequest extends Request {
   admin?: IUser;
   permissions?: {
     module: string;
-    action: string;
-    resource: string;
-    scope?: 'own' | 'all';
-    restrictions?: {
-      partialView?: string[];
-      sellerScope?: string[];
-      regionScope?: string[];
-      timeRestriction?: {
-        startTime?: string;
-        endTime?: string;
-        days?: number[];
-      };
-      scopeRestricted?: boolean;
-      requiredScope?: string;
-    };
   };
   dataFilter?: {
     role: string;
@@ -132,6 +117,11 @@ export interface IProduct extends Document {
   isTrending: boolean;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
+  reviewStatus: ReviewStatus;
+  submittedForReviewAt?: Date;
+  approvedAt?: Date;
+  approvedBy?: mongoose.Types.ObjectId;
+  approvalStatus: 'pending' | 'approved' | 'rejected' | 'needs_changes';
   createdAt: Date;
   updatedAt: Date;
   
@@ -299,12 +289,12 @@ export interface ICategory extends Document {
   description?: string;
   slug: string;
   image?: string;
-  parentCategory?: string;
+  parentCategory?: mongoose.Types.ObjectId | string;
   level: 1 | 2 | 3; // 1 = Category, 2 = Subcategory, 3 = Sub-Subcategory
   isActive: boolean;
   sortOrder: number;
-  createdBy?: string;
-  updatedBy?: string;
+  createdBy?: mongoose.Types.ObjectId | string;
+  updatedBy?: mongoose.Types.ObjectId | string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -452,4 +442,77 @@ export interface IProductFilterValue extends Document {
 export interface EnhancedProductQueryParams extends ProductQueryParams {
   filters?: { [filterName: string]: string | string[] };
   priceRange?: { min?: number; max?: number };
+}
+
+// Product Review Workflow Types
+export enum ReviewStatus {
+  DRAFT = 'draft',
+  PENDING_REVIEW = 'pending_review',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  NEEDS_INFO = 'needs_info'
+}
+
+export interface IReviewComment {
+  comment: string;
+  reviewedBy: mongoose.Types.ObjectId;
+  reviewedAt: Date;
+  action: 'approve' | 'reject' | 'request_changes';
+}
+
+export interface IProductReview extends Document {
+  _id: string;
+  product: mongoose.Types.ObjectId;
+  status: ReviewStatus;
+  submittedBy: mongoose.Types.ObjectId;
+  submittedAt: Date;
+  reviewedBy?: mongoose.Types.ObjectId;
+  reviewedAt?: Date;
+  comments: IReviewComment[];
+  rejectionReason?: string;
+  requestedChanges?: string;
+  version: number; // Track review iterations
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IAuditLog extends Document {
+  _id: string;
+  entityType: 'product' | 'review' | 'user' | 'order';
+  entityId: mongoose.Types.ObjectId;
+  action: string;
+  oldValue?: any;
+  newValue?: any;
+  performedBy: mongoose.Types.ObjectId;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: any;
+  createdAt: Date;
+}
+
+// Notification Types
+export interface INotification extends Document {
+  _id: string;
+  recipient: mongoose.Types.ObjectId;
+  type: 'product_approved' | 'product_rejected' | 'product_needs_changes' | 'review_submitted';
+  title: string;
+  message: string;
+  data?: any;
+  isRead: boolean;
+  sentViaEmail: boolean;
+  emailSentAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Review Queue Query Params
+export interface ReviewQueueQueryParams extends QueryParams {
+  status?: ReviewStatus;
+  submittedBy?: string;
+  category?: string;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
 }

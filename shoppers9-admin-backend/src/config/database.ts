@@ -2,8 +2,10 @@ import mongoose from 'mongoose';
 
 const connectDB = async (): Promise<void> => {
   try {
+    // Ensure both main and admin backends use the same database
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shoppers9';
     
+    console.log('🔗 Admin Backend connecting to database:', mongoURI);
     await mongoose.connect(mongoURI);
 
   } catch (error) {

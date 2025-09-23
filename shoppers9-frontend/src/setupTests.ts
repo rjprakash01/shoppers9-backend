@@ -10,7 +10,7 @@ Object.defineProperty(global, 'import', {
   value: {
     meta: {
       env: {
-        VITE_API_URL: 'http://localhost:5002/api',
+        VITE_API_URL: 'http://localhost:5000/api',
         MODE: 'test',
         DEV: false,
         PROD: false

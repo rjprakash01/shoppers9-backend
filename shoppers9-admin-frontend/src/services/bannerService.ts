@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Use relative URL in production to leverage nginx proxy, localhost in development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
-const ADMIN_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const ADMIN_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export interface Banner {
   _id: string;
@@ -50,7 +50,7 @@ export interface BannerPaginationResponse {
 }
 
 class AdminBannerService {
-  private baseURL = `${API_BASE_URL}/api/admin/banners`;
+  private baseURL = `${API_BASE_URL}/admin/banners`;
 
   private getAuthHeaders() {
     const token = localStorage.getItem('adminToken');
@@ -168,7 +168,7 @@ class AdminBannerService {
       const formData = new FormData();
       formData.append('image', file);
 
-      const uploadUrl = `${API_BASE_URL}/api/admin/banners/upload/banner`;
+      const uploadUrl = `${API_BASE_URL}/admin/banners/upload/banner`;
 
       const headers = this.getUploadHeaders();
 

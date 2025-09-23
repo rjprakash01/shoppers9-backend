@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { IProduct, IProductVariant, IAvailableColor, IAvailableSize, IProductSpecification } from '../types';
+import { IProduct, IProductVariant, IAvailableColor, IAvailableSize, IProductSpecification, ReviewStatus } from '../types';
 
 // Available Color schema (from admin panel)
 const availableColorSchema = new Schema({
@@ -166,6 +166,31 @@ const productSchema = new Schema<IProduct>({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: false
+  },
+  reviewStatus: {
+    type: String,
+    enum: Object.values(ReviewStatus),
+    default: ReviewStatus.DRAFT,
+    required: true
+  },
+  submittedForReviewAt: {
+    type: Date,
+    required: false
+  },
+  approvedAt: {
+    type: Date,
+    required: false
+  },
+  approvedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'needs_changes'],
+    default: 'pending',
+    required: true
   }
 }, {
   timestamps: true,

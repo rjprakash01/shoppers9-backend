@@ -170,7 +170,10 @@ export const getProducts = async (req: Request, res: Response) => {
     } = req.query as any;
 
   const skip = (page - 1) * limit;
-  const query: any = { isActive: true };
+  const query: any = { 
+    isActive: true,
+    approvalStatus: 'approved' // Only show approved products to customers
+  };
 
   // Build filter query
   if (category) {
@@ -472,6 +475,10 @@ if (!hasEmptyResultsQuery) {
 
 
   
+  // Add approval status filter to only show approved products on frontend
+  query.approvalStatus = 'approved';
+  query.isActive = true;
+  
   const [products, total] = await Promise.all([
     Product.find(query)
       .populate('category', 'name slug level parentCategory')
@@ -572,6 +579,7 @@ export const searchProducts = async (req: Request, res: Response) => {
   const skip = (page - 1) * limit;
   const query: any = {
     isActive: true,
+    approvalStatus: 'approved', // Only show approved products in search
     $or: [
       { name: { $regex: q, $options: 'i' } },
       { description: { $regex: q, $options: 'i' } },
@@ -825,7 +833,8 @@ export const getFilters = async (req: Request, res: Response) => {
 export const getFeaturedProducts = async (req: Request, res: Response) => {
   const products = await Product.find({
     isActive: true,
-    isFeatured: true
+    isFeatured: true,
+    approvalStatus: 'approved' // Only show approved products
   })
     .populate('category', 'name slug')
     .sort({ popularity: -1, createdAt: -1 })
@@ -863,7 +872,8 @@ export const getFeaturedProducts = async (req: Request, res: Response) => {
 export const getTrendingProducts = async (req: Request, res: Response) => {
   const products = await Product.find({
     isActive: true,
-    isTrending: true
+    isTrending: true,
+    approvalStatus: 'approved' // Only show approved products
   })
     .populate('category', 'name slug')
     .sort({ popularity: -1, salesCount: -1, createdAt: -1 })
@@ -902,7 +912,8 @@ export const getRecommendations = async (req: AuthenticatedRequest, res: Respons
   // For now, return popular products
   // TODO: Implement ML-based recommendations based on user behavior
   const products = await Product.find({
-    isActive: true
+    isActive: true,
+    approvalStatus: 'approved' // Only show approved products
   })
     .populate('category', 'name slug')
     .sort({ popularity: -1, createdAt: -1 })

@@ -3,8 +3,8 @@ import UserRole from '../models/UserRole';
 import Permission from '../models/Permission';
 import { AuthRequest } from '../types';
 
-// Permission checking middleware
-export const requirePermission = (module: string, action: string, resource: string = '*', getResourceOwnerId?: (req: AuthRequest) => string | undefined) => {
+// Simplified permission checking middleware for binary module access
+export const requirePermission = (module: string) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.admin?.id;
@@ -21,28 +21,20 @@ export const requirePermission = (module: string, action: string, resource: stri
         return next();
       }
 
-      // Get resource owner ID if function provided
-      const resourceOwnerId = getResourceOwnerId ? getResourceOwnerId(req) : undefined;
-
-      // Check user's specific permissions and role-based permissions
-      const hasPermission = await checkUserPermission(userId, module, action, resource, resourceOwnerId);
+      // Check user's module access
+      const hasAccess = await checkUserModuleAccess(userId, module);
       
-      if (!hasPermission.allowed) {
+      if (!hasAccess) {
         return res.status(403).json({
           success: false,
           message: 'Insufficient permissions',
-          required: { module, action, resource, scope: hasPermission.scope },
-          restrictions: hasPermission.restrictions
+          required: { module }
         });
       }
 
       // Add permission info to request for further processing
       req.permissions = {
-        module,
-        action,
-        resource,
-        scope: hasPermission.scope as 'own' | 'all',
-        restrictions: hasPermission.restrictions
+        module
       };
 
       next();
@@ -56,144 +48,47 @@ export const requirePermission = (module: string, action: string, resource: stri
   };
 };
 
-// Helper function to check user permission
-export const checkUserPermission = async (
+// Simplified helper function to check user module access
+export const checkUserModuleAccess = async (
   userId: string, 
-  module: string, 
-  action: string, 
-  resource: string = '*',
-  resourceOwnerId?: string
-): Promise<{ allowed: boolean; restrictions?: any; source?: string; scope?: string }> => {
+  module: string
+): Promise<boolean> => {
   try {
     const userRole = await UserRole.findOne({ userId, isActive: true })
-      .populate('roleId')
-      .populate('permissions.permissionId');
+      .populate('roleId');
 
-    if (!userRole) {
-      return { allowed: false };
+    if (!userRole || !userRole.isAccessAllowed()) {
+      return false;
     }
 
-    // Check time restrictions first
-    if (!isAccessTimeAllowed(userRole)) {
-      return { allowed: false, restrictions: { timeRestricted: true } };
+    // Check user-specific module access first
+    const userModuleAccess = userRole.moduleAccess.find((m: any) => m.module === module);
+    if (userModuleAccess) {
+      return userModuleAccess.hasAccess;
     }
 
-    // Check if permission exists in user's specific permissions
-    const userPermission = userRole.permissions.find((p: any) => {
-      const perm = p.permissionId;
-      return perm.module === module && perm.action === action && 
-             (perm.resource === resource || perm.resource === '*');
-    });
-
-    if (userPermission) {
-      const perm = userPermission.permissionId as any;
-      // Check scope-based access (only if perm is populated)
-      if (perm && typeof perm === 'object' && perm.scope === 'own' && resourceOwnerId && resourceOwnerId !== userId) {
-        return {
-          allowed: false,
-          restrictions: { scopeRestricted: true, requiredScope: 'own' },
-          source: 'user_specific',
-          scope: perm.scope
-        };
-      }
-      
-      // If user permission is explicitly denied, respect that
-      if (!userPermission.granted) {
-        return {
-          allowed: false,
-          restrictions: userPermission.restrictions,
-          source: 'user_specific',
-          scope: perm && typeof perm === 'object' ? perm.scope : undefined
-        };
-      }
-      
-      return {
-        allowed: userPermission.granted,
-        restrictions: userPermission.restrictions,
-        source: 'user_specific',
-        scope: perm && typeof perm === 'object' ? perm.scope : undefined
-      };
-    }
-
-    // Check role-based permissions - prioritize 'all' scope over 'own'
+    // Check role-based module access
     const role = userRole.roleId as any;
     if (role && role.permissions && role.permissions.length > 0) {
-      const rolePermissions = await Permission.find({
+      const rolePermission = await Permission.findOne({
         _id: { $in: role.permissions },
         module,
-        action,
-        $or: [{ resource }, { resource: '*' }],
         isActive: true
-      }).sort({ scope: 1 }); // 'all' comes before 'own' alphabetically
+      });
 
-      if (rolePermissions.length > 0) {
-        // Find the best matching permission (prefer 'all' scope)
-        const allScopePermission = rolePermissions.find(p => p.scope === 'all');
-        const ownScopePermission = rolePermissions.find(p => p.scope === 'own');
-        
-        const selectedPermission = allScopePermission || ownScopePermission;
-        
-        if (selectedPermission) {
-          // Check scope-based access for 'own' scope
-          if (selectedPermission.scope === 'own' && resourceOwnerId && resourceOwnerId !== userId) {
-            return {
-              allowed: false,
-              restrictions: { scopeRestricted: true, requiredScope: 'own' },
-              source: 'role_based',
-              scope: selectedPermission.scope
-            };
-          }
-
-          return {
-            allowed: true,
-            source: 'role_based',
-            scope: selectedPermission.scope
-          };
-        }
-      }
+      return !!rolePermission;
     }
 
-    return { allowed: false };
+    return false;
   } catch (error) {
-    console.error('Permission check error:', error);
-    return { allowed: false };
+    console.error('Module access check error:', error);
+    return false;
   }
 };
 
-// Check if current time is within allowed access time
-const isAccessTimeAllowed = (userRole: any): boolean => {
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
-  const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
-
-  // Check if any permission has time restrictions that block access
-  for (const permission of userRole.permissions) {
-    const timeRestriction = permission.restrictions?.timeRestriction;
-    
-    if (timeRestriction) {
-      // Check day restriction
-      if (timeRestriction.days && timeRestriction.days.length > 0) {
-        if (!timeRestriction.days.includes(currentDay)) {
-          return false;
-        }
-      }
-
-      // Check time range restriction
-      if (timeRestriction.startTime && timeRestriction.endTime) {
-        const [startHour, startMin] = timeRestriction.startTime.split(':').map(Number);
-        const [endHour, endMin] = timeRestriction.endTime.split(':').map(Number);
-        
-        const startTime = startHour * 60 + startMin;
-        const endTime = endHour * 60 + endMin;
-        
-        if (currentTime < startTime || currentTime > endTime) {
-          return false;
-        }
-      }
-    }
-  }
-
-  return true;
+// Simplified access check (no time restrictions in binary model)
+const isAccessAllowed = (userRole: any): boolean => {
+  return userRole.isActive && !userRole.isExpired;
 };
 
 // Middleware to filter response data based on partial view restrictions
@@ -247,31 +142,11 @@ const filterFields = (obj: any, allowedFields: string[]): any => {
   return filtered;
 };
 
-// Convenience functions for common permissions
-export const canRead = (module: string, resource?: string, getResourceOwnerId?: (req: AuthRequest) => string | undefined) => 
-  requirePermission(module, 'read', resource, getResourceOwnerId);
+// Simplified convenience functions for module access
+export const requireModuleAccess = (module: string) => requirePermission(module);
 
-export const canCreate = (module: string, resource?: string) => 
-  requirePermission(module, 'create', resource);
-
-export const canEdit = (module: string, resource?: string, getResourceOwnerId?: (req: AuthRequest) => string | undefined) => 
-  requirePermission(module, 'edit', resource, getResourceOwnerId);
-
-export const canDelete = (module: string, resource?: string, getResourceOwnerId?: (req: AuthRequest) => string | undefined) => 
-  requirePermission(module, 'delete', resource, getResourceOwnerId);
-
-export const canExport = (module: string, resource?: string) => 
-  requirePermission(module, 'export', resource);
-
-export const canImport = (module: string, resource?: string) => 
-  requirePermission(module, 'import', resource);
-
-export const canApprove = (module: string, resource?: string, getResourceOwnerId?: (req: AuthRequest) => string | undefined) => 
-  requirePermission(module, 'approve', resource, getResourceOwnerId);
-
-export const canReject = (module: string, resource?: string, getResourceOwnerId?: (req: AuthRequest) => string | undefined) => 
-  requirePermission(module, 'reject', resource, getResourceOwnerId);
-
-// Legacy support - deprecated, use canCreate instead
-export const canWrite = (module: string, resource?: string) => 
-  requirePermission(module, 'create', resource);
+// Legacy compatibility functions (all map to module access)
+export const canRead = (module: string) => requirePermission(module);
+export const canEdit = (module: string) => requirePermission(module);
+export const canDelete = (module: string) => requirePermission(module);
+export const canCreate = (module: string) => requirePermission(module);

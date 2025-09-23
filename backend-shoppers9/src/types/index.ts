@@ -58,7 +58,9 @@ export interface IProduct extends Document {
   isActive: boolean;
   isFeatured: boolean;
   isTrending: boolean;
+  approvalStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested'; // Product approval status
   displayFilters: mongoose.Types.ObjectId[];
+  createdBy?: string; // User ID who created this product
   createdAt: Date;
   updatedAt: Date;
   // Virtual fields
@@ -218,6 +220,7 @@ export interface IOrderItem {
   originalPrice: number;
   discount: number;
   status: OrderItemStatus;
+  sellerId?: string; // ID of the admin/seller who created the product
 }
 
 export enum OrderStatus {

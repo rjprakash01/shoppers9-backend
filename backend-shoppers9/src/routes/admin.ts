@@ -13,12 +13,18 @@ import {
   getAllCategories,
   updateCategoryStatus,
   createCategory,
-  getSalesAnalytics
+  getSalesAnalytics,
+  getReviewQueue,
+  approveProduct,
+  rejectProduct,
+  requestProductChanges,
+  bulkReviewAction
 } from '../controllers/adminController';
 import { updateOrderStatus } from '../controllers/orderController';
 import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import bannerRoutes from './banner';
+import { Category } from '../models/Category';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -150,6 +156,37 @@ router.patch('/products/:productId/status',
   updateProductStatus
 );
 
+// Product Review Management
+router.get('/products/review-queue', 
+  authenticateToken, 
+  requireAdmin, 
+  getReviewQueue
+);
+
+router.patch('/products/:productId/approve', 
+  authenticateToken, 
+  requireAdmin, 
+  approveProduct
+);
+
+router.patch('/products/:productId/reject', 
+  authenticateToken, 
+  requireAdmin, 
+  rejectProduct
+);
+
+router.patch('/products/:productId/request-changes', 
+  authenticateToken, 
+  requireAdmin, 
+  requestProductChanges
+);
+
+router.post('/products/bulk-review', 
+  authenticateToken, 
+  requireAdmin, 
+  bulkReviewAction
+);
+
 // Order Management
 router.get('/orders', 
   authenticateToken, 
@@ -183,7 +220,6 @@ router.get('/categories/tree',
   requireAdmin, 
   async (req: any, res: any, next: any) => {
     try {
-      const { Category } = require('../models/Category');
       const categories = await Category.find({ isActive: true })
         .sort({ sortOrder: 1, name: 1 });
 

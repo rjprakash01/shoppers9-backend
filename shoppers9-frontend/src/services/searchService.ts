@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { debounce } from 'lodash';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Search suggestion types
 export interface SearchSuggestion {

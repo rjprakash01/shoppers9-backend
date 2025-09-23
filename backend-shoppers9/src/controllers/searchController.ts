@@ -52,7 +52,10 @@ export const enhancedSearch = async (req: Request, res: Response) => {
     const startTime = Date.now();
     
     // Build base query
-    const query: any = { isActive: true };
+    const query: any = { 
+      isActive: true,
+      approvalStatus: 'approved' // Only show approved products in search
+    };
     
     // Build search and category conditions separately
     const searchConditions: any[] = [];
@@ -272,7 +275,8 @@ export const autocomplete = async (req: Request, res: Response): Promise<void> =
         { brand: searchRegex },
         { tags: searchRegex }
       ],
-      isActive: true
+      isActive: true,
+      approvalStatus: 'approved' // Only show approved products in autocomplete
     })
     .select('name brand price images')
     .limit(Number(limit) / 2)

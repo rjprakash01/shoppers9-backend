@@ -20,6 +20,10 @@ import Coupons from './pages/Coupons';
 import EnhancedAnalytics from './pages/EnhancedAnalytics';
 import Settings from './pages/Settings';
 import Testimonials from './pages/Testimonials';
+import AdminManagement from './pages/AdminManagement';
+import PermissionManagement from './pages/PermissionManagement';
+import TestOrders from './pages/TestOrders';
+import ProductReviewQueue from './pages/ProductReviewQueue';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -58,11 +62,25 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            <Route path="/product-review-queue" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProductReviewQueue />
+                </Layout>
+              </ProtectedRoute>
+            } />
 
             <Route path="/orders" element={
               <ProtectedRoute>
                 <Layout>
                   <Orders />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/test-orders" element={
+              <ProtectedRoute>
+                <Layout>
+                  <TestOrders />
                 </Layout>
               </ProtectedRoute>
             } />
@@ -151,10 +169,24 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            <Route path="/admin-management" element={
+              <ProtectedRoute>
+                <Layout>
+                  <AdminManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/permission-management" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PermissionManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-          </div>
+        </div>
         </Router>
       </NotificationProvider>
     </AuthProvider>

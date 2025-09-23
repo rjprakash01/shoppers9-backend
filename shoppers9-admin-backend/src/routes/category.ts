@@ -20,11 +20,11 @@ import { uploadCategoryImage, handleUploadError } from '../middleware/upload';
 const router = express.Router();
 
 // Public routes (if needed for frontend display)
-router.get('/public', getAllCategories);
-router.get('/public/tree', getCategoryTree);
-router.get('/public/level/:level', getCategoriesByLevel);
-router.get('/public/:id', getCategory);
-router.get('/public/:id/path', getCategoryPath);
+router.get('/', getAllCategories);
+router.get('/tree', getCategoryTree);
+router.get('/level/:level', getCategoriesByLevel);
+router.get('/:id', getCategory);
+router.get('/:id/path', getCategoryPath);
 
 // Apply authentication and data filtering to all admin routes
 router.use(auth);

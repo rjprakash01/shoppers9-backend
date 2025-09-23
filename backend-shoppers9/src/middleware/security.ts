@@ -29,7 +29,7 @@ export const securityHeaders = helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   dnsPrefetchControl: { allow: false },
   frameguard: { action: 'deny' },
@@ -63,7 +63,7 @@ export const generalRateLimit = rateLimit({
       success: false,
       error: 'Rate limit exceeded',
       message: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.round(req.rateLimit?.resetTime || Date.now() / 1000)
+      retryAfter: Math.round((req as any).rateLimit?.resetTime || Date.now() / 1000)
     });
   }
 });
@@ -82,7 +82,7 @@ export const authRateLimit = rateLimit({
       success: false,
       error: 'Authentication rate limit exceeded',
       message: 'Too many login attempts from this IP, please try again later.',
-      retryAfter: Math.round(req.rateLimit?.resetTime || Date.now() / 1000)
+      retryAfter: Math.round((req as any).rateLimit?.resetTime || Date.now() / 1000)
     });
   }
 });
@@ -100,7 +100,7 @@ export const apiRateLimit = rateLimit({
       success: false,
       error: 'API rate limit exceeded',
       message: 'Too many API requests, please slow down.',
-      retryAfter: Math.round(req.rateLimit?.resetTime || Date.now() / 1000)
+      retryAfter: Math.round((req as any).rateLimit?.resetTime || Date.now() / 1000)
     });
   }
 });
@@ -118,7 +118,7 @@ export const strictRateLimit = rateLimit({
       success: false,
       error: 'Strict rate limit exceeded',
       message: 'Too many requests for this sensitive operation.',
-      retryAfter: Math.round(req.rateLimit?.resetTime || Date.now() / 1000)
+      retryAfter: Math.round((req as any).rateLimit?.resetTime || Date.now() / 1000)
     });
   }
 });
@@ -195,7 +195,7 @@ function sanitizeString(str: string): string {
 
 // Validation middleware factory
 export const validateRequest = (validations: any[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     // Run all validations
     await Promise.all(validations.map(validation => validation.run(req)));
 
@@ -207,9 +207,9 @@ export const validateRequest = (validations: any[]) => {
         error: 'Validation failed',
         message: 'Invalid input data',
         details: errors.array().map(error => ({
-          field: error.param,
+          field: (error as any).param || (error as any).path,
           message: error.msg,
-          value: error.value
+          value: (error as any).value
         }))
       });
     }
@@ -391,7 +391,7 @@ export const securityLogger = (req: Request, res: Response, next: NextFunction) 
 
 // Request size limiter
 export const requestSizeLimit = (maxSize: string = '10mb') => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): Response | void => {
     const contentLength = req.get('content-length');
     if (contentLength) {
       const sizeInBytes = parseInt(contentLength, 10);
@@ -431,7 +431,7 @@ function parseSize(size: string): number {
 
 // IP whitelist middleware
 export const ipWhitelist = (allowedIPs: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): Response | void => {
     const clientIP = req.ip || req.connection.remoteAddress || '';
     
     if (!allowedIPs.includes(clientIP)) {

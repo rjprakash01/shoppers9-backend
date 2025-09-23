@@ -71,7 +71,7 @@ const PriceRangeBanners: React.FC<PriceRangeBannersProps> = ({ className = '' })
           
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {[...Array(5)].map((_, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+              <div key={`price-range-skeleton-${index}`} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
                 <div className="bg-gray-300 h-20"></div>
                 <div className="p-4">
                   <div className="h-16 bg-gray-300 rounded mb-2"></div>

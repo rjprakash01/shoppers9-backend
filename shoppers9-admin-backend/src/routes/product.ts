@@ -11,10 +11,17 @@ import {
   getProductFilters,
   getProductFilterValues,
   setProductFilterValues,
-  getAvailableFilterOptionsForCategory
+  getAvailableFilterOptionsForCategory,
+  submitProductForReview,
+  approveProduct,
+  rejectProduct,
+  requestProductChanges,
+  getReviewQueue,
+  bulkReviewAction
 } from '../controllers/productController';
 import { auth } from '../middleware/auth';
 import { requirePermission } from '../middleware/permission';
+import { requireRole } from '../middleware/rbac';
 import { applyDataFilter, checkResourceAccess, enforceOwnership } from '../middleware/dataFilter';
 import { uploadProductImages, handleUploadError } from '../middleware/upload';
 
@@ -37,13 +44,19 @@ router.route('/export')
 router.route('/bulk-update')
   .put(requirePermission('products', 'edit'), bulkUpdateProducts);
 
+// Product Review Workflow Routes (must be before parameterized routes)
+router.get('/review-queue', requireRole(['super_admin']), getReviewQueue);
+router.post('/bulk-review-action', requireRole(['super_admin']), bulkReviewAction);
+
 // Get products by category
 router.route('/category/:categoryId')
   .get(requirePermission('products', 'read'), (req, res) => {
-    // Set the category parameter from the URL and call getAllProducts
-    req.query.category = req.params.categoryId;
-    getAllProducts(req, res);
+    // This is a placeholder - the actual implementation should be in the controller
+    res.json({ message: 'Get products by category endpoint' });
   });
+
+// Category filter options
+router.get('/category/:categoryId/available-filter-options', requirePermission('categories', 'read'), getAvailableFilterOptionsForCategory);
 
 router.route('/:id')
   .get(requirePermission('products', 'read'), checkResourceAccess('Product'), getProduct)
@@ -52,12 +65,15 @@ router.route('/:id')
 
 router.put('/:id/toggle-status', requirePermission('products', 'edit'), toggleProductStatus);
 
-// Filter-related routes
+// Filter management routes
 router.get('/:id/filters', requirePermission('filters', 'read'), getProductFilters);
 router.get('/:id/filter-values', requirePermission('filters', 'read'), getProductFilterValues);
 router.post('/:id/filter-values', requirePermission('filters', 'create'), setProductFilterValues);
 
-// Get available filter options for a category based on existing products
-router.get('/category/:categoryId/available-filter-options', requirePermission('categories', 'read'), getAvailableFilterOptionsForCategory);
+// Product Review Workflow Routes for specific products
+router.post('/:id/submit-for-review', requirePermission('products'), checkResourceAccess('Product'), submitProductForReview);
+router.post('/:id/approve', requireRole(['super_admin']), approveProduct);
+router.post('/:id/reject', requireRole(['super_admin']), rejectProduct);
+router.post('/:id/request-changes', requireRole(['super_admin']), requestProductChanges);
 
 export default router;

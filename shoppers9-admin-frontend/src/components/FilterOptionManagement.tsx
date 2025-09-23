@@ -66,7 +66,7 @@ const FilterOptionManagement: React.FC = () => {
 
   const fetchFilter = async () => {
     try {
-      const response = await authService.get(`/api/admin/filters/${filterId}`);
+      const response = await authService.get(`/admin/filters/${filterId}`);
       setFilter(response.data);
       setError(null);
     } catch (error: any) {
@@ -80,7 +80,7 @@ const FilterOptionManagement: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await authService.get(`/api/admin/filter-options/filter/${filterId}`);
+      const response = await authService.get(`/admin/filter-options/filter/${filterId}`);
 
       // Handle the backend response format: {success: true, data: {filter, options, pagination}}
       if (response.success && response.data && Array.isArray(response.data.options)) {
@@ -121,9 +121,9 @@ const FilterOptionManagement: React.FC = () => {
       };
 
       if (editingOption) {
-        await authService.put(`/api/admin/filter-options/${editingOption._id}`, submitData);
+        await authService.put(`/admin/filter-options/${editingOption._id}`, submitData);
       } else {
-        await authService.post('/api/admin/filter-options', submitData);
+        await authService.post('/admin/filter-options', submitData);
       }
 
       await fetchFilterOptions();
@@ -150,7 +150,7 @@ const FilterOptionManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this filter option?')) return;
     
     try {
-      await authService.delete(`/api/admin/filter-options/${optionId}`);
+      await authService.delete(`/admin/filter-options/${optionId}`);
       await fetchFilterOptions();
     } catch (error) {
       
@@ -160,7 +160,7 @@ const FilterOptionManagement: React.FC = () => {
 
   const handleToggleStatus = async (optionId: string, currentStatus: boolean) => {
     try {
-      await authService.put(`/api/admin/filter-options/${optionId}`, {
+      await authService.put(`/admin/filter-options/${optionId}`, {
         isActive: !currentStatus
       });
       await fetchFilterOptions();

@@ -1,4 +1,14 @@
 import { api } from './api';
+import axios from 'axios';
+
+// Create a separate API instance for admin backend categories
+const adminApi = axios.create({
+  baseURL: 'http://localhost:5001/api/public',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export interface Category {
   _id?: string;
@@ -27,41 +37,44 @@ class CategoriesService {
    */
   async getCategoryTree(): Promise<Category[]> {
     try {
-      console.log('Making API call to /categories/tree');
+      console.log('Making API call to admin backend /categories/tree');
       // Add cache-busting parameter to force fresh data
-      const response = await api.get<CategoriesResponse>(`/categories/tree?t=${Date.now()}`);
-      console.log('API response:', response);
+      const response = await adminApi.get(`/categories/tree?t=${Date.now()}`);
+      console.log('Admin API response:', response);
       console.log('Response data:', response.data);
       
-      // Handle different possible response structures
-      if (response.data.success && response.data.data && response.data.data.categories) {
-        console.log('Categories found in nested structure:', response.data.data.categories.length);
-        return response.data.data.categories;
-      }
-      
-      // Try direct data.categories structure
-      if (response.data.data && Array.isArray(response.data.data)) {
-        console.log('Categories found in data array:', response.data.data.length);
+      // Handle the admin API response structure: {success: true, data: [...]}
+      if (response.data.success && response.data.data && Array.isArray(response.data.data)) {
+        console.log('Categories found from admin backend:', response.data.data.length);
         return response.data.data;
       }
       
-      // Try direct array response
+      // Fallback: try direct array response
       if (Array.isArray(response.data)) {
-        console.log('Direct array response:', response.data.length);
+        console.log('Direct array response from admin backend:', response.data.length);
         return response.data;
       }
       
-      // Try response.data.categories directly
-      if (response.data.categories && Array.isArray(response.data.categories)) {
-        console.log('Categories found in direct categories:', response.data.categories.length);
-        return response.data.categories;
-      }
-      
-      console.log('No categories found in response');
+      console.log('No categories found in admin backend response');
       return [];
     } catch (error) {
-      console.error('Error in getCategoryTree:', error);
-      return [];
+      console.error('Error in getCategoryTree from admin backend:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      console.error('Error status:', error.response?.status);
+      console.error('Admin API URL being called:', `${adminApi.defaults.baseURL}/categories/tree`);
+      
+      // Fallback to main backend if admin backend fails
+      try {
+        console.log('Falling back to main backend');
+        const fallbackResponse = await api.get<CategoriesResponse>(`/categories/tree?t=${Date.now()}`);
+        if (fallbackResponse.data.success && fallbackResponse.data.data && fallbackResponse.data.data.categories) {
+          return fallbackResponse.data.data.categories;
+        }
+        return [];
+      } catch (fallbackError) {
+        console.error('Fallback to main backend also failed:', fallbackError);
+        return [];
+      }
     }
   }
 
@@ -70,14 +83,27 @@ class CategoriesService {
    */
   async getAllCategories(): Promise<Category[]> {
     try {
-      const response = await api.get<CategoriesResponse>('/categories');
-      if (response.data.success && response.data.data.categories) {
+      const response = await adminApi.get('/categories');
+      if (response.data.success && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      if (response.data.success && response.data.data && response.data.data.categories) {
         return response.data.data.categories;
       }
       return [];
     } catch (error) {
-      
-      return [];
+      console.error('Error in getAllCategories from admin backend:', error);
+      // Fallback to main backend
+      try {
+        const fallbackResponse = await api.get<CategoriesResponse>('/categories');
+        if (fallbackResponse.data.success && fallbackResponse.data.data && fallbackResponse.data.data.categories) {
+          return fallbackResponse.data.data.categories;
+        }
+        return [];
+      } catch (fallbackError) {
+        console.error('Fallback to main backend also failed:', fallbackError);
+        return [];
+      }
     }
   }
 
@@ -87,12 +113,12 @@ class CategoriesService {
   async getCategoriesByLevel(level: number): Promise<Category[]> {
     try {
       const response = await api.get<CategoriesResponse>(`/categories/level/${level}`);
-      if (response.data.success && response.data.data.categories) {
+      if (response.data.success && response.data.data && response.data.data.categories) {
         return response.data.data.categories;
       }
       return [];
     } catch (error) {
-      
+      console.error('Error in getCategoriesByLevel:', error);
       return [];
     }
   }

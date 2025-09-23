@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5003';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 export enum NotificationType {
   NEW_ORDER = 'new_order',
@@ -37,7 +37,7 @@ export interface NotificationResponse {
 }
 
 class NotificationService {
-  private baseURL = `${API_BASE_URL}/api/admin/notifications`;
+  private baseURL = `${API_BASE_URL}/admin/notifications`;
 
   private getAuthHeaders() {
     const token = localStorage.getItem('adminToken');

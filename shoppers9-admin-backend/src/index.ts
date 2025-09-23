@@ -77,6 +77,7 @@ app.get('/api/placeholder/:text', (req, res) => {
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:5174',
   process.env.ADMIN_FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:5175',
   'https://admin.shoppers9.com',
   'https://shoppers9.com'
@@ -509,6 +510,7 @@ app.get('/api/test/products', auth, async (req: any, res) => {
     // Get products with proper filtering
     const products = await Product.find(query)
       .populate('category', 'name')
+      .populate('createdBy', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .limit(50);
     
@@ -599,7 +601,8 @@ app.get('/api/test/products', auth, async (req: any, res) => {
         reviewCount: product.reviewCount || 0,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt,
-        brand: product.brand || 'Generic'
+        brand: product.brand || 'Generic',
+        createdBy: product.createdBy
       };
     });
     

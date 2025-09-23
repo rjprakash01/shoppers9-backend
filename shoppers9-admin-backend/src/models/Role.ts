@@ -63,9 +63,26 @@ roleSchema.virtual('canManageRoles').get(function() {
   return this.level <= 2; // Super Admin and Admin can manage roles
 });
 
-// Method to check if this role can manage another role
-roleSchema.methods.canManage = function(targetRole: IRole): boolean {
+// Instance methods
+roleSchema.methods.canManage = function(this: IRole, targetRole: IRole): boolean {
   return this.level < targetRole.level;
+};
+
+roleSchema.methods.hasModuleAccess = function(this: IRole, module: string): boolean {
+  return this.permissions.some(async (permissionId) => {
+    const permission = await mongoose.model('Permission').findById(permissionId);
+    return permission && permission.module === module && permission.isActive;
+  });
+};
+
+roleSchema.methods.addModulePermission = function(this: IRole, permissionId: string): void {
+  if (!this.permissions.some(p => p.toString() === permissionId)) {
+    this.permissions.push(new mongoose.Types.ObjectId(permissionId));
+  }
+};
+
+roleSchema.methods.removeModulePermission = function(this: IRole, permissionId: string): void {
+  this.permissions = this.permissions.filter(p => p.toString() !== permissionId);
 };
 
 // Static method to get role hierarchy

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Product } from '../models/Product';
 import { inventoryService } from '../services/inventoryService';
-import { config } from '../config/database';
+// import { config } from '../config/database';
 
 /**
  * Test script to verify automatic product deactivation when stock reaches zero
@@ -9,7 +9,8 @@ import { config } from '../config/database';
 async function testAutoDeactivation() {
   try {
     // Connect to database
-    await mongoose.connect(config.mongoUri);
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/shoppers9';
+    await mongoose.connect(mongoUri);
     console.log('✅ Connected to database');
 
     // Find a product with stock to test

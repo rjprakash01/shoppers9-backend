@@ -4,7 +4,7 @@ import axios from 'axios';
 const router = express.Router();
 
 // Admin backend URL
-const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://localhost:5003/api';
+const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://localhost:5001/api';
 
 // Get platform settings (public endpoint)
 router.get('/', async (req, res, next) => {
