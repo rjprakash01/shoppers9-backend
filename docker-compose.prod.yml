@@ -1,0 +1,169 @@
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: shoppers9-mongodb-prod
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: shoppers9
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Customer Backend Service
+  backend-shoppers9:
+    build:
+      context: ./backend-shoppers9
+      target: production
+    container_name: backend-shoppers9-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: ${CUSTOMER_MONGODB_URI}
+      JWT_SECRET: ${CUSTOMER_JWT_SECRET}
+      JWT_REFRESH_SECRET: ${CUSTOMER_JWT_REFRESH_SECRET}
+      CORS_ORIGIN: ${CUSTOMER_FRONTEND_URL}
+      REDIS_URL: redis://redis:6379
+    expose:
+      - "5000"
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Admin Backend Service
+  shoppers9-admin-backend:
+    build:
+      context: ./shoppers9-admin-backend
+      target: production
+    container_name: shoppers9-admin-backend-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGODB_URI: ${ADMIN_MONGODB_URI}
+      JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_REFRESH_SECRET: ${ADMIN_JWT_REFRESH_SECRET}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+      CORS_ORIGIN: ${ADMIN_FRONTEND_URL}
+      REDIS_URL: redis://redis:6379
+    expose:
+      - "5001"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Customer Frontend Service
+  shoppers9-frontend:
+    build:
+      context: ./shoppers9-frontend
+      target: production
+    container_name: shoppers9-frontend-prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-shoppers9
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Admin Frontend Service
+  shoppers9-admin-frontend:
+    build:
+      context: ./shoppers9-admin-frontend
+      target: production
+    container_name: shoppers9-admin-frontend-prod
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - shoppers9-admin-backend
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis (for caching and sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: shoppers9-redis-prod
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - shoppers9-network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: shoppers9-nginx-prod
+    restart: always
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - shoppers9-frontend
+      - shoppers9-admin-frontend
+      - backend-shoppers9
+      - shoppers9-admin-backend
+    networks:
+      - shoppers9-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  shoppers9-network:
+    driver: bridge
