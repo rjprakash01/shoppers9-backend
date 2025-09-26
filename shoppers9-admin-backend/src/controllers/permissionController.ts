@@ -268,36 +268,49 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Get individual user module access
-    const individualModuleAccess = userRole.moduleAccess
-      .filter((m: any) => m.hasAccess)
-      .map((m: any) => ({
-        key: m.module,
-        module: m.module,
-        granted: m.hasAccess,
-        source: 'individual'
-      }));
-
-    // Get role-based module permissions
-    const role = userRole.roleId as any;
-    const roleModulePermissions = role && role.permissions ? role.permissions.map((perm: any) => ({
-      key: perm.module,
-      module: perm.module,
-      granted: true,
-      source: 'role'
-    })) : [];
-
-    // Combine and deduplicate module access (individual takes priority)
-    const allModuleAccess = [...individualModuleAccess];
-    const existingModules = new Set(individualModuleAccess.map(p => p.key));
+    // Unified User Assignment System - User assignments take priority over role permissions
+    // Get all available modules from Permission model
+    const allPermissions = await Permission.find({ isActive: true });
     
-    roleModulePermissions.forEach((rolePerm: any) => {
-      if (!existingModules.has(rolePerm.key)) {
-        allModuleAccess.push(rolePerm);
-      }
+    // Create a map of user's individual module access
+    const userModuleAccessMap = new Map();
+    userRole.moduleAccess.forEach((m: any) => {
+      userModuleAccessMap.set(m.module, m.hasAccess);
     });
 
-    const formattedPermissions = allModuleAccess;
+    // Get role-based permissions as fallback
+    const role = userRole.roleId as any;
+    const rolePermissionModules = new Set();
+    if (role && role.permissions) {
+      role.permissions.forEach((perm: any) => {
+        rolePermissionModules.add(perm.module);
+      });
+    }
+
+    // Build unified permissions list prioritizing user assignments
+    const formattedPermissions = allPermissions.map(perm => {
+      const module = perm.module;
+      let granted = false;
+      let source = 'none';
+
+      // Check user assignment first (highest priority)
+      if (userModuleAccessMap.has(module)) {
+        granted = userModuleAccessMap.get(module);
+        source = 'user_assignment';
+      }
+      // Fallback to role permission only if no user assignment exists
+      else if (rolePermissionModules.has(module)) {
+        granted = true;
+        source = 'role_fallback';
+      }
+
+      return {
+        key: module,
+        module: module,
+        granted: granted,
+        source: source
+      };
+    }).filter(p => p.granted); // Only return granted permissions
 
     return res.status(200).json({
       success: true,
@@ -320,7 +333,7 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
     const userRoles = await UserRole.find({ isActive: true })
       .populate({
         path: 'userId',
-        select: 'firstName lastName email'
+        select: 'firstName lastName email primaryRole'
       })
       .populate({
         path: 'roleId',
@@ -334,6 +347,12 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
         // Filter out UserRoles with missing user or role references
         const user = userRole.userId as any;
         const role = userRole.roleId as any;
+        
+        // Filter out super admin users - they don't need individual module permissions
+        if (user && user.primaryRole === 'super_admin') {
+          return false;
+        }
+        
         return user && role && user._id && role._id;
       })
       .map(userRole => {

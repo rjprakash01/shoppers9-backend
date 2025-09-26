@@ -48,7 +48,7 @@ export const requirePermission = (module: string) => {
   };
 };
 
-// Simplified helper function to check user module access
+// Unified User Assignment System - Check user module access with user assignments priority
 export const checkUserModuleAccess = async (
   userId: string, 
   module: string
@@ -61,13 +61,14 @@ export const checkUserModuleAccess = async (
       return false;
     }
 
-    // Check user-specific module access first
+    // Priority 1: Check user-specific module access (user assignments)
     const userModuleAccess = userRole.moduleAccess.find((m: any) => m.module === module);
-    if (userModuleAccess) {
+    if (userModuleAccess !== undefined) {
+      // User assignment exists, use it (whether true or false)
       return userModuleAccess.hasAccess;
     }
 
-    // Check role-based module access
+    // Priority 2: Fallback to role-based module access only if no user assignment exists
     const role = userRole.roleId as any;
     if (role && role.permissions && role.permissions.length > 0) {
       const rolePermission = await Permission.findOne({
@@ -79,6 +80,7 @@ export const checkUserModuleAccess = async (
       return !!rolePermission;
     }
 
+    // No access found
     return false;
   } catch (error) {
     console.error('Module access check error:', error);

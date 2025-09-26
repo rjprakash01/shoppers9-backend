@@ -45,8 +45,8 @@ router.route('/bulk-update')
   .put(requirePermission('products', 'edit'), bulkUpdateProducts);
 
 // Product Review Workflow Routes (must be before parameterized routes)
-router.get('/review-queue', requireRole(['super_admin']), getReviewQueue);
-router.post('/bulk-review-action', requireRole(['super_admin']), bulkReviewAction);
+router.get('/review-queue', requirePermission('product_review_queue', 'read'), getReviewQueue);
+router.post('/bulk-review-action', requirePermission('product_review_queue', 'edit'), bulkReviewAction);
 
 // Get products by category
 router.route('/category/:categoryId')
@@ -72,8 +72,8 @@ router.post('/:id/filter-values', requirePermission('filters', 'create'), setPro
 
 // Product Review Workflow Routes for specific products
 router.post('/:id/submit-for-review', requirePermission('products'), checkResourceAccess('Product'), submitProductForReview);
-router.post('/:id/approve', requireRole(['super_admin']), approveProduct);
-router.post('/:id/reject', requireRole(['super_admin']), rejectProduct);
-router.post('/:id/request-changes', requireRole(['super_admin']), requestProductChanges);
+router.patch('/:id/approve', requirePermission('product_review_queue', 'edit'), approveProduct);
+router.patch('/:id/reject', requirePermission('product_review_queue', 'edit'), rejectProduct);
+router.patch('/:id/request-changes', requirePermission('product_review_queue', 'edit'), requestProductChanges);
 
 export default router;

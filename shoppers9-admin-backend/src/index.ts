@@ -18,6 +18,7 @@ import filterRoutes from './routes/filter';
 import categoryFilterRoutes from './routes/categoryFilter';
 import productFilterValueRoutes from './routes/productFilterValue';
 import filterOptionRoutes from './routes/filterOption';
+import filterAssignmentRoutes from './routes/filterAssignment';
 import bannerRoutes from './routes/banner';
 import publicBannerRoutes from './routes/publicBanner';
 import inventoryRoutes from './routes/inventory';
@@ -639,6 +640,7 @@ app.use('/api/admin/filters', filterRoutes);
 app.use('/api/admin/filter-options', filterOptionRoutes);
 app.use('/api/admin', categoryFilterRoutes);
 app.use('/api/admin', productFilterValueRoutes);
+app.use('/api/admin', filterAssignmentRoutes);
 app.use('/api/admin/banners', bannerRoutes);
 // Public settings endpoint (no auth required)
 app.get('/api/settings/public', async (req, res) => {

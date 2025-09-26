@@ -36,18 +36,6 @@ const filterSchema = new Schema<IFilter>({
   },
   categoryLevels: {
     type: [Number],
-    enum: [1, 2, 3],
-    default: [2, 3], // Default to level 2 and 3 categories
-    validate: {
-      validator: function(levels: number[]) {
-        return levels.length > 0 && levels.every(level => [1, 2, 3].includes(level));
-      },
-      message: 'Category levels must be an array containing values 1, 2, or 3'
-    }
-  },
-  categories: {
-    type: [Schema.Types.ObjectId],
-    ref: 'Category',
     default: []
   },
   isActive: {

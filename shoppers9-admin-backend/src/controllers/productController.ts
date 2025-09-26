@@ -1233,13 +1233,7 @@ export const approveProduct = async (req: AuthRequest, res: Response): Promise<R
       });
     }
 
-    // Check if admin has Super Admin role
-    if (req.admin?.primaryRole !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only Super Admins can approve products'
-      });
-    }
+    // Permission check is handled by middleware
 
     const product = await Product.findById(id).populate('createdBy', 'firstName lastName email');
     if (!product) {
@@ -1359,13 +1353,7 @@ export const rejectProduct = async (req: AuthRequest, res: Response): Promise<Re
       });
     }
 
-    // Check if admin has Super Admin role
-    if (req.admin?.primaryRole !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only Super Admins can reject products'
-      });
-    }
+    // Permission check is handled by middleware
 
     if (!reason) {
       return res.status(400).json({
@@ -1493,13 +1481,7 @@ export const requestProductChanges = async (req: AuthRequest, res: Response): Pr
       });
     }
 
-    // Check if admin has Super Admin role
-    if (req.admin?.primaryRole !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only Super Admins can request product changes'
-      });
-    }
+    // Permission check is handled by middleware
 
     if (!changes) {
       return res.status(400).json({
@@ -1625,13 +1607,7 @@ export const getReviewQueue = async (req: AuthRequest, res: Response): Promise<R
       });
     }
 
-    // Check if admin has Super Admin role
-    if (req.admin?.primaryRole !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only Super Admins can access the review queue'
-      });
-    }
+    // Permission check is handled by middleware
 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -1641,8 +1617,34 @@ export const getReviewQueue = async (req: AuthRequest, res: Response): Promise<R
 
     // Build query
     let query: any = {};
-    if (status && Object.values(ReviewStatus).includes(status as ReviewStatus)) {
-      query.reviewStatus = status;
+    if (status && status !== 'all') {
+      // Map frontend status values to ReviewStatus enum values
+      let mappedStatus: ReviewStatus;
+      switch (status) {
+        case 'pending':
+          mappedStatus = ReviewStatus.PENDING_REVIEW;
+          break;
+        case 'approved':
+          mappedStatus = ReviewStatus.APPROVED;
+          break;
+        case 'rejected':
+          mappedStatus = ReviewStatus.REJECTED;
+          break;
+        case 'changes_requested':
+          mappedStatus = ReviewStatus.NEEDS_INFO;
+          break;
+        case 'draft':
+          mappedStatus = ReviewStatus.DRAFT;
+          break;
+        default:
+          // If it's already a valid ReviewStatus enum value, use it
+          if (Object.values(ReviewStatus).includes(status as ReviewStatus)) {
+            mappedStatus = status as ReviewStatus;
+          } else {
+            mappedStatus = ReviewStatus.PENDING_REVIEW;
+          }
+      }
+      query.reviewStatus = mappedStatus;
     } else {
       // Default to pending review
       query.reviewStatus = ReviewStatus.PENDING_REVIEW;
@@ -1720,10 +1722,9 @@ export const getReviewQueue = async (req: AuthRequest, res: Response): Promise<R
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          limit: limit,
-          hasPrev: page > 1,
-          hasNext: page < Math.ceil(total / limit)
+          totalProducts: total,
+          hasNext: page < Math.ceil(total / limit),
+          hasPrev: page > 1
         }
       }
     });
@@ -1750,13 +1751,7 @@ export const bulkReviewAction = async (req: AuthRequest, res: Response): Promise
       });
     }
 
-    // Check if admin has Super Admin role
-    if (req.admin?.primaryRole !== 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Only Super Admins can perform bulk review actions'
-      });
-    }
+    // Permission check is handled by middleware
 
     if (!Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({

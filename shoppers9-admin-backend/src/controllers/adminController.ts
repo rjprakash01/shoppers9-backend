@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
+import Role from '../models/Role';
+import UserRole from '../models/UserRole';
 import { AuthRequest } from '../types';
 import bcrypt from 'bcryptjs';
 
@@ -115,6 +117,26 @@ export const createAdmin = async (req: AuthRequest, res: Response) => {
       isVerified: true,
       createdBy: req.admin?.id
     });
+
+    // Create UserRole entry for the new admin
+    try {
+      const role = await Role.findOne({ name: admin.primaryRole });
+      if (role) {
+        await UserRole.create({
+          userId: admin._id,
+          roleId: role._id,
+          moduleAccess: [],
+          isActive: true,
+          assignedBy: req.admin?.id || admin._id
+        });
+        console.log(`✅ Created UserRole entry for admin: ${admin.email}`);
+      } else {
+        console.warn(`⚠️ Role '${admin.primaryRole}' not found for admin: ${admin.email}`);
+      }
+    } catch (roleError) {
+      console.error('Error creating UserRole entry:', roleError);
+      // Don't fail the admin creation if UserRole creation fails
+    }
 
     // Remove password from response
     const adminResponse = admin.toObject() as any;

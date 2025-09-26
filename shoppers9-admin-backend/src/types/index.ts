@@ -388,12 +388,11 @@ export interface IFilter extends Document {
   type: 'single' | 'multiple' | 'range';
   dataType: 'string' | 'number' | 'boolean';
   description?: string;
-  categoryLevels: (1 | 2 | 3)[]; // Which category levels this filter applies to
-  categories: mongoose.Types.ObjectId[]; // Specific category IDs this filter is assigned to
+  categoryLevels?: number[];
   isActive: boolean;
   sortOrder: number;
-  createdBy?: string;
-  updatedBy?: string;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -406,8 +405,8 @@ export interface IFilterOption extends Document {
   colorCode?: string;
   isActive: boolean;
   sortOrder: number;
-  createdBy?: string;
-  updatedBy?: string;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -419,8 +418,8 @@ export interface ICategoryFilter extends Document {
   isRequired: boolean;
   isActive: boolean;
   sortOrder: number;
-  createdBy?: string;
-  updatedBy?: string;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -432,8 +431,24 @@ export interface IProductFilterValue extends Document {
   filterOption: string;
   customValue?: string;
   isActive: boolean;
-  createdBy?: string;
-  updatedBy?: string;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IFilterAssignment extends Document {
+  _id: string;
+  filter: mongoose.Types.ObjectId | IFilter;
+  category: mongoose.Types.ObjectId | ICategory;
+  categoryLevel: 1 | 2 | 3; // 1=Category, 2=Subcategory, 3=Product Type
+  parentAssignment?: mongoose.Types.ObjectId | IFilterAssignment;
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  assignedAt: Date;
+  createdBy: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

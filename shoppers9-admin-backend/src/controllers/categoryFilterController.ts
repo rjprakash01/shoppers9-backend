@@ -323,12 +323,14 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
     // Check if category exists
     const category = await Category.findById(categoryId);
     if (!category) {
+
       res.status(404).json({
         success: false,
         message: 'Category not found'
       });
       return;
     }
+
 
     // Allow filters to be assigned to any category level
     // This enables dynamic filter assignment based on business needs
@@ -341,7 +343,11 @@ export const getAvailableFiltersForCategory = async (req: Request, res: Response
     const query: any = {
       _id: { $nin: assignedFilterIds },
       isActive: true,
-      categoryLevels: { $in: [category.level] } // Only show filters that apply to this category level
+      $or: [
+        { categoryLevels: { $in: [category.level] } }, // Filters configured for this level
+        { categoryLevels: { $exists: false } }, // Filters without categoryLevels (backward compatibility)
+        { categoryLevels: { $size: 0 } } // Filters with empty categoryLevels array
+      ]
     };
 
     if (search) {

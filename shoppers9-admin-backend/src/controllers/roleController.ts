@@ -293,7 +293,16 @@ export const getUsersWithRoles = async (req: RBACRequest, res: Response, next: N
     const query: any = {};
     
     if (role) {
-      query.primaryRole = role;
+      // If super_admin is specifically requested, return empty results
+      if (role === 'super_admin') {
+        query.primaryRole = { $in: [] };
+      } else {
+        // For any other specific role, use it directly (super_admin won't match anyway)
+        query.primaryRole = role;
+      }
+    } else {
+      // If no specific role is requested, exclude super admin users
+      query.primaryRole = { $ne: 'super_admin' };
     }
     
     if (status) {

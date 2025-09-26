@@ -12,14 +12,9 @@ interface BannerData {
   buttonText?: string;
   isActive: boolean;
   order: number;
-  displayType: 'carousel' | 'price-range';
+  displayType: 'carousel' | 'hero-banner';
   categorySlug?: string;
-  priceRange?: {
-    minPrice?: number;
-    maxPrice?: number;
-    label: string;
-    color?: string;
-  };
+
 }
 
 // Mock banner data for different categories
