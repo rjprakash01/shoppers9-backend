@@ -115,6 +115,8 @@ export interface ProductFilters {
   limit?: number;
   sortBy?: 'name' | 'price' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+  // Dynamic filters - any filter name can have string or string[] values
+  [key: string]: any;
 }
 
 export interface FilterOption {
@@ -131,6 +133,15 @@ export interface FilterData {
   materials: FilterOption[];
   fabrics: FilterOption[];
   subcategories: { name: string; slug: string }[];
+  filters: DynamicFilter[];
+}
+
+export interface DynamicFilter {
+  name: string;
+  displayName: string;
+  type: string;
+  dataType: string;
+  options: (FilterOption & { value: string; colorCode?: string })[];
 }
 
 class ProductService {

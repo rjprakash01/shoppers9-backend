@@ -5,8 +5,124 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { categoriesService, type Category } from '../../services/categories';
+import { deviceDetection } from '../../utils/mobile';
 import shoppers9Logo from '../../assets/shoppers9-logo.svg';
 import EnhancedSearch from '../EnhancedSearch';
+import LoginModal from '../LoginModal';
+
+// Mobile Category Item Component
+interface MobileCategoryItemProps {
+  category: Category;
+  categories: Category[];
+  onCategoryClick: () => void;
+  level?: number;
+}
+
+const MobileCategoryItem: React.FC<MobileCategoryItemProps> = ({ 
+  category, 
+  categories, 
+  onCategoryClick, 
+  level = 0 
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
+  
+  // Check for subcategories using the children array from API response or by filtering parentCategory
+  const subcategories = category.children || categories.filter(cat => {
+    const parentId = typeof cat.parentCategory === 'string' ? cat.parentCategory : cat.parentCategory?._id || cat.parentCategory?.id;
+    return parentId === (category._id || category.id);
+  });
+  const hasSubcategories = subcategories.length > 0;
+  
+  const handleCategoryClick = () => {
+    if (hasSubcategories) {
+      setIsExpanded(!isExpanded);
+    } else if (level >= 2) {
+      // Only navigate for Level 3 categories (level >= 2) without subcategories
+      // Build hierarchical URL similar to desktop navigation
+      const buildCategoryUrl = () => {
+        const categorySlug = category.slug || category.name.toLowerCase();
+        
+        if (level === 2) {
+          // Level 3 category - need to find parent categories
+          const parentCategory = categories.find(cat => {
+            const catId = cat._id || cat.id;
+            const parentId = typeof category.parentCategory === 'string' ? category.parentCategory : category.parentCategory?._id || category.parentCategory?.id;
+            return catId === parentId;
+          });
+          
+          if (parentCategory) {
+            const grandParentCategory = categories.find(cat => {
+              const catId = cat._id || cat.id;
+              const parentId = typeof parentCategory.parentCategory === 'string' ? parentCategory.parentCategory : parentCategory.parentCategory?._id || parentCategory.parentCategory?.id;
+              return catId === parentId;
+            });
+            
+            if (grandParentCategory) {
+              // This is a Level 3 category (subsubcategory)
+              const grandParentSlug = grandParentCategory.slug || grandParentCategory.name.toLowerCase();
+              const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase();
+              return `/products?category=${encodeURIComponent(grandParentSlug)}&subcategory=${encodeURIComponent(parentSlug)}&subsubcategory=${encodeURIComponent(categorySlug)}`;
+            } else {
+              // This is a Level 2 category (subcategory)
+              const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase();
+              return `/products?category=${encodeURIComponent(parentSlug)}&subcategory=${encodeURIComponent(categorySlug)}`;
+            }
+          }
+        }
+        
+        // Fallback to just category
+        return `/products?category=${encodeURIComponent(categorySlug)}`;
+      };
+      
+      navigate(buildCategoryUrl());
+      onCategoryClick();
+    }
+    // For Level 1 and Level 2 categories without subcategories, do nothing
+  };
+  
+  const paddingLeft = level * 16 + 12; // Indentation based on level
+  
+  return (
+    <div>
+      <div 
+         className="flex items-center justify-between py-2 px-3 text-gray-700 hover:bg-gray-50 cursor-pointer transition-all duration-200"
+         style={{ paddingLeft: `${paddingLeft}px` }}
+         onClick={handleCategoryClick}
+       >
+         <span className={`text-sm ${
+           level === 0 ? 'font-semibold text-gray-800' : 
+           level === 1 ? 'font-medium text-gray-700' : 
+           'font-normal text-gray-600'
+         }`}>
+           {category.name}
+         </span>
+         {hasSubcategories && (
+           <ChevronDown 
+             className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+               isExpanded ? 'rotate-180' : ''
+             }`} 
+           />
+         )}
+       </div>
+      
+      {/* Subcategories */}
+      {hasSubcategories && isExpanded && (
+        <div className="space-y-1">
+          {subcategories.map((subcategory) => (
+            <MobileCategoryItem
+              key={subcategory._id}
+              category={subcategory}
+              categories={categories}
+              onCategoryClick={onCategoryClick}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Type declaration for NodeJS
 declare global {
@@ -27,27 +143,50 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCategoriesMenu, setShowCategoriesMenu] = useState('');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Handle click outside to close user menu
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(deviceDetection.isMobile());
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
+
+  // Handle click outside to close user menu and category menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
       }
+      if (categoryMenuRef.current && !categoryMenuRef.current.contains(event.target as Node)) {
+        if (isMobile) {
+          setShowCategoriesMenu('');
+        }
+      }
     };
 
-    if (showUserMenu) {
+    if (showUserMenu || (isMobile && showCategoriesMenu)) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showUserMenu]);
+  }, [showUserMenu, showCategoriesMenu, isMobile]);
 
   // Fetch categories from API
   const fetchCategories = async () => {
@@ -94,8 +233,9 @@ const Navbar: React.FC = () => {
     fetchCategories();
   }, []);
 
-  // Debounced hover handlers
+  // Debounced hover handlers for desktop
   const handleCategoryHover = (categoryId: string) => {
+    if (isMobile) return; // Disable hover on mobile
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
     }
@@ -103,6 +243,7 @@ const Navbar: React.FC = () => {
   };
 
   const handleCategoryLeave = () => {
+    if (isMobile) return; // Disable hover on mobile
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
     }
@@ -110,6 +251,21 @@ const Navbar: React.FC = () => {
       setShowCategoriesMenu('');
     }, 150); // Small delay to prevent flickering
     setHoverTimeout(timeout);
+  };
+
+  // Click handler for mobile category toggle
+  const handleCategoryClick = (categoryId: string, event: React.MouseEvent) => {
+    if (!isMobile) return; // Only handle clicks on mobile
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Toggle the dropdown - close if already open, open if closed
+    if (showCategoriesMenu === categoryId) {
+      setShowCategoriesMenu('');
+    } else {
+      setShowCategoriesMenu(categoryId);
+    }
   };
 
   // Cleanup timeout on unmount
@@ -137,98 +293,29 @@ const Navbar: React.FC = () => {
 
   return (
     <>
-      {/* Elite Announcement Bar - Only on Home Page */}
-      {location.pathname === '/' && (
-        <div className="bg-elite-cta-purple text-elite-base-white">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-center space-x-4 md:space-x-6 lg:space-x-8 xl:space-x-12 py-2 text-sm overflow-hidden lg:overflow-visible">
-              {/* Mobile Auto-Scrolling Container */}
-              <div className="lg:hidden flex animate-scroll">
-                <div className="flex items-center space-x-8 whitespace-nowrap">
-                  <div className="flex items-center space-x-2">
-                    <Gift className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Fast Delivery</span>
-                    <span className="text-elite-base-white/80">Quick & Reliable</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Shield className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Secure Shopping</span>
-                    <span className="text-elite-base-white/80">100% Protected</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Quality Products</span>
-                    <span className="text-elite-base-white/80">Best Selection</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Bell className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Customer Support</span>
-                    <span className="text-elite-base-white/80">24/7 Help</span>
-                  </div>
-                  {/* Duplicate for seamless loop */}
-                  <div className="flex items-center space-x-2">
-                    <Gift className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Fast Delivery</span>
-                    <span className="text-elite-base-white/80">Quick & Reliable</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Shield className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Secure Shopping</span>
-                    <span className="text-elite-base-white/80">100% Protected</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Quality Products</span>
-                    <span className="text-elite-base-white/80">Best Selection</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Bell className="h-4 w-4 text-elite-gold-highlight" />
-                    <span className="font-semibold font-inter">Customer Support</span>
-                    <span className="text-elite-base-white/80">24/7 Help</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Desktop Static Container */}
-              <div className="hidden lg:flex items-center space-x-4 md:space-x-6 lg:space-x-8 xl:space-x-12">
-                <div className="flex items-center space-x-2 whitespace-nowrap">
-                  <Gift className="h-4 w-4 text-elite-gold-highlight" />
-                  <span className="font-semibold font-inter">Fast Delivery</span>
-                  <span className="text-elite-base-white/80">Quick & Reliable</span>
-                </div>
-                <div className="flex items-center space-x-2 whitespace-nowrap">
-                  <Shield className="h-4 w-4 text-elite-gold-highlight" />
-                  <span className="font-semibold font-inter">Secure Shopping</span>
-                  <span className="text-elite-base-white/80">100% Protected</span>
-                </div>
-                <div className="flex items-center space-x-2 whitespace-nowrap">
-                  <Star className="h-4 w-4 text-elite-gold-highlight" />
-                  <span className="font-semibold font-inter">Quality Products</span>
-                  <span className="text-elite-base-white/80">Best Selection</span>
-                </div>
-                <div className="flex items-center space-x-2 whitespace-nowrap">
-                  <Bell className="h-4 w-4 text-elite-gold-highlight" />
-                  <span className="font-semibold font-inter">Customer Support</span>
-                  <span className="text-elite-base-white/80">24/7 Help</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Elite Main Navbar */}
-      <nav className="bg-elite-base-white shadow-premium lg:fixed lg:top-0 lg:left-0 lg:right-0 sticky top-0 z-50 border-b border-elite-light-grey">
+      <nav className="bg-elite-base-white shadow-premium lg:fixed lg:top-0 lg:left-0 lg:right-0 z-50 border-b border-elite-light-grey">
         <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Shoppers9 Logo */}
-            <Link to="/" className="flex items-center group">
-              <img 
-                src={shoppers9Logo} 
-                alt="Shoppers9 Logo" 
-                className="h-10 sm:h-12 md:h-14 w-auto transform group-hover:scale-105 transition-all duration-300"
-              />
-            </Link>
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              {/* Mobile Hamburger Menu */}
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="lg:hidden mr-3 p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors"
+                aria-label="Toggle mobile menu"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+
+              {/* Shoppers9 Logo */}
+              <Link to="/" className="flex items-center group">
+                <img 
+                  src={shoppers9Logo} 
+                  alt="Shoppers9 Logo" 
+                  className="h-10 sm:h-12 md:h-14 w-auto transform group-hover:scale-105 transition-all duration-300"
+                />
+              </Link>
+            </div>
 
             {/* Elite Enhanced Search Bar */}
             <div className="hidden md:flex flex-1 max-w-4xl mx-4 lg:mx-8">
@@ -238,7 +325,7 @@ const Navbar: React.FC = () => {
                   setSearchQuery(query);
                   navigate(`/products?search=${encodeURIComponent(query)}`);
                 }}
-                size="md"
+                size="sm"
                 className="w-full"
                 showFilters={false}
               />
@@ -361,15 +448,15 @@ const Navbar: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <Link
-                  to="/login"
+                <button
+                  onClick={() => setShowLoginModal(true)}
                   className="group relative"
                 >
                   <div className="flex flex-col items-center p-3 rounded-2xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300">
                     <User className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
                     <span className="text-xs mt-1 font-semibold">Login</span>
                   </div>
-                </Link>
+                </button>
               )}
           </div>
 
@@ -391,9 +478,9 @@ const Navbar: React.FC = () => {
         </div>
 
         {/* Category Navigation */}
-        <div className={`border-t border-gray-200 bg-gray-50 relative z-[999999] lg:z-50 lg:fixed lg:top-20 lg:left-0 lg:right-0 ${location.pathname === '/profile' ? 'hidden lg:block' : ''}`}>
+        <div ref={categoryMenuRef} className={`hidden lg:block border-t border-gray-200 bg-gray-50 relative z-50 lg:z-50 lg:fixed lg:top-16 lg:left-0 lg:right-0 ${location.pathname === '/profile' ? 'hidden lg:block' : ''}`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center lg:justify-center justify-start space-x-4 py-3 lg:overflow-x-visible overflow-x-auto lg:space-x-6 xl:space-x-8 category-scroll" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+            <div className="flex items-center lg:justify-center justify-start space-x-4 py-2 overflow-x-auto lg:overflow-x-visible lg:space-x-6 xl:space-x-8 category-scroll scrollbar-hide">
               {categoriesLoading ? (
                 <div className="flex items-center space-x-2 text-gray-600">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -411,40 +498,58 @@ const Navbar: React.FC = () => {
                     onMouseEnter={() => handleCategoryHover(category._id)}
                     onMouseLeave={handleCategoryLeave}
                   >
-                    <div className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 py-2 px-3 cursor-pointer rounded-md whitespace-nowrap">
-                      <Link
-                        to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}`}
-                        className="hover:text-blue-600 transition-colors duration-200 font-poppins"
-                      >
-                        <span>{category.name}</span>
-                      </Link>
-                      {category.children && category.children.length > 0 && (
-                        <ChevronDown className="h-3 w-3" />
+                    <div 
+                      className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 py-1 px-2 cursor-pointer rounded-md whitespace-nowrap"
+                      onClick={(e) => handleCategoryClick(category._id, e)}
+                    >
+                      {isMobile && category.children && category.children.length > 0 ? (
+                        // On mobile, make the whole area clickable for dropdown
+                        <>
+                          <span className="font-poppins">{category.name}</span>
+                          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showCategoriesMenu === category._id ? 'rotate-180' : ''}`} />
+                        </>
+                      ) : (
+                        // On desktop, keep the link functionality
+                        <>
+                          <Link
+                            to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}`}
+                            className="hover:text-blue-600 transition-colors duration-200 font-poppins"
+                          >
+                            <span>{category.name}</span>
+                          </Link>
+                          {category.children && category.children.length > 0 && (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                        </>
                       )}
                     </div>
                     {showCategoriesMenu === category._id && category.children && category.children.length > 0 && (
                       <div 
-                         className="absolute top-full left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999999] lg:z-[9999]"
+                         className="absolute top-full left-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200"
+                        style={{
+                           zIndex: 100,
+                           position: 'absolute'
+                         }}
                         onMouseEnter={() => handleCategoryHover(category._id)}
                         onMouseLeave={handleCategoryLeave}
                       >
-                        <div className="p-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {category.children.filter(child => child.isActive).map((subcategory, subIndex) => (
-                              <div key={subcategory._id || `subcategory-${subIndex}`} className="space-y-3">
+                              <div key={subcategory._id || `subcategory-${subIndex}`} className="space-y-1.5">
                                 <Link
-                                  to={`/products?category=${encodeURIComponent(subcategory.slug)}`}
-                                  className="block font-semibold text-gray-900 hover:text-blue-600 transition-colors duration-200 text-sm uppercase tracking-wide"
+                                  to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name.toLowerCase())}`}
+                                  className="block font-medium text-gray-800 hover:text-blue-600 transition-colors duration-200 text-xs uppercase tracking-wide"
                                 >
                                   {subcategory.name}
                                 </Link>
                                 {subcategory.children && subcategory.children.length > 0 && (
-                                  <div className="space-y-2">
+                                  <div className="space-y-1">
                                     {subcategory.children.filter(subChild => subChild.isActive).map((subSubcategory, subSubIndex) => (
                                       <Link
                                         key={subSubcategory._id || `subsubcategory-${subSubIndex}`}
-                                        to={`/products?category=${encodeURIComponent(subSubcategory.slug)}`}
-                                        className="block text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200 py-1"
+                                        to={`/products?category=${encodeURIComponent(category.slug || category.name.toLowerCase())}&subcategory=${encodeURIComponent(subcategory.slug || subcategory.name.toLowerCase())}&subsubcategory=${encodeURIComponent(subSubcategory.slug || subSubcategory.name.toLowerCase())}`}
+                                        className="block text-xs text-gray-600 hover:text-blue-600 transition-colors duration-200 py-0.5"
                                       >
                                         {subSubcategory.name}
                                       </Link>
@@ -458,7 +563,7 @@ const Navbar: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  ))
+                ))
               )}
             </div>
           </div>
@@ -582,13 +687,15 @@ const Navbar: React.FC = () => {
                   </>
                 ) : (
                   <div className="space-y-3 mt-4">
-                    <Link
-                      to="/login"
-                      className="block px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center rounded-xl hover:shadow-lg transition-all duration-300 font-semibold"
-                      onClick={() => setIsMenuOpen(false)}
+                    <button
+                      onClick={() => {
+                        setShowLoginModal(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center rounded-xl hover:shadow-lg transition-all duration-300 font-semibold"
                     >
                       Login
-                    </Link>
+                    </button>
                     <Link
                       to="/signup"
                       className="block px-4 py-3 border-2 border-blue-500 text-blue-500 text-center rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold"
@@ -602,7 +709,117 @@ const Navbar: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Mobile Hamburger Menu */}
+         {showMobileMenu && (
+           <div className="lg:hidden fixed inset-0 z-[9999] bg-black bg-opacity-50 animate-in fade-in duration-300" onClick={() => setShowMobileMenu(false)}>
+             <div 
+               className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out overflow-y-auto animate-in slide-in-from-left"
+               onClick={(e) => e.stopPropagation()}
+             >
+              {/* Mobile Menu Header */}
+               <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+                 <div className="flex items-center">
+                   <img 
+                     src={shoppers9Logo} 
+                     alt="Shoppers9 Logo" 
+                     className="h-8 w-auto"
+                   />
+                   <span className="ml-2 text-sm font-semibold text-gray-700">Menu</span>
+                 </div>
+                 <button
+                   onClick={() => setShowMobileMenu(false)}
+                   className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-white hover:shadow-md transition-all duration-200"
+                 >
+                   <X className="h-6 w-6" />
+                 </button>
+               </div>
+
+              {/* Mobile Menu Content */}
+              <div className="p-2">
+                {/* Categories */}
+                 <div className="space-y-1">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3 px-2">
+                     Categories
+                   </h3>
+                  {categoriesLoading ? (
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-sm">Loading categories...</span>
+                    </div>
+                  ) : categories.length === 0 ? (
+                    <div className="text-gray-600 text-sm">
+                      No categories available
+                    </div>
+                  ) : (
+                    categories.filter(cat => cat.level === 1).map((category) => (
+                      <MobileCategoryItem 
+                        key={category._id} 
+                        category={category} 
+                        categories={categories}
+                        onCategoryClick={() => setShowMobileMenu(false)}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Mobile Menu Footer */}
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  {isAuthenticated ? (
+                    <div className="space-y-2">
+                      <Link
+                        to="/profile"
+                        className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-100 rounded-md"
+                        onClick={() => setShowMobileMenu(false)}
+                      >
+                        <User className="h-5 w-5" />
+                        <span>My Profile</span>
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-100 rounded-md"
+                        onClick={() => setShowMobileMenu(false)}
+                      >
+                        <ShoppingCart className="h-5 w-5" />
+                        <span>My Orders</span>
+                      </Link>
+                      <Link
+                        to="/wishlist"
+                        className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-100 rounded-md"
+                        onClick={() => setShowMobileMenu(false)}
+                      >
+                        <Heart className="h-5 w-5" />
+                        <span>Wishlist</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          setShowMobileMenu(false);
+                          setShowLoginModal(true);
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      >
+                        <User className="h-5 w-5" />
+                        <span>Login / Sign Up</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </nav>
+    
+    {/* Login Modal */}
+    {showLoginModal && (
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
+    )}
     </>
   );
 };

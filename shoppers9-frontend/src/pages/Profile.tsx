@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X, Camera, Settings, Shield, CreditCard, Bell, LogOut, ShoppingCart, ChevronDown, ArrowLeft, Package, Clock, Truck } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit, Plus, Trash2, Check, X, Camera, Settings, CreditCard, Bell, LogOut, ShoppingCart, ChevronDown, ArrowLeft, Package, Clock, Truck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authService, type Address } from '../services/auth';
 import { orderService } from '../services/orders';
@@ -57,10 +57,19 @@ const Profile: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
+  // Update profileForm when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        email: user.email || ''
+      });
+    }
+  }, [user]);
+
   const menuItems = [
     { id: 'profile', label: 'Profile Info', icon: User },
     { id: 'addresses', label: 'Addresses', icon: MapPin },
-    { id: 'security', label: 'Security', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'logout', label: 'Logout', icon: LogOut, isAction: true },
   ];
@@ -252,7 +261,29 @@ const Profile: React.FC = () => {
 
   const handleLogoutConfirm = () => {
     logout();
-    navigate('/login');
+    // Stay on the same page after logout
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const updatedUser = await authService.updateProfile(profileForm);
+      updateUser(updatedUser);
+      setIsEditingProfile(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancelProfileEdit = () => {
+    setProfileForm({
+      name: user?.name || '',
+      email: user?.email || ''
+    });
+    setIsEditingProfile(false);
   };
 
   if (!user) {
@@ -269,55 +300,33 @@ const Profile: React.FC = () => {
   return (
     <>
       {/* Mobile Menu View */}
-      <div className="lg:hidden min-h-screen" style={{background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'}}>
+      <div className="lg:hidden min-h-screen bg-gray-50">
         {!mobileCurrentPage ? (
-          <div className="p-4">
-            <div className="bg-white" style={{
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div className="p-6">
-                <h1 className="text-2xl font-bold mb-6" style={{
-                  fontFamily: 'Inter, sans-serif',
-                  color: '#1e293b',
-                  letterSpacing: '-0.025em'
+          <div className="p-2">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="p-3">
+                <h1 className="text-lg font-semibold mb-3 text-black" style={{
+                  fontFamily: 'Inter, sans-serif'
                 }}>My Profile</h1>
                 
                 {/* Mobile Profile Header */}
-                <div className="mb-6 p-4" style={{
-                  background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                  borderRadius: '16px'
-                }}>
+                <div className="mb-3 p-2 bg-black rounded-lg">
                   <div className="text-center">
-                    <div className="relative inline-block mb-3">
-                      <div className="w-16 h-16 flex items-center justify-center mx-auto" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-                        borderRadius: '16px',
-                        border: '2px solid rgba(255,255,255,0.3)',
-                        backdropFilter: 'blur(10px)'
-                      }}>
-                        <User className="h-8 w-8 text-white" />
+                    <div className="relative inline-block mb-2">
+                      <div className="w-12 h-12 flex items-center justify-center mx-auto bg-gray-800 rounded-lg">
+                        <User className="h-6 w-6 text-white" />
                       </div>
-                      <button className="absolute -bottom-1 -right-1 rounded-full p-2" style={{
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-                        boxShadow: '0 4px 12px rgba(245,158,11,0.4)'
-                      }}>
-                        <Camera className="h-3 w-3 text-white" />
-                      </button>
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-1" style={{
-                      fontFamily: 'Inter, sans-serif',
-                      letterSpacing: '-0.025em'
+                    <h3 className="text-base font-semibold text-white mb-1" style={{
+                      fontFamily: 'Inter, sans-serif'
                     }}>{user.name || 'User'}</h3>
-                    <p className="text-white text-sm opacity-90" style={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: '500'
+                    <p className="text-gray-300 text-sm" style={{
+                      fontFamily: 'Inter, sans-serif'
                     }}>{user.email}</p>
                   </div>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {menuItems.map((item) => {
                     const Icon = item.icon;
                     if (item.isAction) {
@@ -325,19 +334,14 @@ const Profile: React.FC = () => {
                         <button
                           key={item.id}
                           onClick={() => setShowLogoutConfirm(true)}
-                          className="w-full flex items-center space-x-3 px-3 py-2.5 text-left font-medium"
+                          className="w-full flex items-center space-x-3 px-3 py-2 text-left font-medium border border-gray-300 rounded-lg hover:bg-gray-50"
                           style={{
                             fontFamily: 'Inter, sans-serif',
-                            borderRadius: '12px',
-                            color: '#dc2626',
-                            background: 'linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.02) 100%)',
-                            border: '1px solid rgba(220,38,38,0.1)'
+                            color: '#dc2626'
                           }}
                         >
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                            background: 'linear-gradient(135deg, rgba(220,38,38,0.1) 0%, rgba(220,38,38,0.05) 100%)'
-                          }}>
-                            <Icon className="h-4 w-4" />
+                          <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100">
+                            <Icon className="h-4 w-4 text-red-600" />
                           </div>
                           <span className="text-sm">{item.label}</span>
                         </button>
@@ -347,19 +351,14 @@ const Profile: React.FC = () => {
                       <button
                         key={item.id}
                         onClick={() => setMobileCurrentPage(item.id)}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 text-left font-medium"
+                        className="w-full flex items-center space-x-3 px-3 py-2 text-left font-medium border border-gray-200 rounded-lg hover:bg-gray-50"
                         style={{
                           fontFamily: 'Inter, sans-serif',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                          color: '#475569',
-                          border: '1px solid #e2e8f0'
+                          color: '#374151'
                         }}
                       >
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.05) 100%)'
-                        }}>
-                          <Icon className="h-4 w-4" style={{color: 'var(--cta-dark-purple)'}} />
+                        <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-100">
+                          <Icon className="h-4 w-4 text-gray-600" />
                         </div>
                         <span className="text-sm">{item.label}</span>
                       </button>
@@ -379,99 +378,69 @@ const Profile: React.FC = () => {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 border: '1px solid #e5e7eb'
               }}>
-                <div className="px-4 py-3" style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                <div className="px-4 py-3 bg-gray-100" style={{
                   borderRadius: '24px 24px 0 0'
                 }}>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={() => setMobileCurrentPage(null)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg" style={{
-                        background: 'rgba(255,255,255,0.2)'
-                      }}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-300"
                     >
-                      <ArrowLeft className="h-4 w-4 text-white" />
+                      <ArrowLeft className="h-3 w-3 text-gray-700" />
                     </button>
                     <div>
-                      <h2 className="text-base font-bold text-white" style={{
+                      <h2 className="text-base font-bold text-black" style={{
                         fontFamily: 'Inter, sans-serif',
                         letterSpacing: '-0.025em'
                       }}>Profile Information</h2>
                     </div>
                   </div>
                 </div>
-                <div className="p-3">
-                  <div className="space-y-2">
-                    <div className="p-2" style={{
-                      background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                    }}>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)'
-                        }}>
-                          <User className="h-3 w-3 text-white" />
+                <div className="p-2">
+                  <div className="space-y-1.5">
+                    <div className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center space-x-1.5">
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center bg-gray-300">
+                          <User className="h-2.5 w-2.5 text-gray-700" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-medium" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#64748b'
+                          <p className="text-xs font-medium text-gray-600" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>Full Name</p>
-                          <p className="text-xs font-semibold" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#1e293b'
+                          <p className="text-xs font-semibold text-black" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>{user.name || 'Not provided'}</p>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="p-2" style={{
-                      background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                    }}>
+                    <div className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)'
-                        }}>
-                          <Mail className="h-3 w-3 text-white" />
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center bg-gray-300">
+                          <Mail className="h-2.5 w-2.5 text-gray-700" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-medium" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#64748b'
+                          <p className="text-xs font-medium text-gray-600" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>Email Address</p>
-                          <p className="text-xs font-semibold" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#1e293b'
+                          <p className="text-xs font-semibold text-black" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>{user.email || 'Not provided'}</p>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="p-2" style={{
-                      background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                    }}>
+                    <div className="p-1.5 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                        }}>
-                          <Phone className="h-3 w-3 text-white" />
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center bg-gray-300">
+                          <Phone className="h-2.5 w-2.5 text-gray-700" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-medium" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#64748b'
+                          <p className="text-xs font-medium text-gray-600" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>Mobile Number</p>
-                          <p className="text-xs font-semibold" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#1e293b'
+                          <p className="text-xs font-semibold text-black" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>+91 {user.phone || '1234567890'}</p>
                         </div>
                       </div>
@@ -487,95 +456,69 @@ const Profile: React.FC = () => {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 border: '1px solid #e5e7eb'
               }}>
-                <div className="px-4 py-3" style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                  borderRadius: '24px 24px 0 0'
-                }}>
+                <div className="px-3 py-2 bg-gray-100 border-b border-gray-200">
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => setMobileCurrentPage(null)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg" style={{
-                        background: 'rgba(255,255,255,0.2)'
-                      }}
+                      className="flex items-center justify-center w-6 h-6 rounded-lg bg-gray-300"
                     >
-                      <ArrowLeft className="h-4 w-4 text-white" />
+                      <ArrowLeft className="h-4 w-4 text-gray-700" />
                     </button>
                     <div>
-                      <h2 className="text-base font-bold text-white" style={{
+                      <h2 className="text-base font-bold text-black" style={{
                         fontFamily: 'Inter, sans-serif',
                         letterSpacing: '-0.025em'
                       }}>My Orders</h2>
                     </div>
                   </div>
                 </div>
-                <div className="p-4">
+                <div className="p-3">
                   {ordersLoading ? (
                     <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
                       <p className="text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Loading your orders...</p>
                     </div>
                   ) : ordersError ? (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
-                        background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
-                        borderRadius: '16px',
-                        border: '1px solid #fecaca'
-                      }}>
-                        <X className="h-8 w-8 text-red-400" />
+                      <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4 bg-gray-100 rounded-lg border border-gray-200">
+                        <X className="h-8 w-8 text-black" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{fontFamily: 'Inter, sans-serif'}}>Error Loading Orders</h3>
                       <p className="text-gray-600 mb-6" style={{fontFamily: 'Inter, sans-serif'}}>{ordersError}</p>
                       <button 
                         onClick={fetchOrders}
-                        className="px-6 py-3 font-medium" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                          color: 'white',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 12px rgba(99,102,241,0.2)'
+                        className="px-6 py-3 font-medium bg-black text-white rounded-lg" style={{
+                          fontFamily: 'Inter, sans-serif'
                         }}>
                         Try Again
                       </button>
                     </div>
                   ) : orders.length === 0 ? (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                        borderRadius: '16px',
-                        border: '1px solid #e2e8f0'
-                      }}>
+                      <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4 bg-gray-100 rounded-lg border border-gray-200">
                         <ShoppingCart className="h-8 w-8 text-gray-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{fontFamily: 'Inter, sans-serif'}}>No Orders Yet</h3>
                       <p className="text-gray-600 mb-6" style={{fontFamily: 'Inter, sans-serif'}}>Start shopping to see your orders here</p>
                       <button 
                         onClick={() => navigate('/products')}
-                        className="px-6 py-3 font-medium" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                          color: 'white',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 12px rgba(99,102,241,0.2)'
+                        className="px-6 py-3 font-medium bg-black text-white rounded-xl" style={{
+                          fontFamily: 'Inter, sans-serif'
                         }}>
                         Browse Products
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {orders.map((order) => (
-                        <div key={order._id} className="border border-gray-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                                background: order.orderStatus === 'delivered' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                                           order.orderStatus === 'shipped' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
-                                           order.orderStatus === 'cancelled' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
-                                           'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                              }}>
-                                {order.orderStatus === 'delivered' ? <Package className="h-4 w-4 text-white" /> :
-                                 order.orderStatus === 'shipped' ? <Truck className="h-4 w-4 text-white" /> :
-                                 order.orderStatus === 'cancelled' ? <X className="h-4 w-4 text-white" /> :
-                                 <Clock className="h-4 w-4 text-white" />}
+                        <div key={order._id} className="border border-gray-200 rounded-lg p-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center space-x-1.5">
+                              <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-black">
+                                {order.orderStatus === 'delivered' ? <Package className="h-2.5 w-2.5 text-white" /> :
+                                 order.orderStatus === 'shipped' ? <Truck className="h-2.5 w-2.5 text-white" /> :
+                                 order.orderStatus === 'cancelled' ? <X className="h-2.5 w-2.5 text-white" /> :
+                                 <Clock className="h-2.5 w-2.5 text-white" />}
                               </div>
                               <div>
                                 <h4 className="font-semibold text-gray-900 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>
@@ -605,13 +548,13 @@ const Profile: React.FC = () => {
                           </div>
                           
                           {order.items && order.items.length > 0 && (
-                            <div className="border-t pt-2 mt-2">
-                              <p className="text-xs text-gray-600 mb-2" style={{fontFamily: 'Inter, sans-serif'}}>
+                            <div className="border-t pt-1.5 mt-1.5">
+                              <p className="text-xs text-gray-600 mb-1.5" style={{fontFamily: 'Inter, sans-serif'}}>
                                 {order.items.length} item{order.items.length > 1 ? 's' : ''}
                               </p>
-                              <div className="flex space-x-1">
+                              <div className="flex space-x-0.5">
                                 {order.items.slice(0, 4).map((item: any, index: number) => (
-                                  <div key={index} className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <div key={index} className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                                     {item.productData?.images?.[0] ? (
                                       <img 
                                         src={item.productData.images[0]} 
@@ -619,12 +562,12 @@ const Profile: React.FC = () => {
                                         className="w-full h-full object-cover rounded-lg"
                                       />
                                     ) : (
-                                      <Package className="h-5 w-5 text-gray-400" />
+                                      <Package className="h-4 w-4 text-gray-400" />
                                     )}
                                   </div>
                                 ))}
                                 {order.items.length > 4 && (
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                                     <span className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>+{order.items.length - 4}</span>
                                   </div>
                                 )}
@@ -632,10 +575,10 @@ const Profile: React.FC = () => {
                             </div>
                           )}
                           
-                          <div className="flex justify-between items-center mt-3 pt-2 border-t">
+                          <div className="flex justify-between items-center mt-2 pt-1.5 border-t">
                             <button 
                               onClick={() => navigate(`/orders/${order.orderNumber || order._id}`)}
-                              className="text-purple-600 hover:text-purple-700 font-medium text-xs" style={{fontFamily: 'Inter, sans-serif'}}
+                              className="text-black hover:text-gray-700 font-medium text-xs" style={{fontFamily: 'Inter, sans-serif'}}
                             >
                               View Details
                             </button>
@@ -659,21 +602,18 @@ const Profile: React.FC = () => {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 border: '1px solid #e5e7eb'
               }}>
-                <div className="px-4 py-3" style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                <div className="px-4 py-3 bg-gray-100" style={{
                   borderRadius: '24px 24px 0 0'
                 }}>
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => setMobileCurrentPage(null)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg" style={{
-                        background: 'rgba(255,255,255,0.2)'
-                      }}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-300"
                     >
-                      <ArrowLeft className="h-4 w-4 text-white" />
+                      <ArrowLeft className="h-4 w-4 text-gray-700" />
                     </button>
                     <div>
-                      <h2 className="text-base font-bold text-white" style={{
+                      <h2 className="text-base font-bold text-black" style={{
                         fontFamily: 'Inter, sans-serif',
                         letterSpacing: '-0.025em'
                       }}>Saved Addresses</h2>
@@ -708,16 +648,13 @@ const Profile: React.FC = () => {
                     <div className="space-y-3">
                       {addresses.map((address) => (
                         <div key={address.id} className="p-3" style={{
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                          background: 'white',
                           borderRadius: '8px',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+                          border: '1px solid #e2e8f0'
                         }}>
                           <div className="flex items-start justify-between">
                             <div className="flex items-start space-x-2">
-                              <div className="w-6 h-6 rounded-lg flex items-center justify-center mt-0.5" style={{
-                                background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)'
-                              }}>
+                              <div className="w-6 h-6 rounded-lg flex items-center justify-center mt-0.5 bg-gray-200">
                                 <MapPin className="h-3 w-3 text-gray-600" />
                               </div>
                               <div className="flex-1">
@@ -734,9 +671,7 @@ const Profile: React.FC = () => {
                                   <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Landmark: {address.landmark}</p>
                                 )}
                                 {address.isDefault && (
-                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full mt-1" style={{
-                                    background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                                    color: 'white',
+                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full mt-1 bg-black text-white" style={{
                                     fontFamily: 'Inter, sans-serif'
                                   }}>
                                     Default
@@ -764,91 +699,7 @@ const Profile: React.FC = () => {
               </div>
             )}
             
-            {mobileCurrentPage === 'security' && (
-              <div className="bg-white overflow-hidden" style={{
-                borderRadius: '24px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                border: '1px solid rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(20px)'
-              }}>
-                <div className="px-4 py-3" style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                  borderRadius: '24px 24px 0 0'
-                }}>
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => setMobileCurrentPage(null)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg" style={{
-                        background: 'rgba(255,255,255,0.2)'
-                      }}
-                    >
-                      <ArrowLeft className="h-4 w-4 text-white" />
-                    </button>
-                    <div>
-                      <h2 className="text-base font-bold text-white" style={{
-                        fontFamily: 'Inter, sans-serif',
-                        letterSpacing: '-0.025em'
-                      }}>Security Settings</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    <div className="p-3" style={{
-                      background: 'linear-gradient(135deg, #fef2f2 0%, #fef7ed 100%)',
-                      borderRadius: '8px',
-                      border: '1px solid #fed7d7'
-                    }}>
-                      <div className="flex items-center mb-2">
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2" style={{
-                          background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)'
-                        }}>
-                          <Shield className="h-3 w-3 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Change Password</h3>
-                          <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Update your password</p>
-                        </div>
-                      </div>
-                      <button className="px-3 py-1.5 text-white font-medium text-xs" style={{
-                        fontFamily: 'Inter, sans-serif',
-                        background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 8px rgba(220,38,38,0.2)'
-                      }}>
-                        Change Password
-                      </button>
-                    </div>
-                    
-                    <div className="p-3" style={{
-                      background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
-                      borderRadius: '8px',
-                      border: '1px solid #bfdbfe'
-                    }}>
-                      <div className="flex items-center mb-2">
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2" style={{
-                          background: 'linear-gradient(135deg, #2563eb 0%, #6366f1 100%)'
-                        }}>
-                          <Shield className="h-3 w-3 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Two-Factor Authentication</h3>
-                          <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Add extra security</p>
-                        </div>
-                      </div>
-                      <button className="px-3 py-1.5 text-white font-medium text-xs" style={{
-                        fontFamily: 'Inter, sans-serif',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #6366f1 100%)',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 8px rgba(37,99,235,0.2)'
-                      }}>
-                        Enable 2FA
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+
             
             {mobileCurrentPage === 'notifications' && (
               <div className="bg-white overflow-hidden" style={{
@@ -857,21 +708,18 @@ const Profile: React.FC = () => {
                 border: '1px solid rgba(255,255,255,0.8)',
                 backdropFilter: 'blur(20px)'
               }}>
-                <div className="px-4 py-3" style={{
-                  background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                <div className="px-4 py-3 bg-gray-100" style={{
                   borderRadius: '24px 24px 0 0'
                 }}>
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => setMobileCurrentPage(null)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg" style={{
-                        background: 'rgba(255,255,255,0.2)'
-                      }}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-300"
                     >
-                      <ArrowLeft className="h-4 w-4 text-white" />
+                      <ArrowLeft className="h-4 w-4 text-gray-700" />
                     </button>
                     <div>
-                      <h2 className="text-base font-bold text-white" style={{
+                      <h2 className="text-base font-bold text-black" style={{
                         fontFamily: 'Inter, sans-serif',
                         letterSpacing: '-0.025em'
                       }}>Notifications</h2>
@@ -880,17 +728,11 @@ const Profile: React.FC = () => {
                 </div>
                 <div className="p-4">
                   <div className="space-y-3">
-                    <div className="p-3" style={{
-                      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                      borderRadius: '8px',
-                      border: '1px solid #bbf7d0'
-                    }}>
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2" style={{
-                            background: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)'
-                          }}>
-                            <Bell className="h-3 w-3 text-white" />
+                          <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                            <Bell className="h-2.5 w-2.5 text-gray-700" />
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Email Notifications</h3>
@@ -899,22 +741,16 @@ const Profile: React.FC = () => {
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" className="sr-only peer" defaultChecked />
-                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-green-600"></div>
+                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-black"></div>
                         </label>
                       </div>
                     </div>
                     
-                    <div className="p-3" style={{
-                      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                      borderRadius: '8px',
-                      border: '1px solid #d8b4fe'
-                    }}>
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2" style={{
-                            background: 'linear-gradient(135deg, #9333ea 0%, #c026d3 100%)'
-                          }}>
-                            <Bell className="h-3 w-3 text-white" />
+                          <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                            <Bell className="h-2.5 w-2.5 text-gray-700" />
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>SMS Notifications</h3>
@@ -923,22 +759,16 @@ const Profile: React.FC = () => {
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" className="sr-only peer" />
-                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-purple-600"></div>
+                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-black"></div>
                         </label>
                       </div>
                     </div>
                     
-                    <div className="p-3" style={{
-                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                      borderRadius: '8px',
-                      border: '1px solid #fde68a'
-                    }}>
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2" style={{
-                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                          }}>
-                            <Bell className="h-3 w-3 text-white" />
+                          <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                            <Bell className="h-2.5 w-2.5 text-gray-700" />
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Marketing</h3>
@@ -947,7 +777,7 @@ const Profile: React.FC = () => {
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" className="sr-only peer" defaultChecked />
-                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-yellow-600"></div>
+                          <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 peer-checked:bg-black"></div>
                         </label>
                       </div>
                     </div>
@@ -960,50 +790,29 @@ const Profile: React.FC = () => {
       </div>
       
       {/* Desktop Layout */}
-      <div className="hidden lg:block min-h-screen" style={{background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'}}>
-        <div className="elite-container py-6 lg:py-12">
-          <div className="lg:grid lg:grid-cols-12 lg:gap-12">
+      <div className="hidden lg:block min-h-screen bg-gray-50">
+        <div className="elite-container py-4">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-6">
             {/* Sidebar */}
             <div className="lg:col-span-4">
-              <div className="bg-white overflow-hidden" style={{
-                borderRadius: '24px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                border: '1px solid rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(20px)'
-              }}>
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
                 {/* Profile Header */}
-                <div className="px-8 py-8 text-center" style={{
-                  background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                  borderRadius: '24px 24px 0 0'
-                }}>
+                <div className="px-4 py-4 text-center bg-gray-100 border-b border-gray-200">
                   <div className="relative inline-block">
-                    <div className="w-24 h-24 flex items-center justify-center mx-auto mb-4" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-                      borderRadius: '20px',
-                      border: '3px solid rgba(255,255,255,0.3)',
-                      backdropFilter: 'blur(10px)'
-                    }}>
-                      <User className="h-12 w-12 text-white" />
+                    <div className="w-12 h-12 flex items-center justify-center mx-auto mb-2 bg-gray-300 rounded-full">
+                      <User className="h-6 w-6 text-gray-700" />
                     </div>
-                    <button className="absolute -bottom-1 -right-1 rounded-full p-3" style={{
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-                      boxShadow: '0 8px 25px rgba(245,158,11,0.4)'
-                    }}>
-                      <Camera className="h-4 w-4 text-white" />
-                    </button>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2" style={{
-                    fontFamily: 'Inter, sans-serif',
-                    letterSpacing: '-0.025em'
+                  <h3 className="text-base font-semibold text-black mb-1" style={{
+                    fontFamily: 'Inter, sans-serif'
                   }}>{user.name || 'User'}</h3>
-                  <p className="text-white text-sm opacity-90" style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: '500'
+                  <p className="text-gray-600 text-sm" style={{
+                    fontFamily: 'Inter, sans-serif'
                   }}>{user.email}</p>
                 </div>
 
                 {/* Navigation Menu */}
-                <nav className="p-6">
+                <nav className="p-4">
                   {menuItems.map((item) => {
                     const Icon = item.icon;
                     if (item.isAction) {
@@ -1011,17 +820,12 @@ const Profile: React.FC = () => {
                         <button
                           key={item.id}
                           onClick={() => setShowLogoutConfirm(true)}
-                          className="w-full flex items-center space-x-3 px-3 py-2 text-left text-sm font-medium mb-1"
+                          className="w-full flex items-center space-x-3 px-3 py-2 text-left text-sm font-medium mb-1 rounded-lg text-red-600 hover:bg-red-50"
                           style={{
-                            fontFamily: 'Inter, sans-serif',
-                            borderRadius: '12px',
-                            color: '#dc2626',
-                            background: 'linear-gradient(135deg, rgba(220,38,38,0.05) 0%, rgba(220,38,38,0.02) 100%)'
+                            fontFamily: 'Inter, sans-serif'
                           }}
                         >
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                            background: 'linear-gradient(135deg, rgba(220,38,38,0.1) 0%, rgba(220,38,38,0.05) 100%)'
-                          }}>
+                          <div className="w-6 h-6 rounded flex items-center justify-center bg-red-100">
                             <Icon className="h-4 w-4" />
                           </div>
                           <span className="font-medium">{item.label}</span>
@@ -1032,21 +836,20 @@ const Profile: React.FC = () => {
                       <button
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
-                        className="w-full flex items-center space-x-3 px-3 py-2 text-left text-sm font-medium mb-1"
+                        className={`w-full flex items-center space-x-3 px-3 py-2 text-left text-sm font-medium mb-1 rounded-lg ${
+                          activeTab === item.id 
+                            ? 'bg-black text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
                         style={{
-                          fontFamily: 'Inter, sans-serif',
-                          borderRadius: '12px',
-                          background: activeTab === item.id 
-                            ? 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)'
-                            : 'transparent',
-                          color: activeTab === item.id ? 'white' : '#64748b'
+                          fontFamily: 'Inter, sans-serif'
                         }}
                       >
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
-                          background: activeTab === item.id 
-                            ? 'rgba(255,255,255,0.2)'
-                            : 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.05) 100%)'
-                        }}>
+                        <div className={`w-6 h-6 rounded flex items-center justify-center ${
+                          activeTab === item.id 
+                            ? 'bg-gray-800'
+                            : 'bg-gray-200'
+                        }`}>
                           <Icon className="h-4 w-4" />
                         </div>
                         <span className="font-medium">{item.label}</span>
@@ -1062,39 +865,24 @@ const Profile: React.FC = () => {
             {/* Main Content */}
             <div className="lg:col-span-8">
               {activeTab === 'profile' && (
-                <div className="bg-white overflow-hidden" style={{
-                  borderRadius: '24px',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  backdropFilter: 'blur(20px)'
-                }}>
-                  <div className="px-8 py-6" style={{
-                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                    borderRadius: '24px 24px 0 0'
-                  }}>
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
-                        }}>
-                          <User className="h-6 w-6 text-white" />
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-gray-300">
+                          <User className="h-3 w-3 text-gray-700" />
                         </div>
                         <div>
-                          <h2 className="text-xl font-bold text-white" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            letterSpacing: '-0.025em'
+                          <h2 className="text-base font-semibold text-black" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>Profile Information</h2>
-                          <p className="text-white opacity-70 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Manage your personal details</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setIsEditingProfile(true)}
-                        className="flex items-center px-4 py-2 text-white font-medium text-sm"
+                        className="flex items-center px-3 py-2 bg-white text-black font-medium text-sm rounded-lg hover:bg-gray-100"
                         style={{
-                          fontFamily: 'Inter, sans-serif',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-                          boxShadow: '0 4px 12px rgba(245,158,11,0.2)'
+                          fontFamily: 'Inter, sans-serif'
                         }}
                       >
                         <Edit className="h-4 w-4 mr-2" />
@@ -1102,181 +890,192 @@ const Profile: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                      }}>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                            background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)'
-                          }}>
-                            <User className="h-5 w-5 text-white" />
+                  <div className="p-4">
+                    {isEditingProfile ? (
+                      <form onSubmit={handleUpdateProfile} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2" style={{
+                              fontFamily: 'Inter, sans-serif'
+                            }}>Full Name</label>
+                            <input
+                              type="text"
+                              value={profileForm.name}
+                              onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}
+                              required
+                            />
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium mb-1" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#64748b'
-                            }}>Full Name</p>
-                            <p className="text-base font-semibold" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#1e293b'
-                            }}>{user.name || 'Not provided'}</p>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2" style={{
+                              fontFamily: 'Inter, sans-serif'
+                            }}>Email Address</label>
+                            <input
+                              type="email"
+                              value={profileForm.email}
+                              onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-3">
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="flex items-center bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:bg-gray-300"
+                            style={{
+                              fontFamily: 'Inter, sans-serif'
+                            }}
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            {isLoading ? 'Saving...' : 'Save Changes'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelProfileEdit}
+                            className="flex items-center bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                            style={{
+                              fontFamily: 'Inter, sans-serif'
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-black">
+                              <User className="h-3 w-3 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium mb-1 text-gray-600" style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}>Full Name</p>
+                              <p className="text-base font-semibold text-black" style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}>{user.name || 'Not provided'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-black">
+                              <Mail className="h-3 w-3 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium mb-1 text-gray-600" style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}>Email Address</p>
+                              <p className="text-base font-semibold text-black" style={{
+                                fontFamily: 'Inter, sans-serif'
+                              }}>{user.email || 'Not provided'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 md:col-span-2" style={{
+                          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                          borderRadius: '12px',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                        }}>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                            }}>
+                              <Phone className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium mb-1" style={{
+                                fontFamily: 'Inter, sans-serif',
+                                color: '#64748b'
+                              }}>Mobile Number</p>
+                              <p className="text-base font-semibold" style={{
+                                fontFamily: 'Inter, sans-serif',
+                                color: '#1e293b'
+                              }}>+91 {user.phone || '1234567890'}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                      }}>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                            background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)'
-                          }}>
-                            <Mail className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium mb-1" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#64748b'
-                            }}>Email Address</p>
-                            <p className="text-base font-semibold" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#1e293b'
-                            }}>{user.email || 'Not provided'}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="p-4 md:col-span-2" style={{
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                      }}>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                          }}>
-                            <Phone className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium mb-1" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#64748b'
-                            }}>Mobile Number</p>
-                            <p className="text-base font-semibold" style={{
-                              fontFamily: 'Inter, sans-serif',
-                              color: '#1e293b'
-                            }}>+91 {user.phone || '1234567890'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {activeTab === 'orders' && (
-                <div className="bg-white overflow-hidden" style={{
-                  borderRadius: '24px',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  backdropFilter: 'blur(20px)'
-                }}>
-                  <div className="px-6 py-4" style={{
-                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                    borderRadius: '24px 24px 0 0'
-                  }}>
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
-                      }}>
-                        <ShoppingCart className="h-5 w-5 text-white" />
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-gray-300">
+                        <ShoppingCart className="h-3 w-3 text-gray-700" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-white" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          letterSpacing: '-0.025em'
+                        <h2 className="text-lg font-semibold text-black" style={{
+                          fontFamily: 'Inter, sans-serif'
                         }}>My Orders</h2>
-                        <p className="text-white opacity-70 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Track your order history</p>
+                        <p className="text-gray-600 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Track your order history</p>
                       </div>
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-4">
                     {ordersLoading ? (
                       <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
                         <p className="text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Loading your orders...</p>
                       </div>
                     ) : ordersError ? (
                       <div className="text-center py-8">
-                        <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
-                          background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
-                          borderRadius: '16px',
-                          border: '1px solid #fecaca'
-                        }}>
-                          <X className="h-8 w-8 text-red-400" />
+                        <div className="w-12 h-12 flex items-center justify-center mx-auto mb-4 bg-gray-100 rounded-lg border border-gray-200">
+                          <X className="h-6 w-6 text-red-500" />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{fontFamily: 'Inter, sans-serif'}}>Error Loading Orders</h3>
                         <p className="text-gray-600 mb-6" style={{fontFamily: 'Inter, sans-serif'}}>{ordersError}</p>
                         <button 
                           onClick={fetchOrders}
-                          className="px-6 py-3 font-medium" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                            color: 'white',
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 12px rgba(99,102,241,0.2)'
+                          className="px-4 py-2 font-medium bg-black text-white rounded-lg hover:bg-gray-800" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>
                           Try Again
                         </button>
                       </div>
                     ) : orders.length === 0 ? (
                       <div className="text-center py-8">
-                        <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                          borderRadius: '16px',
-                          border: '1px solid #e2e8f0'
-                        }}>
-                          <ShoppingCart className="h-8 w-8 text-gray-400" />
+                        <div className="w-12 h-12 flex items-center justify-center mx-auto mb-4 bg-gray-100 rounded-lg border border-gray-200">
+                          <ShoppingCart className="h-6 w-6 text-gray-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2" style={{fontFamily: 'Inter, sans-serif'}}>No Orders Yet</h3>
                         <p className="text-gray-600 mb-6" style={{fontFamily: 'Inter, sans-serif'}}>Start shopping to see your orders here</p>
                         <button 
                           onClick={() => navigate('/products')}
-                          className="px-6 py-3 font-medium" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                            color: 'white',
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 12px rgba(99,102,241,0.2)'
+                          className="px-4 py-2 font-medium bg-black text-white rounded-lg hover:bg-gray-800" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>
                           Browse Products
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {orders.map((order) => (
-                          <div key={order._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                                  background: order.orderStatus === 'delivered' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                                             order.orderStatus === 'shipped' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
-                                             order.orderStatus === 'cancelled' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
-                                             'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                                }}>
-                                  {order.orderStatus === 'delivered' ? <Package className="h-5 w-5 text-white" /> :
-                                   order.orderStatus === 'shipped' ? <Truck className="h-5 w-5 text-white" /> :
-                                   order.orderStatus === 'cancelled' ? <X className="h-5 w-5 text-white" /> :
-                                   <Clock className="h-5 w-5 text-white" />}
+                          <div key={order._id} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-black">
+                                  {order.orderStatus === 'delivered' ? <Package className="h-3 w-3 text-white" /> :
+                                   order.orderStatus === 'shipped' ? <Truck className="h-3 w-3 text-white" /> :
+                                   order.orderStatus === 'cancelled' ? <X className="h-3 w-3 text-white" /> :
+                                   <Clock className="h-3 w-3 text-white" />}
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>
@@ -1337,7 +1136,7 @@ const Profile: React.FC = () => {
                             <div className="flex justify-between items-center mt-4 pt-3 border-t">
                               <button 
                                 onClick={() => navigate(`/orders/${order.orderNumber || order._id}`)}
-                                className="text-purple-600 hover:text-purple-700 font-medium text-sm" style={{fontFamily: 'Inter, sans-serif'}}
+                                className="text-black hover:text-gray-700 font-medium text-sm" style={{fontFamily: 'Inter, sans-serif'}}
                               >
                                 View Details
                               </button>
@@ -1356,39 +1155,24 @@ const Profile: React.FC = () => {
               )}
 
               {activeTab === 'addresses' && (
-                <div className="bg-white overflow-hidden" style={{
-                  borderRadius: '24px',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  backdropFilter: 'blur(20px)'
-                }}>
-                  <div className="px-6 py-4" style={{
-                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                    borderRadius: '24px 24px 0 0'
-                  }}>
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <div className="px-6 py-4 bg-gray-100 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
-                        }}>
-                          <MapPin className="h-5 w-5 text-white" />
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-gray-300">
+                          <MapPin className="h-3 w-3 text-gray-700" />
                         </div>
                         <div>
-                          <h2 className="text-lg font-bold text-white" style={{
-                            fontFamily: 'Inter, sans-serif',
-                            letterSpacing: '-0.025em'
+                          <h2 className="text-base font-semibold text-black" style={{
+                            fontFamily: 'Inter, sans-serif'
                           }}>Saved Addresses</h2>
-                          <p className="text-white opacity-70 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Manage delivery addresses</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setIsAddingAddress(true)}
-                        className="flex items-center px-4 py-2 text-white font-medium text-sm"
+                        className="flex items-center px-3 py-2 bg-white text-black font-medium text-sm rounded-lg hover:bg-gray-100"
                         style={{
-                          fontFamily: 'Inter, sans-serif',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-                          boxShadow: '0 4px 12px rgba(245,158,11,0.2)'
+                          fontFamily: 'Inter, sans-serif'
                         }}
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -1396,7 +1180,7 @@ const Profile: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-4">
                     {/* Add Address Form */}
                     {isAddingAddress && (
                       <form onSubmit={handleAddAddress} className="mb-6 p-4 border border-gray-200 rounded-lg">
@@ -1717,9 +1501,7 @@ const Profile: React.FC = () => {
                               <>
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-start">
-                                    <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2 mt-0.5" style={{
-                                      background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)'
-                                    }}>
+                                    <div className="w-6 h-6 rounded-lg flex items-center justify-center mr-2 mt-0.5 bg-gray-200">
                                       <MapPin className="h-3 w-3 text-gray-600" />
                                     </div>
                                     <div>
@@ -1736,9 +1518,7 @@ const Profile: React.FC = () => {
                                         <p className="text-gray-600 text-xs" style={{fontFamily: 'Inter, sans-serif'}}>Landmark: {address.landmark}</p>
                                       )}
                                       {address.isDefault && (
-                                        <span className="inline-block text-xs px-2 py-0.5 rounded-full mt-1" style={{
-                                          background: 'linear-gradient(135deg, var(--cta-dark-purple) 0%, #6366f1 100%)',
-                                          color: 'white',
+                                        <span className="inline-block text-xs px-2 py-0.5 rounded-full mt-1 bg-black text-white" style={{
                                           fontFamily: 'Inter, sans-serif'
                                         }}>
                                           Default
@@ -1750,10 +1530,7 @@ const Profile: React.FC = () => {
                                   <div className="flex space-x-1">
                                     <button
                                       onClick={() => startEditingAddress(address)}
-                                      className="p-1.5 rounded-lg" style={{
-                                        background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                                        color: '#2563eb'
-                                      }}
+                                      className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
                                     >
                                       <Edit className="h-3 w-3" />
                                     </button>
@@ -1761,10 +1538,7 @@ const Profile: React.FC = () => {
                                       onClick={() => {
                                         handleDeleteAddress(address.id || address._id);
                                       }}
-                                      className="p-1.5 rounded-lg" style={{
-                                        background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
-                                        color: '#dc2626'
-                                      }}
+                                      className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
                                     >
                                       <Trash2 className="h-3 w-3" />
                                     </button>
@@ -1780,89 +1554,7 @@ const Profile: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'security' && (
-                <div className="bg-white overflow-hidden" style={{
-                  borderRadius: '24px',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 8px 25px rgba(0,0,0,0.06)',
-                  border: '1px solid rgba(255,255,255,0.8)',
-                  backdropFilter: 'blur(20px)'
-                }}>
-                  <div className="px-6 py-4" style={{
-                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                    borderRadius: '24px 24px 0 0'
-                  }}>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
-                      }}>
-                        <Shield className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-white" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          letterSpacing: '-0.025em'
-                        }}>Security Settings</h2>
-                        <p className="text-white opacity-70 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Manage account security</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #fef2f2 0%, #fef7ed 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #fed7d7'
-                      }}>
-                        <div className="flex items-center mb-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{
-                            background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)'
-                          }}>
-                            <Shield className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Change Password</h3>
-                            <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Update your password to keep your account secure</p>
-                          </div>
-                        </div>
-                        <button className="px-4 py-2 text-white font-medium text-sm" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 12px rgba(220,38,38,0.2)'
-                        }}>
-                          Change Password
-                        </button>
-                      </div>
-                      
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #bfdbfe'
-                      }}>
-                        <div className="flex items-center mb-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{
-                            background: 'linear-gradient(135deg, #2563eb 0%, #6366f1 100%)'
-                          }}>
-                            <Shield className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Two-Factor Authentication</h3>
-                            <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Add an extra layer of security to your account</p>
-                          </div>
-                        </div>
-                        <button className="px-4 py-2 text-white font-medium text-sm" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          background: 'linear-gradient(135deg, #2563eb 0%, #6366f1 100%)',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                        }}>
-                          Enable 2FA
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {activeTab === 'notifications' && (
                 <div className="bg-white overflow-hidden" style={{
@@ -1871,38 +1563,27 @@ const Profile: React.FC = () => {
                   border: '1px solid rgba(255,255,255,0.8)',
                   backdropFilter: 'blur(20px)'
                 }}>
-                  <div className="px-6 py-4" style={{
-                    background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                  <div className="px-4 py-3 bg-gray-100" style={{
                     borderRadius: '24px 24px 0 0'
                   }}>
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
-                      }}>
-                        <Bell className="h-5 w-5 text-white" />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-300">
+                        <Bell className="h-3 w-3 text-gray-700" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-white" style={{
-                          fontFamily: 'Inter, sans-serif',
-                          letterSpacing: '-0.025em'
+                        <h2 className="text-base font-semibold text-black" style={{
+                          fontFamily: 'Inter, sans-serif'
                         }}>Notification Preferences</h2>
-                        <p className="text-white opacity-70 text-sm" style={{fontFamily: 'Inter, sans-serif'}}>Manage your notifications</p>
                       </div>
                     </div>
                   </div>
-                  <div className="p-6">
+                  <div className="p-4">
                     <div className="space-y-4">
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #bbf7d0'
-                      }}>
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{
-                              background: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)'
-                            }}>
-                              <Bell className="h-4 w-4 text-white" />
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                              <Bell className="h-2.5 w-2.5 text-gray-700" />
                             </div>
                             <div>
                               <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Email Notifications</h3>
@@ -1916,17 +1597,11 @@ const Profile: React.FC = () => {
                         </div>
                       </div>
                       
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #d8b4fe'
-                      }}>
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{
-                              background: 'linear-gradient(135deg, #9333ea 0%, #c026d3 100%)'
-                            }}>
-                              <Bell className="h-4 w-4 text-white" />
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                              <Bell className="h-2.5 w-2.5 text-gray-700" />
                             </div>
                             <div>
                               <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>SMS Notifications</h3>
@@ -1935,31 +1610,25 @@ const Profile: React.FC = () => {
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" className="sr-only peer" />
-                            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 peer-checked:bg-purple-600"></div>
+                            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 peer-checked:bg-black"></div>
                           </label>
                         </div>
                       </div>
                       
-                      <div className="p-4" style={{
-                        background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid #fde68a'
-                      }}>
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{
-                              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                            }}>
-                              <Bell className="h-4 w-4 text-white" />
+                            <div className="w-5 h-5 rounded-md flex items-center justify-center mr-2 bg-gray-300">
+                              <Bell className="h-2.5 w-2.5 text-gray-700" />
                             </div>
                             <div>
                               <h3 className="text-sm font-semibold text-gray-900" style={{fontFamily: 'Inter, sans-serif'}}>Marketing Communications</h3>
-                              <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Receive promotional offers and new product updates</p>
+                              <p className="text-xs text-gray-600" style={{fontFamily: 'Inter, sans-serif'}}>Promotional offers and new product updates</p>
                             </div>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" className="sr-only peer" defaultChecked />
-                            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 peer-checked:bg-yellow-600"></div>
+                            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 peer-checked:bg-black"></div>
                           </label>
                         </div>
                       </div>
@@ -1975,16 +1644,10 @@ const Profile: React.FC = () => {
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-3 w-full max-w-xs" style={{
-            borderRadius: '12px',
-            boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
-          }}>
+          <div className="bg-white p-3 w-full max-w-xs border border-gray-200 rounded-lg shadow-sm">
             <div className="text-center">
-              <div className="w-10 h-10 flex items-center justify-center mx-auto mb-2" style={{
-                background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
-                borderRadius: '12px'
-              }}>
-                <LogOut className="h-5 w-5 text-red-600" />
+              <div className="w-10 h-10 flex items-center justify-center mx-auto mb-2 bg-gray-100 rounded-lg">
+                <LogOut className="h-5 w-5 text-gray-600" />
               </div>
               <h3 className="text-sm font-semibold mb-1" style={{
                 fontFamily: 'Inter, sans-serif',
@@ -1998,26 +1661,18 @@ const Profile: React.FC = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 px-3 py-1.5 font-medium text-xs"
+                  className="flex-1 px-3 py-1.5 font-medium text-xs bg-gray-100 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-200"
                   style={{
-                    fontFamily: 'Inter, sans-serif',
-                    background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-                    color: '#475569',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px'
+                    fontFamily: 'Inter, sans-serif'
                   }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleLogoutConfirm}
-                  className="flex-1 px-3 py-1.5 font-medium text-xs"
+                  className="flex-1 px-3 py-1.5 font-medium text-xs bg-black text-white border border-black rounded-lg hover:bg-gray-800"
                   style={{
-                    fontFamily: 'Inter, sans-serif',
-                    background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-                    color: 'white',
-                    border: '1px solid #dc2626',
-                    borderRadius: '8px'
+                    fontFamily: 'Inter, sans-serif'
                   }}
                 >
                   Logout

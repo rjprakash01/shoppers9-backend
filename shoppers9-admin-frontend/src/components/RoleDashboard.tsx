@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
-import { motion } from 'framer-motion';
+
 import CountUp from 'react-countup';
 import {
   BarChart,
@@ -206,99 +206,58 @@ const RoleDashboard: React.FC = () => {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 rounded-lg shadow-lg overflow-hidden"
-      >
-        <div className="relative p-3">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
-          <div className="relative flex items-center justify-between">
+      <div className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
             <div>
-              <motion.h1 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-xl font-bold text-white mb-1"
-              >
+              <h1 className="text-xl font-bold text-black mb-1">
                 {getScopeTitle(dashboardData.scope, dashboardData.userRole)}
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="text-slate-300 text-sm"
-              >
+              </h1>
+              <p className="text-gray-600 text-sm">
                 {getScopeDescription(dashboardData.scope, dashboardData.userRole)}
-              </motion.p>
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex items-center mt-2 space-x-2"
-              >
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+              </p>
+              <div className="flex items-center mt-2 space-x-2">
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
                   {dashboardData.userRole.replace('_', ' ').toUpperCase()}
                 </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
                   {dashboardData.scope.toUpperCase()} SCOPE
                 </span>
-              </motion.div>
+              </div>
             </div>
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="flex items-center space-x-2"
-            >
-              <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg p-2">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded p-2">
                 <div className="flex items-center space-x-1">
-                  <label className="text-xs font-medium text-slate-300">From:</label>
+                  <label className="text-xs font-medium text-gray-600">From:</label>
                   <input
                     type="date"
                     value={dateRange.startDate}
                     onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="bg-white/20 border border-white/30 rounded px-2 py-1 text-xs text-white placeholder-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-transparent"
+                    className="bg-white border border-gray-300 rounded px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                   />
                 </div>
                 <div className="flex items-center space-x-1">
-                  <label className="text-xs font-medium text-slate-300">To:</label>
+                  <label className="text-xs font-medium text-gray-600">To:</label>
                   <input
                     type="date"
                     value={dateRange.endDate}
                     onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="bg-white/20 border border-white/30 rounded px-2 py-1 text-xs text-white placeholder-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-transparent"
+                    className="bg-white border border-gray-300 rounded px-2 py-1 text-xs text-black focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                   />
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {Object.entries(dashboardData.overview).map(([key, value], index) => {
-          const gradients = [
-            'from-blue-500 to-blue-600',
-            'from-emerald-500 to-emerald-600', 
-            'from-purple-500 to-purple-600',
-            'from-orange-500 to-orange-600',
-            'from-pink-500 to-pink-600',
-            'from-indigo-500 to-indigo-600',
-            'from-teal-500 to-teal-600',
-            'from-red-500 to-red-600'
-          ];
-          const gradient = gradients[index % gradients.length];
-          
           return (
-            <motion.div 
+            <div 
               key={key} 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group"
+              className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
             >
               <div className="p-2">
                 <div className="flex items-center justify-between">
@@ -307,7 +266,7 @@ const RoleDashboard: React.FC = () => {
                       {getMetricLabel(key)}
                     </p>
                     <div className="flex items-baseline">
-                      <p className="text-xl font-bold text-gray-900">
+                      <p className="text-xl font-bold text-black">
                         {typeof value === 'number' ? (
                           key.includes('Revenue') || key.includes('Spent') || key.includes('Value') ? (
                             <span>
@@ -324,25 +283,16 @@ const RoleDashboard: React.FC = () => {
                           value
                         )}
                       </p>
-                      <motion.div 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 + index * 0.1 }}
-                        className="ml-2"
-                      >
-                        <ArrowUpRight className="h-4 w-4 text-green-500" />
-                      </motion.div>
                     </div>
                   </div>
-                  <div className={`p-2 bg-gradient-to-br ${gradient} rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                    <div className="text-white">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <div className="text-gray-600">
                       {getMetricIcon(key)}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className={`h-1 bg-gradient-to-r ${gradient}`}></div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -351,28 +301,18 @@ const RoleDashboard: React.FC = () => {
       {dashboardData.charts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
           {dashboardData.charts.salesTrend && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2" />
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="bg-gray-50 border-b border-gray-200 p-2">
+                <h3 className="text-lg font-bold text-black flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-gray-600" />
                   Sales Trend
                 </h3>
-                <p className="text-blue-100 mt-1 text-sm">Revenue performance over time</p>
+                <p className="text-gray-600 mt-1 text-sm">Revenue performance over time</p>
               </div>
               <div className="p-2">
                 <ResponsiveContainer width="100%" height={250}>
                   <AreaChart data={dashboardData.charts.salesTrend}>
-                    <defs>
-                      <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
+
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="_id.day" 
@@ -388,51 +328,42 @@ const RoleDashboard: React.FC = () => {
                     />
                     <Tooltip 
                       contentStyle={{
-                        backgroundColor: '#1f2937',
-                        border: 'none',
-                        borderRadius: '12px',
-                        color: 'white',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                        backgroundColor: 'white',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        color: 'black',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                       }}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="totalSales" 
-                      stroke="#3B82F6" 
-                      strokeWidth={3}
-                      fill="url(#salesGradient)"
-                      dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, stroke: '#3B82F6', strokeWidth: 2 }}
+                      stroke="#6b7280" 
+                      strokeWidth={2}
+                      fill="#6b7280"
+                      fillOpacity={0.1}
+                      dot={{ fill: '#6b7280', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#6b7280', strokeWidth: 2 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {dashboardData.charts.userGrowth && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-3">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="bg-gray-50 border-b border-gray-200 p-2">
+                <h3 className="text-lg font-bold text-black flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-gray-600" />
                   User Growth
                 </h3>
-                <p className="text-emerald-100 mt-1 text-sm">New user registrations</p>
+                <p className="text-gray-600 mt-1 text-sm">New user registrations</p>
               </div>
-              <div className="p-3">
+              <div className="p-2">
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={dashboardData.charts.userGrowth}>
-                    <defs>
-                      <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.2}/>
-                      </linearGradient>
-                    </defs>
+
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis 
                       dataKey="_id.day" 
@@ -448,43 +379,39 @@ const RoleDashboard: React.FC = () => {
                     />
                     <Tooltip 
                       contentStyle={{
-                        backgroundColor: '#1f2937',
-                        border: 'none',
-                        borderRadius: '12px',
-                        color: 'white',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+                        backgroundColor: 'white',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        color: 'black',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                       }}
                     />
                     <Bar 
                       dataKey="count" 
-                      fill="url(#userGradient)"
+                      fill="#6b7280"
+                      fillOpacity={0.7}
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       )}
 
       {/* Recent Orders */}
       {dashboardData.recentOrders && dashboardData.recentOrders.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
-        >
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-3">
-            <h3 className="text-lg font-bold text-white flex items-center">
-              <ShoppingCart className="h-5 w-5 mr-2" />
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-gray-200 px-3 py-2">
+            <h3 className="text-lg font-bold text-black flex items-center">
+              <ShoppingCart className="h-5 w-5 mr-2 text-gray-600" />
               Recent Orders
             </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Order ID
@@ -505,96 +432,71 @@ const RoleDashboard: React.FC = () => {
               </thead>
               <tbody className="bg-white">
                 {dashboardData.recentOrders.slice(0, 10).map((order, index) => (
-                  <motion.tr 
+                  <tr 
                     key={order._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.7 + index * 0.05 }}
                     className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200"
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="text-xs font-bold text-indigo-600">
+                      <span className="text-xs font-bold text-black">
                         #{order.orderNumber || order._id.slice(-8)}
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-6 w-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mr-2">
-                          <span className="text-white text-xs font-bold">
+                        <div className="h-6 w-6 bg-gray-200 rounded-full flex items-center justify-center mr-2">
+                          <span className="text-gray-600 text-xs font-bold">
                             {(order.userId?.firstName || 'U')[0]}
                           </span>
                         </div>
-                        <span className="text-xs font-medium text-gray-900">
+                        <span className="text-xs font-medium text-black">
                           {order.userId?.firstName} {order.userId?.lastName}
                         </span>
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="text-xs font-bold text-gray-900">
+                      <span className="text-xs font-bold text-black">
                         ${order.finalAmount?.toLocaleString() || order.totalAmount?.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${
-                        order.orderStatus === 'delivered' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                        order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                        order.orderStatus === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                        'bg-gray-100 text-gray-800 border border-gray-200'
-                      }`}>
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-800 border border-gray-200">
                         {order.orderStatus}
                       </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Top Products */}
       {dashboardData.topProducts && dashboardData.topProducts.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
-        >
-          <div className="bg-gradient-to-r from-orange-500 to-pink-600 px-4 py-3">
-            <h3 className="text-lg font-bold text-white flex items-center">
-              <Package className="h-5 w-5 mr-2" />
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-gray-200 px-3 py-2">
+            <h3 className="text-lg font-bold text-black flex items-center">
+              <Package className="h-5 w-5 mr-2 text-gray-600" />
               Top Products
             </h3>
           </div>
           <div className="p-3">
             <div className="space-y-2">
               {dashboardData.topProducts.slice(0, 5).map((item, index) => {
-                const rankColors = [
-                  'from-yellow-400 to-orange-500', // Gold
-                  'from-gray-300 to-gray-500',     // Silver
-                  'from-orange-400 to-red-500',    // Bronze
-                  'from-blue-400 to-indigo-500',   // Blue
-                  'from-purple-400 to-pink-500'    // Purple
-                ];
-                const rankColor = rankColors[index] || 'from-gray-400 to-gray-600';
-                
                 return (
-                  <motion.div 
+                  <div 
                     key={item._id} 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.8 + index * 0.1 }}
-                    className="flex items-center justify-between p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-100 hover:shadow-md transition-all duration-200"
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200"
                   >
                     <div className="flex items-center">
-                      <div className={`flex-shrink-0 w-8 h-8 bg-gradient-to-br ${rankColor} rounded-lg flex items-center justify-center shadow-md`}>
-                        <span className="text-sm font-bold text-white">#{index + 1}</span>
+                      <div className="flex-shrink-0 w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center">
+                        <span className="text-sm font-bold text-gray-700">#{index + 1}</span>
                       </div>
                       <div className="ml-2">
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-sm font-bold text-black">
                           {item.product?.[0]?.name || 'Product Name'}
                         </p>
                         <div className="flex items-center mt-1">
@@ -602,27 +504,26 @@ const RoleDashboard: React.FC = () => {
                             <CountUp end={item.totalSold} duration={2} /> sold
                           </span>
                           <div className="flex items-center">
-                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></div>
-                            <span className="text-xs text-green-600 font-medium">Active</span>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></div>
+                            <span className="text-xs text-gray-600 font-medium">Active</span>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">
+                      <p className="text-sm font-bold text-black">
                         $<CountUp end={item.totalRevenue || 0} duration={2} separator="," />
                       </p>
                       <div className="flex items-center justify-end mt-1">
-                        <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
-                        <span className="text-xs text-green-600 font-medium">Revenue</span>
+                        <span className="text-xs text-gray-600 font-medium">Revenue</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
 

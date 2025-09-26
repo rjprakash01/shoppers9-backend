@@ -272,9 +272,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .postcard-box:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-  transition: all 0.3s ease;
+  /* Animation effects removed */
 }
 
 /* Product Cards */
@@ -652,4 +650,47 @@ html {
 /* Glass Effect */
 .glass {
   @apply bg-white bg-opacity-20 backdrop-blur-lg border border-white border-opacity-30;
+}
+
+/* Dual Range Slider Styles */
+.slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 4px;
+  outline: none;
+}
+
+.slider-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #322F61;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.slider-thumb::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #322F61;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.slider-thumb::-webkit-slider-thumb:hover {
+  background: #463F85;
+  transform: scale(1.1);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb::-moz-range-thumb:hover {
+  background: #463F85;
+  transform: scale(1.1);
+  transition: all 0.2s ease;
 }

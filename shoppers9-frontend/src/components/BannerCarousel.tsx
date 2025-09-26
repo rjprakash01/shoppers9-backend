@@ -42,8 +42,8 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
           img.onload = () => {
             // Image loaded successfully
           };
-          img.onerror = () => {
-            
+          img.onerror = (error) => {
+            console.error('Failed to load banner image:', getImageUrl(banner.image), error);
           };
           img.src = getImageUrl(banner.image);
         }
@@ -84,6 +84,11 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
       
       // Sort banners by order field
       const sortedCarouselBanners = carouselBanners.sort((a, b) => (a.order || 0) - (b.order || 0));
+      console.log('Loaded banners:', sortedCarouselBanners.map(b => ({ title: b.title, image: b.image, resolvedUrl: getImageUrl(b.image) })));
+      console.log('Current environment variables:', {
+        VITE_API_URL: import.meta.env.VITE_API_URL,
+        VITE_ADMIN_API_URL: import.meta.env.VITE_ADMIN_API_URL
+      });
       setBanners(sortedCarouselBanners);
     } catch (error) {
       
@@ -159,6 +164,12 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
           decoding="async"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
+            console.error('Banner image failed to load:', {
+              src: target.src,
+              originalImage: currentBanner.image,
+              resolvedUrl: getImageUrl(currentBanner.image),
+              error: e
+            });
             // Fallback to a modern gradient if image fails
             target.style.display = 'none';
             target.parentElement!.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
@@ -199,7 +210,10 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
                   });
                   
                   if (currentBanner.link.startsWith('/categories/')) {
-                    const transformedLink = `/products?category=${currentBanner.link.replace('/categories/', '')}`;
+                    // Extract category slug from the link
+                    const categorySlug = currentBanner.link.replace('/categories/', '');
+                    // Use the same URL encoding as Navbar for consistency
+                    const transformedLink = `/products?category=${encodeURIComponent(categorySlug)}`;
                     console.log('Transformed link:', transformedLink);
                     return transformedLink;
                   }

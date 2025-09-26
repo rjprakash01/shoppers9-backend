@@ -5,7 +5,11 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Users from './pages/Users';
+
+import CustomerManagement from './pages/CustomerManagement';
+import SellerManagement from './pages/SellerManagement';
+import CustomerProfile from './pages/CustomerProfile';
+import SellerProfile from './pages/SellerProfile';
 import ProductManagement from './pages/ProductManagement';
 import Orders from './pages/Orders';
 import CategoryManagement from './components/CategoryManagement';
@@ -48,10 +52,32 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            <Route path="/users" element={
+
+            <Route path="/customer-management" element={
               <ProtectedRoute>
                 <Layout>
-                  <Users />
+                  <CustomerManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller-management" element={
+              <ProtectedRoute>
+                <Layout>
+                  <SellerManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/customer/:customerId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <CustomerProfile />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/:sellerId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <SellerProfile />
                 </Layout>
               </ProtectedRoute>
             } />

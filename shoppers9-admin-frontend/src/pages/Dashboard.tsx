@@ -7,13 +7,13 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-100 rounded-lg">
-          <Shield className="h-6 w-6 text-blue-600" />
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-gray-100 rounded">
+          <Shield className="h-6 w-6 text-gray-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-black">Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.firstName || 'User'}!</p>
         </div>
       </div>

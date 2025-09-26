@@ -33,19 +33,13 @@ interface BannerFormData {
   order: number;
   startDate: string;
   endDate: string;
-  displayType: 'carousel' | 'price-range';
   categoryId: string;
-  priceRange?: {
-    minPrice?: number;
-    maxPrice?: number;
-    label: string;
-    color?: string;
-  };
 }
 
 interface Category {
   id: string;
   name: string;
+  displayName?: string;
   level: number;
   isActive: boolean;
   children?: Category[];
@@ -77,14 +71,8 @@ const BannerManagement: React.FC = () => {
     order: 0,
     startDate: '',
     endDate: '',
-    displayType: 'carousel',
-    categoryId: '',
-    priceRange: {
-      minPrice: undefined,
-      maxPrice: undefined,
-      label: '',
-      color: '#3B82F6'
-    }
+    displayType: 'hero-banner',
+    categoryId: ''
   });
 
   useEffect(() => {
@@ -97,18 +85,23 @@ const BannerManagement: React.FC = () => {
       setLoadingCategories(true);
       const response = await authService.getCategoryTree();
       
-      // Flatten the category tree
-      const flattenCategories = (cats: any[], level = 1): Category[] => {
+      // Flatten the category tree with proper indentation
+      const flattenCategories = (cats: any[], level = 1, prefix = ''): Category[] => {
         let result: Category[] = [];
         for (const cat of cats) {
+          const indent = '  '.repeat(level - 1);
+          const displayName = `${indent}${cat.name} (Level ${level})`;
+          
           result.push({
             id: cat.id || cat._id,
             name: cat.name,
+            displayName: displayName,
             level: cat.level || level,
             isActive: cat.isActive
           });
+          
           if (cat.children && cat.children.length > 0) {
-            result = result.concat(flattenCategories(cat.children, level + 1));
+            result = result.concat(flattenCategories(cat.children, level + 1, prefix));
           }
         }
         return result;
@@ -127,7 +120,7 @@ const BannerManagement: React.FC = () => {
       const flatCategories = flattenCategories(rawCategories);
       setCategories(flatCategories.filter(cat => cat.isActive));
     } catch (err: any) {
-      
+      console.error('Error loading categories:', err);
     } finally {
       setLoadingCategories(false);
     }
@@ -201,9 +194,9 @@ const BannerManagement: React.FC = () => {
       return;
     }
 
-    // Validate price range for price-range display type
-    if (formData.displayType === 'price-range' && (!formData.priceRange || !formData.priceRange.label)) {
-      setError('Price range label is required for price range banners');
+    // Validate categoryId is required
+    if (!formData.categoryId) {
+      setError('Category is required');
       return;
     }
 
@@ -211,11 +204,24 @@ const BannerManagement: React.FC = () => {
       setIsSubmitting(true);
       setError(null);
 
-      const bannerData = {
-        ...formData,
+      const bannerData: any = {
+        title: formData.title,
+        subtitle: formData.subtitle,
+        description: formData.description,
+        image: formData.image,
+        link: formData.link,
+        buttonText: formData.buttonText,
+        isActive: formData.isActive,
+        order: formData.order,
+        categoryId: formData.categoryId, // Always include categoryId as it's required
         startDate: formData.startDate || undefined,
         endDate: formData.endDate || undefined
       };
+
+      // Only include categoryType if displayType is 'hero-banner'
+      if (formData.displayType === 'hero-banner' && formData.categoryType) {
+        bannerData.categoryType = formData.categoryType;
+      }
 
       if (editingBanner) {
         await adminBannerService.updateBanner(editingBanner.id, bannerData);
@@ -226,7 +232,7 @@ const BannerManagement: React.FC = () => {
       await loadBanners();
       resetForm();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save banner');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to save banner');
     } finally {
       setIsSubmitting(false);
     }
@@ -245,14 +251,7 @@ const BannerManagement: React.FC = () => {
       order: banner.order,
       startDate: banner.startDate ? banner.startDate.split('T')[0] : '',
       endDate: banner.endDate ? banner.endDate.split('T')[0] : '',
-      displayType: (banner as any).displayType || 'carousel',
-      categoryId: (banner as any).categoryId || '',
-      priceRange: (banner as any).priceRange || {
-        minPrice: undefined,
-        maxPrice: undefined,
-        label: '',
-        color: '#3B82F6'
-      }
+      categoryId: (banner as any).categoryId || ''
     });
     setShowForm(true);
   };
@@ -315,10 +314,9 @@ const BannerManagement: React.FC = () => {
       link: '',
       buttonText: '',
       isActive: true,
-      order: 0,
+      order: 1,
       startDate: '',
       endDate: '',
-      displayType: 'carousel',
       categoryId: ''
     });
     setEditingBanner(null);
@@ -341,7 +339,7 @@ const BannerManagement: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Banner Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage banners for the home page carousel and category sections
+            Manage hero banners with category selection for the home page
           </p>
         </div>
         <button
@@ -378,25 +376,26 @@ const BannerManagement: React.FC = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Banner Type - Moved to Top */}
+                {/* Banner Position */}
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Banner Type *
+                    Banner Position
                   </label>
-                  <select
-                    value={formData.displayType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, displayType: e.target.value as 'carousel' | 'price-range' }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="carousel">Carousel</option>
-                    <option value="price-range">Shop by Price Range</option>
-                  </select>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {formData.displayType === 'carousel' 
-                      ? 'Banner will appear in the main carousel slider'
-                      : 'Banner will appear in the shop by price range section'
-                    }
-                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                        formData.order === 1 ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {formData.order === 1 ? 'Large Hero Banner' : 'Grid Banner'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {formData.order === 1 
+                        ? 'This banner will appear as the large hero banner on the left side' 
+                        : 'This banner will appear in the grid section on the right side'
+                      }
+                    </p>
+                  </div>
                 </div>
 
                 {/* Title */}
@@ -415,37 +414,19 @@ const BannerManagement: React.FC = () => {
                   />
                 </div>
 
-                {/* Subtitle - Only for Carousel */}
-                {formData.displayType === 'carousel' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subtitle
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.subtitle}
-                      onChange={(e) => setFormData(prev => ({ ...prev, subtitle: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter banner subtitle"
-                    />
-                  </div>
-                )}
-
-                {/* Description - Only for Carousel */}
-                {formData.displayType === 'carousel' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter banner description"
-                      rows={3}
-                    />
-                  </div>
-                )}
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter banner description"
+                    rows={3}
+                  />
+                </div>
 
                 {/* Image Upload */}
                 <div>
@@ -492,50 +473,93 @@ const BannerManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Link and Button Text - Only for Carousel */}
-                {formData.displayType === 'carousel' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <LinkIcon className="w-4 h-4 inline mr-2" />
-                        Link URL
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.link}
-                        onChange={(e) => setFormData(prev => ({ ...prev, link: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="https://example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Button Text
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.buttonText}
-                        onChange={(e) => setFormData(prev => ({ ...prev, buttonText: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Shop Now"
-                      />
-                    </div>
-                  </div>
-                )}
+                {/* Category Selection */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     Category *
+                   </label>
+                   {loadingCategories ? (
+                     <div className="flex items-center space-x-2">
+                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                       <span className="text-sm text-gray-500">Loading categories...</span>
+                     </div>
+                   ) : (
+                     <>
+                       <select
+                         value={formData.categoryId}
+                         onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                         required
+                       >
+                         <option value="">Select a category</option>
+                         {categories.map(category => (
+                           <option key={category.id} value={category.id} className={`${
+                             category.level === 1 ? 'font-bold text-blue-800' :
+                             category.level === 2 ? 'font-semibold text-green-700' :
+                             'text-purple-600'
+                           }`}>
+                             {category.displayName || category.name}
+                           </option>
+                         ))}
+                       </select>
+                       <p className="text-sm text-gray-500 mt-1">
+                         Select the category this banner will link to. Categories are shown with their hierarchy levels.
+                       </p>
+                     </>
+                   )}
+                 </div>
+
+                 {/* Link and Button Text */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       <LinkIcon className="w-4 h-4 inline mr-2" />
+                       Link URL
+                     </label>
+                     <input
+                       type="url"
+                       value={formData.link}
+                       onChange={(e) => setFormData(prev => ({ ...prev, link: e.target.value }))}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="https://example.com"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       <Type className="w-4 h-4 inline mr-2" />
+                       Button Text
+                     </label>
+                     <input
+                       type="text"
+                       value={formData.buttonText}
+                       onChange={(e) => setFormData(prev => ({ ...prev, buttonText: e.target.value }))}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Shop Now"
+                     />
+                   </div>
+                 </div>
 
                 {/* Order and Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Display Order
+                      Banner Order *
                     </label>
-                    <input
-                      type="number"
+                    <select
                       value={formData.order}
-                      onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      min="0"
-                    />
+                      required
+                    >
+                      <option value={1}>1 - Large Hero Banner (Left Side)</option>
+                      <option value={2}>2 - Grid Banner (Top Left)</option>
+                      <option value={3}>3 - Grid Banner (Top Right)</option>
+                      <option value={4}>4 - Grid Banner (Bottom Left)</option>
+                      <option value={5}>5 - Grid Banner (Bottom Right)</option>
+                    </select>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Order 1 = Large hero banner, Orders 2-5 = Grid banners
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -593,176 +617,7 @@ const BannerManagement: React.FC = () => {
 
 
 
-                {/* Price Range Fields - Show only when displayType is 'price-range' */}
-                {formData.displayType === 'price-range' && (
-                  <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="text-lg font-medium text-blue-900 mb-4">Price Range Configuration</h3>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price Range Label *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.priceRange?.label || ''}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          priceRange: {
-                            ...prev.priceRange,
-                            label: e.target.value,
-                            minPrice: prev.priceRange?.minPrice,
-                            maxPrice: prev.priceRange?.maxPrice,
-                            color: prev.priceRange?.color || '#3B82F6'
-                          }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., Under ₹99, ₹100-₹500"
-                        required={formData.displayType === 'price-range'}
-                      />
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Minimum Price (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.priceRange?.minPrice || ''}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            priceRange: {
-                              ...prev.priceRange,
-                              minPrice: e.target.value ? parseFloat(e.target.value) : undefined,
-                              maxPrice: prev.priceRange?.maxPrice,
-                              label: prev.priceRange?.label || '',
-                              color: prev.priceRange?.color || '#3B82F6'
-                            }
-                          }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="0"
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Maximum Price (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.priceRange?.maxPrice || ''}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            priceRange: {
-                              ...prev.priceRange,
-                              maxPrice: e.target.value ? parseFloat(e.target.value) : undefined,
-                              minPrice: prev.priceRange?.minPrice,
-                              label: prev.priceRange?.label || '',
-                              color: prev.priceRange?.color || '#3B82F6'
-                            }
-                          }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="999"
-                          min={formData.priceRange?.minPrice || 0}
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Card Color/Gradient
-                      </label>
-                      
-                      {/* Gradient Presets */}
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-600 mb-2">Gradient Presets:</p>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[
-                            { name: 'Blue', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-                            { name: 'Orange', value: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-                            { name: 'Green', value: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-                            { name: 'Purple', value: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
-                            { name: 'Red', value: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' },
-                            { name: 'Yellow', value: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
-                            { name: 'Teal', value: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
-                            { name: 'Pink', value: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)' }
-                          ].map((gradient) => (
-                            <button
-                              key={gradient.name}
-                              type="button"
-                              onClick={() => setFormData(prev => ({
-                                ...prev,
-                                priceRange: {
-                                  ...prev.priceRange,
-                                  color: gradient.value,
-                                  minPrice: prev.priceRange?.minPrice,
-                                  maxPrice: prev.priceRange?.maxPrice,
-                                  label: prev.priceRange?.label || ''
-                                }
-                              }))}
-                              className="h-8 rounded border border-gray-300 hover:border-gray-400 transition-colors"
-                              style={{ background: gradient.value }}
-                              title={gradient.name}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Custom Color/Gradient Input */}
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="color"
-                            value={formData.priceRange?.color?.startsWith('#') ? formData.priceRange.color : '#3B82F6'}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              priceRange: {
-                                ...prev.priceRange,
-                                color: e.target.value,
-                                minPrice: prev.priceRange?.minPrice,
-                                maxPrice: prev.priceRange?.maxPrice,
-                                label: prev.priceRange?.label || ''
-                              }
-                            }))}
-                            className="w-12 h-10 border border-gray-300 rounded-md cursor-pointer"
-                          />
-                          <input
-                            type="text"
-                            value={formData.priceRange?.color || '#3B82F6'}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              priceRange: {
-                                ...prev.priceRange,
-                                color: e.target.value,
-                                minPrice: prev.priceRange?.minPrice,
-                                maxPrice: prev.priceRange?.maxPrice,
-                                label: prev.priceRange?.label || ''
-                              }
-                            }))}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="#3B82F6 or linear-gradient(...)"
-                          />
-                        </div>
-                        
-                        {/* Color Preview */}
-                        <div className="flex items-center space-x-3">
-                          <div 
-                            className="w-full h-12 rounded border border-gray-300 flex items-center justify-center text-white font-medium"
-                            style={{ background: formData.priceRange?.color || '#3B82F6' }}
-                          >
-                            Preview
-                          </div>
-                        </div>
-                        
-                        <p className="text-xs text-gray-500">
-                          Use hex colors (#3B82F6) or CSS gradients (linear-gradient(135deg, #667eea 0%, #764ba2 100%))
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Form Actions */}
                 <div className="flex items-center justify-end space-x-4 pt-6 border-t">
@@ -859,42 +714,22 @@ const BannerManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {banner.displayType === 'carousel' && 'Carousel'}
-                        {banner.displayType === 'price-range' && 'Shop by Price Range'}
-                        {!banner.displayType && 'Carousel'}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        banner.order === 1 ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {banner.order === 1 ? 'Large Hero Banner' : `Grid Banner ${banner.order}`}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
-                        {banner.displayType === 'price-range' ? (
-                          <div className="space-y-1">
-                            <div className="font-medium">{(banner as any).priceRange?.label || 'No label'}</div>
-                            <div className="text-xs text-gray-500">
-                              {(banner as any).priceRange?.minPrice !== undefined && (banner as any).priceRange?.maxPrice !== undefined
-                                ? `₹${(banner as any).priceRange.minPrice} - ₹${(banner as any).priceRange.maxPrice}`
-                                : (banner as any).priceRange?.minPrice !== undefined
-                                ? `From ₹${(banner as any).priceRange.minPrice}`
-                                : (banner as any).priceRange?.maxPrice !== undefined
-                                ? `Up to ₹${(banner as any).priceRange.maxPrice}`
-                                : 'No price range'
-                              }
-                            </div>
-                            {(banner as any).priceRange?.color && (
-                              <div className="flex items-center space-x-2">
-                                <div 
-                                  className="w-4 h-4 rounded border border-gray-300"
-                                  style={{ backgroundColor: (banner as any).priceRange.color }}
-                                ></div>
-                                <span className="text-xs text-gray-500">{(banner as any).priceRange.color}</span>
-                              </div>
-                            )}
-                          </div>
-                        ) : banner.categoryId ? (
-                          categories.find(cat => cat.id === banner.categoryId)?.name || 'Unknown Category'
+                        {banner.categoryId ? (
+                          <span className="text-blue-600">Category: {categories.find(c => c.id === banner.categoryId)?.name || banner.categoryId}</span>
                         ) : (
-                          <span className="text-gray-400">No category</span>
+                          <span className="text-gray-500">No category</span>
                         )}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Position: {banner.order === 1 ? 'Left Hero' : `Grid ${banner.order}`}
                       </div>
                     </td>
                     <td className="px-6 py-4">

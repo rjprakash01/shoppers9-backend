@@ -92,6 +92,17 @@ const SuperAdminDashboard: React.FC = () => {
     reason: ''
   });
 
+  // Edit user form state
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    primaryRole: ''
+  });
+
   useEffect(() => {
     loadData();
   }, [pagination.page, searchTerm, roleFilter, statusFilter]);
@@ -167,6 +178,48 @@ const SuperAdminDashboard: React.FC = () => {
     setShowEmergencyModal(true);
   };
 
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditForm({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: (user as any).phone || '',
+      primaryRole: user.primaryRole
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+    
+    try {
+      const response = await roleService.updateUser(editingUser._id, editForm);
+      if (response.success) {
+        setShowEditModal(false);
+        setEditingUser(null);
+        loadData();
+        alert('User updated successfully!');
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update user');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+      const response = await roleService.deleteUser(userId);
+      if (response.success) {
+        loadData();
+        alert('User deleted successfully!');
+      }
+    } catch (error: any) {
+       alert(error.response?.data?.message || 'Failed to delete user');
+     }
+   };
+
   const getRoleColor = (role: string) => {
     const colors = {
       super_admin: 'bg-purple-100 text-purple-800',
@@ -201,7 +254,7 @@ const SuperAdminDashboard: React.FC = () => {
   };
 
   const renderUsersTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -339,15 +392,31 @@ const SuperAdminDashboard: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => openRoleModal(user)}
+                        onClick={() => openEditModal(user)}
                         className="text-blue-600 hover:text-blue-900"
+                        title="Edit User"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      {user.primaryRole !== 'super_admin' && (
+                        <button
+                          onClick={() => handleDeleteUser(user._id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openRoleModal(user)}
+                        className="text-green-600 hover:text-green-900"
                         title="Manage Roles"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEmergencyModal(user)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-orange-600 hover:text-orange-900"
                         title="Emergency Revoke"
                       >
                         <ShieldAlert className="w-4 h-4" />
@@ -422,6 +491,102 @@ const SuperAdminDashboard: React.FC = () => {
                 </button>
               </nav>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderEditModal = () => (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Edit className="w-6 h-6 text-blue-600" />
+              <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+            </div>
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <XCircle className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+              <input
+                type="text"
+                value={editForm.firstName}
+                onChange={(e) => setEditForm(prev => ({ ...prev, firstName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+              <input
+                type="text"
+                value={editForm.lastName}
+                onChange={(e) => setEditForm(prev => ({ ...prev, lastName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <input
+                type="text"
+                value={editForm.phone}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Role *</label>
+              <select
+                value={editForm.primaryRole}
+                onChange={(e) => setEditForm(prev => ({ ...prev, primaryRole: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={editingUser?.primaryRole === 'super_admin'}
+              >
+                <option value="admin">Admin</option>
+                <option value="sub_admin">Sub Admin</option>
+                <option value="seller">Seller</option>
+                <option value="customer">Customer</option>
+                {editingUser?.primaryRole === 'super_admin' && (
+                  <option value="super_admin">Super Admin</option>
+                )}
+              </select>
+              {editingUser?.primaryRole === 'super_admin' && (
+                <p className="text-xs text-gray-500 mt-1">Super Admin role cannot be changed</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEditUser}
+              disabled={!editForm.firstName || !editForm.lastName || !editForm.email}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Update User
+            </button>
           </div>
         </div>
       </div>
@@ -737,6 +902,7 @@ const SuperAdminDashboard: React.FC = () => {
       )}
 
       {/* Modals */}
+      {showEditModal && renderEditModal()}
       {showRoleModal && renderRoleModal()}
       {showEmergencyModal && renderEmergencyModal()}
     </div>

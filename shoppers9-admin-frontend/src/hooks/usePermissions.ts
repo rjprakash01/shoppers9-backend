@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
@@ -21,7 +21,7 @@ export const usePermissions = (): PermissionHookReturn => {
   const [moduleAccess, setModuleAccess] = useState<ModuleAccess[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPermissions = async () => {
+  const fetchPermissions = useCallback(async () => {
     if (!user) {
       setModuleAccess([]);
       setLoading(false);
@@ -41,11 +41,11 @@ export const usePermissions = (): PermissionHookReturn => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchPermissions();
-  }, [user]);
+  }, [fetchPermissions]);
 
   // Refresh permissions every 30 seconds
   useEffect(() => {
@@ -56,9 +56,9 @@ export const usePermissions = (): PermissionHookReturn => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, fetchPermissions]);
 
-  const hasModuleAccess = (module: string): boolean => {
+  const hasModuleAccess = useCallback((module: string): boolean => {
     // Super admin has all permissions
     if (user?.role === 'super_admin' || user?.primaryRole === 'super_admin') {
       return true;
@@ -67,7 +67,7 @@ export const usePermissions = (): PermissionHookReturn => {
     // Check if user has access to this module
     const moduleAccessItem = moduleAccess.find(m => m.module === module);
     return moduleAccessItem?.granted || false;
-  };
+  }, [user?.role, user?.primaryRole, moduleAccess]);
 
   const refreshPermissions = async () => {
     await fetchPermissions();

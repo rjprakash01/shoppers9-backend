@@ -268,12 +268,30 @@ class AuthService {
 
   async rejectProduct(productId: string, reason: string, comments?: string) {
     try {
-      const response = await api.patch(`/admin/products/${productId}/reject`, {
+      console.log('🌐 authService.rejectProduct called with:', {
+        productId,
         reason,
         comments
       });
+      
+      const requestData = {
+        reason,
+        comments
+      };
+      
+      console.log('📤 Sending PATCH request to:', `/admin/products/${productId}/reject`);
+      console.log('📤 Request data:', requestData);
+      
+      const response = await api.patch(`/admin/products/${productId}/reject`, requestData);
+      
+      console.log('📥 Response received:', {
+        status: response.status,
+        data: response.data
+      });
+      
       return response.data.data;
     } catch (error: unknown) {
+      console.error('🚨 authService.rejectProduct error:', error);
       throw new Error(this.getErrorMessage(error, 'Failed to reject product'));
     }
   }

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Banner Cache</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Banner Cache Management</h1>
+    <p>This tool helps clear banner cache that might be preventing new banners from showing.</p>
+    
+    <button class="button" onclick="clearAllCache()">Clear All Cache</button>
+    <button class="button" onclick="testBannerAPI()">Test Banner API</button>
+    <button class="button" onclick="openMainSite()">Open Main Site</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'result';
+            resultDiv.style.borderColor = type === 'error' ? 'red' : type === 'success' ? 'green' : '#ccc';
+            resultDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        function clearAllCache() {
+            try {
+                // Clear localStorage
+                localStorage.removeItem('bannerCache');
+                localStorage.removeItem('banners');
+                localStorage.clear();
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                addResult('✅ All cache cleared successfully', 'success');
+                addResult('📝 Cleared items: localStorage, sessionStorage', 'info');
+                
+            } catch (error) {
+                addResult(`❌ Error clearing cache: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBannerAPI() {
+            try {
+                addResult('🔄 Testing banner API...', 'info');
+                
+                const response = await fetch('http://localhost:5000/api/banners/active', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    cache: 'no-cache' // Force no cache
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    addResult(`✅ API working! Found ${data.data.length} banners`, 'success');
+                    
+                    // Show banner details
+                    data.data.forEach((banner, index) => {
+                        addResult(`📋 Banner ${index + 1}: "${banner.title}" (Order: ${banner.order}, Active: ${banner.isActive})`, 'info');
+                    });
+                } else {
+                    addResult('⚠️ API returned invalid format', 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ API test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function openMainSite() {
+            addResult('🌐 Opening main site in new tab...', 'info');
+            window.open('http://localhost:5175', '_blank');
+        }
+        
+        // Auto-run cache clear on page load
+        window.addEventListener('load', () => {
+            addResult('🚀 Cache management tool loaded', 'info');
+            addResult('💡 Tip: Clear cache first, then test API, then open main site', 'info');
+        });
+    </script>
+</body>
+</html>

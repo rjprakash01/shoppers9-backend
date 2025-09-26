@@ -179,213 +179,73 @@ export const getProducts = async (req: Request, res: Response) => {
   if (category) {
     console.log('\n=== CATEGORY DEBUG ===');
     console.log('Category parameter:', category);
+    console.log('Request URL:', req.url);
+    console.log('Request query:', req.query);
     
-    // Handle hierarchical category filtering (category-subcategory-subsubcategory)
-    // Fix for duplicated category names in hierarchical structure
-    const categoryParts = category.split('-');
-    
-    // Smart parsing to handle duplicated category names
-    let categoryName, subcategoryName, subsubcategoryName;
-    
-    if (categoryParts.length >= 6) {
-      // Pattern: men-men-footwear-men-footwear-shoes
-      categoryName = categoryParts[0]; // men
-      subcategoryName = categoryParts[2]; // footwear
-      subsubcategoryName = categoryParts[5]; // shoes
-    } else if (categoryParts.length >= 3) {
-      // Standard pattern: men-clothing-t-shirt (becomes ['men', 'clothing', 't', 'shirt'])
-      categoryName = categoryParts[0]; // men
-      subcategoryName = categoryParts[1]; // clothing
-      // Fix: properly join remaining parts for multi-word subcategories
-      const remainingParts = categoryParts.slice(2);
-      subsubcategoryName = remainingParts.join('-'); // t-shirt
-    } else if (categoryParts.length === 2) {
-      // Pattern: men-footwear
-      categoryName = categoryParts[0];
-      subcategoryName = categoryParts[1];
-      subsubcategoryName = undefined;
-    } else {
-      // Single category
-      categoryName = categoryParts[0];
-      subcategoryName = undefined;
-      subsubcategoryName = undefined;
-    }
-    
-    
-    console.log('Parsed parts:', { categoryName, subcategoryName, subsubcategoryName });
+    // Simplified category handling - frontend now sends actual database slugs
+    // No need for complex parsing since frontend sends the correct slug directly
      
      try {
-       if (subsubcategoryName) {
-        // Filter by specific subsubcategory (level 3)
-        console.log('Looking for subsubcategory:', subsubcategoryName);
-        
-        // Try multiple variations of the category name
-        const searchVariations = [
-          subsubcategoryName,
-          subsubcategoryName.replace('-', ' '),
-          subsubcategoryName.replace('-', ''),
-          subsubcategoryName.toUpperCase(),
-          subsubcategoryName.toLowerCase()
-        ];
-        
-        let subsubcategoryDoc = await Category.findOne({
-           $or: [
-             { slug: { $in: searchVariations } },
-             { name: { $regex: new RegExp(`^(${searchVariations.join('|')})$`, 'i') } }
-           ],
-           isActive: true,
-           level: 3
-         });
+       // Direct category lookup by slug - frontend sends actual database slugs
+       console.log('Looking for category with slug:', category);
+       
+       const categoryDoc = await Category.findOne({
+         slug: category,
+         isActive: true
+       });
+       
+       if (categoryDoc) {
+         console.log(`Found category: ${categoryDoc.name} (Level ${categoryDoc.level})`);
          
-         // Special handling for t-shirt variations only if we're actually looking for t-shirt
-         if (!subsubcategoryDoc && subsubcategoryName.toLowerCase().includes('shirt')) {
-           subsubcategoryDoc = await Category.findOne({
-             $or: [
-               { name: { $regex: new RegExp(`t.?shirt`, 'i') } },
-               { slug: { $regex: new RegExp(`t.?shirt`, 'i') } }
-             ],
-             isActive: true,
-             level: 3
-           });
-         }
-         
-         if (!subsubcategoryDoc) {
-           console.log('No exact match found, searching all level 3 categories:');
-           const allLevel3 = await Category.find({ level: 3, isActive: true }).lean();
-           allLevel3.forEach(cat => {
-             console.log(`- ${cat.name} (slug: ${cat.slug})`);
-           });
+         if (categoryDoc.level === 3) {
+           // Level 3 category - filter by subSubCategory
+           query.subSubCategory = categoryDoc._id;
+           console.log('Applied Level 3 filter:', categoryDoc._id);
+         } else if (categoryDoc.level === 2) {
+           // Level 2 category - get all products in this subcategory and its children
+           const subsubcategories = await Category.find({
+             parentCategory: categoryDoc._id,
+             isActive: true
+           }).lean();
            
-           // If still no match, try broader search
-           subsubcategoryDoc = await Category.findOne({
-             $or: [
-               { name: { $regex: new RegExp(subsubcategoryName.replace('-', ''), 'i') } },
-               { slug: { $regex: new RegExp(subsubcategoryName.replace('-', ''), 'i') } }
-             ],
-             isActive: true,
-             level: 3
-           });
+           const subsubcategoryIds = subsubcategories.map(s => s._id);
            
-           if (subsubcategoryDoc) {
-              console.log('Found broader match:', subsubcategoryDoc.name, 'ID:', subsubcategoryDoc._id);
-            }
-         } else {
-           console.log('Found exact match:', subsubcategoryDoc.name, 'ID:', subsubcategoryDoc._id);
+           query.$or = [
+             { subCategory: categoryDoc._id },
+             { subSubCategory: { $in: subsubcategoryIds } }
+           ];
+           console.log('Applied Level 2 filter:', categoryDoc._id);
+         } else if (categoryDoc.level === 1) {
+           // Level 1 category - get all descendant categories
+           const getAllDescendants = async (parentId: any): Promise<any[]> => {
+             const children = await Category.find({
+               parentCategory: parentId,
+               isActive: true
+             }).lean();
+             
+             let allDescendants = [...children];
+             for (const child of children) {
+               const grandchildren = await getAllDescendants(child._id);
+               allDescendants = [...allDescendants, ...grandchildren];
+             }
+             return allDescendants;
+           };
+           
+           const descendants = await getAllDescendants(categoryDoc._id);
+           const level2Ids = descendants.filter(d => d.level === 2).map(d => d._id);
+           const level3Ids = descendants.filter(d => d.level === 3).map(d => d._id);
+           
+           query.$or = [
+             { category: categoryDoc._id },
+             { subCategory: { $in: level2Ids } },
+             { subSubCategory: { $in: level3Ids } }
+           ];
+           console.log('Applied Level 1 filter:', categoryDoc._id);
          }
-         
-         console.log('Final subsubcategory result:', subsubcategoryDoc?.name || 'Not found');
-        if (subsubcategoryDoc) {
-          // For level 3 categories (subsubcategories), only match products that have this as their subSubCategory
-          query.subSubCategory = subsubcategoryDoc._id;
-          console.log('Applied subSubCategory filter:', subsubcategoryDoc._id);
-        } else {
-          console.log('⚠️  No subsubcategory found, trying subcategory fallback');
-          // Try to find the subcategory instead and show all products in that subcategory
-          const subcategoryDoc = await Category.findOne({
-            $or: [
-              { slug: subcategoryName },
-              { name: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
-            ],
-            isActive: true,
-            level: 2
-          });
-          
-          if (subcategoryDoc) {
-            console.log('Found subcategory fallback:', subcategoryDoc.name);
-            // Get all subsubcategories under this subcategory
-            const subsubcategories = await Category.find({
-              parentCategory: subcategoryDoc._id,
-              isActive: true
-            }).lean();
-            
-            const subsubcategoryIds = subsubcategories.map(s => s._id);
-            
-            query.$or = [
-              { subCategory: subcategoryDoc._id },
-              { subSubCategory: { $in: subsubcategoryIds } }
-            ];
-            console.log('Applied subcategory fallback filter:', subcategoryDoc._id);
-          } else {
-            console.log('⚠️  No subcategory found either, returning empty results');
-            query._id = { $in: [] }; // This will match no products
-          }
-        }
-      } else if (subcategoryName) {
-        // Filter by subcategory (level 2) and all its children
-        const subcategoryDoc = await Category.findOne({
-          $or: [
-            { slug: subcategoryName },
-            { name: { $regex: new RegExp(`^${subcategoryName}$`, 'i') } }
-          ],
-          isActive: true,
-          level: 2
-        });
-        if (subcategoryDoc) {
-          // Get all subsubcategories under this subcategory
-          const subsubcategories = await Category.find({
-            parentCategory: subcategoryDoc._id,
-            isActive: true
-          }).lean();
-          
-          const subsubcategoryIds = subsubcategories.map(s => s._id);
-          
-          // More specific query: products that have this subcategory as their subCategory
-          // OR products that have any of the subsubcategories as their subSubCategory
-          query.$or = [
-            { subCategory: subcategoryDoc._id },
-            { subSubCategory: { $in: subsubcategoryIds } }
-          ];
-          console.log('Applied subcategory filter:', subcategoryDoc._id);
-        } else {
-          console.log('⚠️  No subcategory found, returning empty results');
-          // Return empty results instead of all products when subcategory not found
-          query._id = { $in: [] }; // This will match no products
-        }
-      } else {
-        // Filter by main category (level 1) and all its descendants
-        const categoryDoc = await Category.findOne({ 
-          $or: [
-            { slug: categoryName },
-            { name: { $regex: new RegExp(`^${categoryName}$`, 'i') } }
-          ],
-          isActive: true,
-          level: 1
-        });
-        if (categoryDoc) {
-          // Get all descendant categories recursively
-          const getAllDescendants = async (parentId: any): Promise<any[]> => {
-            const children = await Category.find({
-              parentCategory: parentId,
-              isActive: true
-            }).lean();
-            
-            let allDescendants = [...children];
-            
-            // Recursively get descendants of each child
-            for (const child of children) {
-              const grandChildren = await getAllDescendants(child._id);
-              allDescendants = allDescendants.concat(grandChildren);
-            }
-            
-            return allDescendants;
-          };
-          
-          // Find all subcategories (level 2 and 3) under this category
-          const allSubcategories = await getAllDescendants(categoryDoc._id);
-          const categoryIds = [categoryDoc._id, ...allSubcategories.map(s => s._id)];
-          
-          query.$or = [
-            { category: { $in: categoryIds } },
-            { subCategory: { $in: categoryIds } },
-            { subSubCategory: { $in: categoryIds } }
-          ];
-          console.log('Applied main category filter:', categoryDoc._id);
-        } else {
-          console.log('⚠️  No main category found, returning empty results');
-          // Return empty results instead of all products when main category not found
-          query._id = { $in: [] }; // This will match no products
-        }
-      }
+       } else {
+         console.log('⚠️  Category not found:', category);
+         query._id = { $in: [] }; // Return no products
+       }
     } catch (error) {
       console.error('Category filtering error:', error);
       // Continue without category filter if there's an error
@@ -417,9 +277,75 @@ if (!hasEmptyResultsQuery) {
   console.log('🚫 Skipping additional filters due to empty results query from category filtering');
 }
 
-  // Handle dynamic filters - simplified implementation
-  // TODO: Implement proper filter system when models are available
-  // For now, skip dynamic filtering
+  // Handle dynamic filters from hierarchical filter assignments
+  if (!hasEmptyResultsQuery) {
+    try {
+      // Import required models
+      const FilterAssignment = require('../models/FilterAssignment').default;
+      const ProductFilterValue = require('../models/ProductFilterValue').default;
+      
+      // Process dynamic filters from query parameters
+      const dynamicFilterQueries = [];
+      
+      for (const [filterName, filterValues] of Object.entries(dynamicFilters)) {
+        if (filterValues && Array.isArray(filterValues) && filterValues.length > 0) {
+          // Find the filter by name
+          const filterAssignment = await FilterAssignment.findOne({
+            'filter.name': filterName,
+            isActive: true
+          }).populate('filter');
+          
+          if (filterAssignment && filterAssignment.filter) {
+            // Get products that have any of the specified filter values
+            const productIds = await ProductFilterValue.distinct('product', {
+              filter: filterAssignment.filter._id,
+              'filterOption.value': { $in: filterValues },
+              isActive: true
+            });
+            
+            if (productIds.length > 0) {
+              dynamicFilterQueries.push({ _id: { $in: productIds } });
+            } else {
+              // No products match this filter, return empty results
+              dynamicFilterQueries.push({ _id: { $in: [] } });
+            }
+          }
+        } else if (filterValues && typeof filterValues === 'string') {
+          // Handle single filter value
+          const filterAssignment = await FilterAssignment.findOne({
+            'filter.name': filterName,
+            isActive: true
+          }).populate('filter');
+          
+          if (filterAssignment && filterAssignment.filter) {
+            const productIds = await ProductFilterValue.distinct('product', {
+              filter: filterAssignment.filter._id,
+              'filterOption.value': filterValues,
+              isActive: true
+            });
+            
+            if (productIds.length > 0) {
+              dynamicFilterQueries.push({ _id: { $in: productIds } });
+            } else {
+              dynamicFilterQueries.push({ _id: { $in: [] } });
+            }
+          }
+        }
+      }
+      
+      // Apply dynamic filter queries using $and to ensure all filters are satisfied
+      if (dynamicFilterQueries.length > 0) {
+        if (query.$and) {
+          query.$and.push(...dynamicFilterQueries);
+        } else {
+          query.$and = dynamicFilterQueries;
+        }
+      }
+    } catch (error) {
+      console.error('Error processing dynamic filters:', error);
+      // Continue without dynamic filters if there's an error
+    }
+  }
 
   if (inStock) {
     query.totalStock = { $gt: 0 };
@@ -676,9 +602,11 @@ export const getFilters = async (req: Request, res: Response) => {
     
     // Build match query for category filtering
     const matchQuery: any = { isActive: true };
+    let categoryDoc: any = null;
+    
     if (category) {
       try {
-        const categoryDoc = await Category.findOne({ 
+        categoryDoc = await Category.findOne({ 
           $or: [
             { name: { $regex: new RegExp(`^${category}$`, 'i') } },
             { slug: category }
@@ -750,52 +678,124 @@ export const getFilters = async (req: Request, res: Response) => {
       { $sort: { '_id.color': 1 } }
     ]);
     
-    // Get available materials (from specifications)
-    const materials = await Product.aggregate([
-      { $match: matchQuery },
-      { $match: { 
-          'specifications.material': { 
-            $exists: true, 
-            $ne: null, 
-            $not: { $eq: '' } 
-          } 
-        } 
-      },
-      { $group: { _id: '$specifications.material', count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
-    
-    // Get available fabrics (from specifications)
-    const fabrics = await Product.aggregate([
-      { $match: matchQuery },
-      { $match: { 
-          'specifications.fabric': { 
-            $exists: true, 
-            $ne: null, 
-            $not: { $eq: '' } 
-          } 
-        } 
-      },
-      { $group: { _id: '$specifications.fabric', count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
+    // Get dynamic filters from hierarchical filter assignments
+    let dynamicFilters: any[] = [];
+    if (categoryDoc) {
+      try {
+        // Import FilterAssignment model
+        const FilterAssignment = require('../models/FilterAssignment').default;
+        
+        // Get all filter assignments for this category and its ancestors
+        const getAllAncestors = async (categoryId: any): Promise<any[]> => {
+          const category = await Category.findById(categoryId);
+          if (!category || !category.parentCategory) {
+            return [categoryId];
+          }
+          const ancestors = await getAllAncestors(category.parentCategory);
+          return [...ancestors, categoryId];
+        };
+        
+        const ancestorIds = await getAllAncestors(categoryDoc._id);
+        
+        const filterAssignments = await FilterAssignment.find({
+          category: { $in: ancestorIds },
+          isActive: true
+        })
+        .populate({
+          path: 'filter',
+          select: 'name displayName type dataType description',
+          populate: {
+            path: 'options',
+            match: { isActive: true },
+            select: 'value displayValue colorCode sortOrder',
+            options: { sort: { sortOrder: 1 } }
+          }
+        })
+        .sort({ sortOrder: 1 });
+        
+        // Get product filter values to calculate counts
+        const ProductFilterValue = require('../models/ProductFilterValue').default;
+        
+        for (const assignment of filterAssignments) {
+          const filter = assignment.filter;
+          if (!filter || !filter.options || filter.options.length === 0) continue;
+          
+          // Get count of products that have values for this filter
+          const filterValueCounts = await ProductFilterValue.aggregate([
+            {
+              $lookup: {
+                from: 'products',
+                localField: 'product',
+                foreignField: '_id',
+                as: 'productData'
+              }
+            },
+            {
+              $match: {
+                filter: filter._id,
+                isActive: true,
+                'productData.isActive': true,
+                ...(categoryDoc ? {
+                  $or: [
+                    { 'productData.category': { $in: [categoryDoc._id] } },
+                    { 'productData.subCategory': { $in: [categoryDoc._id] } },
+                    { 'productData.subSubCategory': { $in: [categoryDoc._id] } }
+                  ]
+                } : {})
+              }
+            },
+            {
+              $lookup: {
+                from: 'filteroptions',
+                localField: 'filterOption',
+                foreignField: '_id',
+                as: 'optionData'
+              }
+            },
+            {
+              $group: {
+                _id: '$filterOption',
+                count: { $sum: 1 },
+                optionData: { $first: '$optionData' }
+              }
+            }
+          ]);
+          
+          const optionsWithCounts = filter.options.map((option: any) => {
+            const countData = filterValueCounts.find((fvc: any) => 
+              fvc._id && fvc._id.toString() === option._id.toString()
+            );
+            return {
+              name: option.displayValue || option.value,
+              value: option.value,
+              count: countData ? countData.count : 0,
+              colorCode: option.colorCode
+            };
+          }).filter((option: any) => option.count > 0);
+          
+          if (optionsWithCounts.length > 0) {
+            dynamicFilters.push({
+              name: filter.name,
+              displayName: filter.displayName || filter.name,
+              type: filter.type,
+              dataType: filter.dataType,
+              options: optionsWithCounts
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dynamic filters:', error);
+      }
+    }
     
     // Get subcategories for the current category
     let subcategories: any[] = [];
-    if (category) {
+    if (category && categoryDoc) {
       try {
-        const categoryDoc = await Category.findOne({ 
-          $or: [
-            { name: { $regex: new RegExp(`^${category}$`, 'i') } },
-            { slug: category }
-          ]
-        });
-        if (categoryDoc) {
-          subcategories = await Category.find({
-            parentCategory: categoryDoc._id,
-            isActive: true
-          }).select('name slug').lean();
-        }
+        subcategories = await Category.find({
+          parentCategory: categoryDoc._id,
+          isActive: true
+        }).select('name slug').lean();
       } catch (error) {
         
       }
@@ -812,9 +812,10 @@ export const getFilters = async (req: Request, res: Response) => {
           colorCode: c._id.colorCode, 
           count: c.count 
         })),
-        materials: materials.map(m => ({ name: m._id, count: m.count })),
-        fabrics: fabrics.map(f => ({ name: f._id, count: f.count })),
-        subcategories: subcategories
+        materials: [], // Legacy field, now handled by dynamic filters
+        fabrics: [], // Legacy field, now handled by dynamic filters
+        subcategories: subcategories,
+        filters: dynamicFilters // New dynamic filters from hierarchical system
       }
     });
   } catch (error) {
@@ -962,6 +963,35 @@ export const getProductById = async (req: Request, res: Response) => {
   // Transform product to ensure proper image and pricing display
   const productObj = (product as any).toObject ? (product as any).toObject() : product;
   const firstVariant = productObj.variants?.[0];
+  
+  // Generate availableColors and availableSizes from variants if they don't exist
+  if (productObj.variants && productObj.variants.length > 0) {
+    // Extract unique colors from variants
+    if (!productObj.availableColors || productObj.availableColors.length === 0) {
+      const uniqueColors = new Map();
+      productObj.variants.forEach((variant: any) => {
+        if (variant.color && !uniqueColors.has(variant.color)) {
+          uniqueColors.set(variant.color, {
+            name: variant.color,
+            code: variant.colorCode || '#000000',
+            images: variant.images || []
+          });
+        }
+      });
+      productObj.availableColors = Array.from(uniqueColors.values());
+    }
+    
+    // Extract unique sizes from variants
+    if (!productObj.availableSizes || productObj.availableSizes.length === 0) {
+      const uniqueSizes = new Set();
+      productObj.variants.forEach((variant: any) => {
+        if (variant.size) {
+          uniqueSizes.add(variant.size);
+        }
+      });
+      productObj.availableSizes = Array.from(uniqueSizes).map(size => ({ name: size }));
+    }
+  }
   
   // Use first image from first available color, fallback to variant images, then main images
   const firstColorImages = productObj.availableColors?.[0]?.images || [];

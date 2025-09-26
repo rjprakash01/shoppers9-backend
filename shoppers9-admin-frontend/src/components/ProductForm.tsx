@@ -56,6 +56,18 @@ interface CategoryFilter {
   sortOrder: number;
 }
 
+interface FilterAssignment {
+  _id: string;
+  category: string;
+  filter: Filter;
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  inheritedFromParent?: boolean;
+  assignedAt: string;
+  assignedBy: string;
+}
+
 interface ProductFilterValue {
   filterId: string;
   filterOptionId?: string;
@@ -163,6 +175,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [subCategories, setSubCategories] = useState<Category[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<Category[]>([]);
   const [availableFilters, setAvailableFilters] = useState<CategoryFilter[]>([]);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+
+  // Debug effect to track availableFilters changes
+  useEffect(() => {
+    console.log('📊 [FILTER STATE DEBUG] availableFilters changed:');
+    console.log('   - length:', availableFilters.length);
+    console.log('   - filters:', availableFilters);
+  }, [availableFilters]);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [imageUploadError, setImageUploadError] = useState<string>('');
@@ -196,30 +216,73 @@ const ProductForm: React.FC<ProductFormProps> = ({
           approvalStatus: initialData.approvalStatus || 'pending',
           submissionNotes: initialData.submissionNotes || ''
         });
+        
+        // If editing an existing product, fetch its assigned filter values
+        if (isEditing && (initialData as any)?._id) {
+          console.log('🔄 [PRODUCT EDIT DEBUG] Fetching existing filter values for product:', (initialData as any)._id);
+          console.log('🔄 [PRODUCT EDIT DEBUG] Current formData.filterValues before fetch:', formData.filterValues);
+          fetchExistingProductFilters((initialData as any)._id);
+        } else {
+          console.log('🔄 [PRODUCT EDIT DEBUG] Not editing or no product ID:', { isEditing, productId: (initialData as any)?._id });
+        }
       }
     } else {
       resetForm();
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, isEditing]);
 
   // Fetch available filters when category selection changes
   useEffect(() => {
+    console.log('🔄 [CATEGORY DEBUG] Category selection changed:');
+    console.log('   - category:', formData.category);
+    console.log('   - subCategory:', formData.subCategory);
+    console.log('   - subSubCategory:', formData.subSubCategory);
+    console.log('   - categories.length:', categories.length);
+    console.log('🔄 [CATEGORY DEBUG] Current availableFilters.length:', availableFilters.length);
+    console.log('🔄 [CATEGORY DEBUG] Current isLoadingFilters:', isLoadingFilters);
 
     if (categories.length === 0) {
-      
+      console.log('🔄 [CATEGORY DEBUG] No categories loaded yet, skipping filter fetch');
       return;
     }
 
     const categoryToCheck = formData.subSubCategory || formData.subCategory || formData.category;
-
+    console.log('🔄 [CATEGORY DEBUG] Selected categoryId for filters:', categoryToCheck);
+    console.log('🔄 [CATEGORY DEBUG] formData.subSubCategory:', formData.subSubCategory);
+    console.log('🔄 [CATEGORY DEBUG] formData.subCategory:', formData.subCategory);
+    console.log('🔄 [CATEGORY DEBUG] formData.category:', formData.category);
+    
+    // Find the actual category object to verify the ID
     if (categoryToCheck) {
-      
+      const foundCategory = categories.find(cat => (cat.id || cat._id) === categoryToCheck);
+      console.log('🔄 [CATEGORY DEBUG] Found category object:', foundCategory);
+      console.log('🔄 [CATEGORY DEBUG] Category name:', foundCategory?.name);
+      console.log('🔄 [CATEGORY DEBUG] Category level:', foundCategory?.level);
+      console.log('🔄 [CATEGORY DEBUG] Calling fetchAvailableFilters with:', categoryToCheck);
       fetchAvailableFilters(categoryToCheck);
     } else {
-      
+      console.log('🔄 [CATEGORY DEBUG] No category selected, clearing filters');
       setAvailableFilters([]);
+      setIsLoadingFilters(false);
     }
   }, [formData.category, formData.subCategory, formData.subSubCategory, categories]);
+
+  // Debug availableFilters state changes
+  useEffect(() => {
+    console.log('📊 [AVAILABLE FILTERS DEBUG] State updated:');
+    console.log('   - availableFilters.length:', availableFilters.length);
+    console.log('   - availableFilters:', availableFilters);
+    if (availableFilters.length > 0) {
+      availableFilters.forEach((categoryFilter, index) => {
+        console.log(`   - Filter ${index + 1}:`, {
+          id: categoryFilter.filter._id,
+          name: categoryFilter.filter.name,
+          displayName: categoryFilter.filter.displayName,
+          type: categoryFilter.filter.type
+        });
+      });
+    }
+  }, [availableFilters]);
 
   // Update category hierarchy when categories change
   useEffect(() => {
@@ -297,25 +360,116 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const fetchAvailableFilters = async (categoryId: string) => {
+    console.log('🚀 [FILTER DEBUG] === STARTING fetchAvailableFilters ===');
+    console.log('🚀 [FILTER DEBUG] categoryId:', categoryId);
+    console.log('🚀 [FILTER DEBUG] categoryId type:', typeof categoryId);
+    console.log('🚀 [FILTER DEBUG] categoryId length:', categoryId?.length);
+    setIsLoadingFilters(true);
     try {
-      console.log('Fetching filters for category:', categoryId);
-      const filtersResponse = await authService.get(`/admin/categories/${categoryId}/filters`);
-      console.log('Filters response:', filtersResponse);
+      console.log('🔍 [FILTER DEBUG] Fetching filters for category:', categoryId);
+      console.log('🔍 [FILTER DEBUG] Current auth token:', localStorage.getItem('adminToken') ? 'Present' : 'Missing');
+      
+      // Fetch assigned filters for this category using the new hierarchical system
+      const filtersResponse = await authService.get(`/admin/categories/${categoryId}/filter-assignments`);
+      console.log('🔍 [FILTER DEBUG] Raw filters response:', filtersResponse);
+      console.log('🔍 [FILTER DEBUG] Response success:', filtersResponse?.success);
+      console.log('🔍 [FILTER DEBUG] Response data:', filtersResponse?.data);
+      console.log('🔍 [FILTER DEBUG] Available filters:', filtersResponse?.data?.assignments);
 
-      if (filtersResponse.success && filtersResponse.data && filtersResponse.data.categoryFilters) {
-        console.log('Setting available filters:', filtersResponse.data.categoryFilters);
-        setAvailableFilters(filtersResponse.data.categoryFilters);
+      // Fix: Backend returns data in structure: response.data.assignments for filter-assignments endpoint
+      const availableFiltersData = filtersResponse?.data?.assignments || filtersResponse?.data?.data?.assignments || [];
+      
+      if (filtersResponse.success && availableFiltersData && availableFiltersData.length > 0) {
+        console.log('✅ [FILTER DEBUG] Setting available filters:', availableFiltersData);
+        console.log('✅ [FILTER DEBUG] Filter count:', availableFiltersData.length);
         
-        filtersResponse.data.categoryFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
-          console.log(`Filter ${index}:`, categoryFilter);
+        // Transform assignment objects to CategoryFilter format for compatibility
+        const transformedFilters = availableFiltersData.map((assignment: any) => ({
+          _id: assignment._id,
+          category: categoryId,
+          filter: assignment.filter,
+          isRequired: assignment.isRequired || false,
+          isActive: assignment.isActive !== false,
+          sortOrder: assignment.sortOrder || 0
+        }));
+        
+        setAvailableFilters(transformedFilters);
+        console.log('✅ [FILTER DEBUG] Transformed filters set:', transformedFilters);
+        console.log('✅ [FILTER DEBUG] About to set isLoadingFilters to false');
+        
+        transformedFilters.forEach((categoryFilter: CategoryFilter, index: number) => {
+          console.log(`✅ [FILTER DEBUG] Filter ${index}:`, categoryFilter);
         });
       } else {
-        console.log('No filters found for category');
+        console.log('❌ [FILTER DEBUG] No filters found for category - response structure issue');
+        console.log('❌ [FILTER DEBUG] Response structure check:');
+        console.log('   - success:', filtersResponse?.success);
+        console.log('   - data exists:', !!filtersResponse?.data);
+        console.log('   - data.assignments exists:', !!filtersResponse?.data?.assignments);
+        console.log('   - availableFiltersData:', availableFiltersData);
+        console.log('   - availableFiltersData length:', availableFiltersData?.length);
+        // Only clear filters if the response indicates no filters are available
         setAvailableFilters([]);
       }
-    } catch (error) {
-      console.error('Error fetching filters:', error);
-      setAvailableFilters([]);
+    } catch (error: any) {
+      console.error('❌ [FILTER DEBUG] Error fetching filters:', error);
+      console.error('❌ [FILTER DEBUG] Error response:', error?.response);
+      console.error('❌ [FILTER DEBUG] Error status:', error?.response?.status);
+      console.error('❌ [FILTER DEBUG] Error data:', error?.response?.data);
+      // Only clear filters if it's a real error (not just network issues)
+      if (error?.response?.status !== 500 && error?.response?.status !== 503) {
+        setAvailableFilters([]);
+      }
+    } finally {
+      console.log('🏁 [FILTER DEBUG] === ENDING fetchAvailableFilters ===');
+      console.log('🏁 [FILTER DEBUG] Setting isLoadingFilters to false');
+      setIsLoadingFilters(false);
+      console.log('🏁 [FILTER DEBUG] Final availableFilters length will be:', availableFilters.length);
+    }
+  };
+
+  const fetchExistingProductFilters = async (productId: string) => {
+    try {
+      console.log('🔍 [ASSIGNED FILTER DEBUG] Fetching existing filters for product:', productId);
+      
+      // Fetch existing filter values for this product
+      const filterValuesResponse = await authService.get(`/admin/products/${productId}/filter-values`);
+      console.log('🔍 [ASSIGNED FILTER DEBUG] Raw filter values response:', filterValuesResponse);
+      
+      if (filterValuesResponse.success && filterValuesResponse.data?.filterValues) {
+        const existingFilterValues = filterValuesResponse.data.filterValues;
+        console.log('✅ [ASSIGNED FILTER DEBUG] Existing filter values:', existingFilterValues);
+        
+        // Transform existing filter values to match our form structure
+        const transformedFilterValues: ProductFilterValue[] = existingFilterValues.map((fv: any) => ({
+          filterId: fv.filter._id,
+          filterOptionId: fv.filterOption?._id,
+          customValue: fv.customValue
+        }));
+        
+        console.log('✅ [ASSIGNED FILTER DEBUG] Transformed filter values:', transformedFilterValues);
+        
+        // Update form data with existing filter values
+        setFormData(prev => {
+          const newFormData = {
+            ...prev,
+            filterValues: transformedFilterValues
+          };
+          console.log('✅ [ASSIGNED FILTER DEBUG] Setting formData.filterValues:', {
+            previousFilterValues: prev.filterValues,
+            newFilterValues: transformedFilterValues,
+            isEditing: isEditing
+          });
+          return newFormData;
+        });
+        
+        console.log('✅ [ASSIGNED FILTER DEBUG] Form data updated with existing filter values');
+      } else {
+        console.log('ℹ️ [ASSIGNED FILTER DEBUG] No existing filter values found for this product');
+      }
+    } catch (error: any) {
+      console.error('❌ [ASSIGNED FILTER DEBUG] Error fetching existing filter values:', error);
+      console.error('❌ [ASSIGNED FILTER DEBUG] Error response:', error?.response);
     }
   };
 
@@ -363,9 +517,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleMainCategoryChange = (categoryId: string) => {
+    console.log('🎯 [MAIN CATEGORY] Selected main category ID:', categoryId);
+    console.log('🎯 [MAIN CATEGORY] Type of categoryId:', typeof categoryId);
 
     if (categoryId) {
       const subCats = filterCategoriesByParent(2, categoryId);
+      console.log('🎯 [MAIN CATEGORY] Found sub categories:', subCats.length);
       setSubCategories(subCats);
       
     } else {
@@ -382,9 +539,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleSubCategoryChange = (categoryId: string) => {
+    console.log('🎯 [SUB CATEGORY] Selected sub category ID:', categoryId);
+    console.log('🎯 [SUB CATEGORY] Type of categoryId:', typeof categoryId);
 
     if (categoryId) {
       const subSubCats = filterCategoriesByParent(3, categoryId);
+      console.log('🎯 [SUB CATEGORY] Found sub-sub categories:', subSubCats.length);
       setSubSubCategories(subSubCats);
       
     } else {
@@ -399,6 +559,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleSubSubCategoryChange = (categoryId: string) => {
+    console.log('🎯 [SUB-SUB CATEGORY] Selected sub-sub category ID:', categoryId);
+    console.log('🎯 [SUB-SUB CATEGORY] Type of categoryId:', typeof categoryId);
     
     setFormData(prev => ({
       ...prev,
@@ -768,46 +930,46 @@ const ProductForm: React.FC<ProductFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-[98vw] max-h-[98vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-gray-50">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <Package className="w-5 h-5" />
+        <div className="flex items-center justify-between p-2 border-b bg-gray-50">
+          <h2 className="text-sm font-medium text-gray-900 flex items-center gap-1">
+            <Package className="w-3 h-3" />
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="p-2">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
               
               {/* Left Column - Main Form Fields */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-2">
                 
                 {/* Category Selection */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Tag className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <Tag className="w-4 h-4" />
                     Category Selection
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Main Category *
                       </label>
                       <select
                         value={formData.category}
                         onChange={(e) => handleMainCategoryChange(e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.category ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -818,18 +980,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           </option>
                         ))}
                       </select>
-                      {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+                      {errors.category && <p className="text-red-500 text-xs mt-0.5">{errors.category}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Sub Category *
                       </label>
                       <select
                         value={formData.subCategory}
                         onChange={(e) => handleSubCategoryChange(e.target.value)}
                         disabled={!formData.category}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.subCategory ? 'border-red-500' : 'border-gray-300'
                         } ${!formData.category ? 'bg-gray-100' : ''}`}
                       >
@@ -840,18 +1002,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           </option>
                         ))}
                       </select>
-                      {errors.subCategory && <p className="text-red-500 text-sm mt-1">{errors.subCategory}</p>}
+                      {errors.subCategory && <p className="text-red-500 text-xs mt-0.5">{errors.subCategory}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Sub-Sub Category
                       </label>
                       <select
                         value={formData.subSubCategory || ''}
                         onChange={(e) => handleSubSubCategoryChange(e.target.value)}
                         disabled={!formData.subCategory}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.subSubCategory ? 'border-red-500' : 'border-gray-300'
                         } ${!formData.subCategory ? 'bg-gray-100' : ''}`}
                       >
@@ -868,55 +1030,55 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Basic Product Information */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Package className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <Package className="w-4 h-4" />
                     Basic Information
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Product Name *
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.name ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Enter product name"
                       />
-                      {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                      {errors.name && <p className="text-red-500 text-xs mt-0.5">{errors.name}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Brand *
                       </label>
                       <input
                         type="text"
                         value={formData.brand}
                         onChange={(e) => handleInputChange('brand', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.brand ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Enter brand name"
                       />
-                      {errors.brand && <p className="text-red-500 text-sm mt-1">{errors.brand}</p>}
+                      {errors.brand && <p className="text-red-500 text-xs mt-0.5">{errors.brand}</p>}
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Description *
                     </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => handleInputChange('description', e.target.value)}
-                      rows={4}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+                      rows={3}
+                      className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none ${
                         errors.description ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Enter detailed product description"
@@ -924,76 +1086,74 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
                   </div>
 
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Submission Notes
                     </label>
                     <textarea
                       value={formData.submissionNotes}
                       onChange={(e) => handleInputChange('submissionNotes', e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      placeholder="Add any notes for the admin review process (optional)"
+                      rows={2}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      placeholder="Add notes for admin review (optional)"
                     />
-                    <p className="text-xs text-gray-500 mt-1">These notes will be visible to admins during the review process</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Visible to admins during review</p>
                   </div>
                 </div>
 
                 {/* Pricing & Inventory */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <DollarSign className="w-4 h-4" />
                     Pricing & Inventory
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Original Price * <span className="text-xs text-gray-500">(Before Discount - Higher Price)</span>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Original Price * <span className="text-xs text-gray-400">(Before Discount)</span>
                       </label>
                       <input
                         type="number"
                         value={formData.originalPrice}
                         onChange={(e) => handleInputChange('originalPrice', parseFloat(e.target.value) || 0)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.originalPrice ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="0.00"
                         min="0"
                         step="0.01"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Enter the original price before any discount</p>
-                      {errors.originalPrice && <p className="text-red-500 text-sm mt-1">{errors.originalPrice}</p>}
+                      {errors.originalPrice && <p className="text-red-500 text-xs mt-0.5">{errors.originalPrice}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Selling Price * <span className="text-xs text-gray-500">(After Discount - Lower Price)</span>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Selling Price * <span className="text-xs text-gray-400">(After Discount)</span>
                       </label>
                       <input
                         type="number"
                         value={formData.price}
                         onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.price ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="0.00"
                         min="0"
                         step="0.01"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Enter the current selling price (discounted price)</p>
-                      {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+                      {errors.price && <p className="text-red-500 text-xs mt-0.5">{errors.price}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Stock Quantity *
                       </label>
                       <input
                         type="number"
                         value={formData.stock}
                         onChange={(e) => handleInputChange('stock', parseInt(e.target.value) || 0)}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                           errors.stock ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="0"
@@ -1005,36 +1165,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Available Colors Section */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                      <Package className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                      <Package className="w-4 h-4" />
                       Available Colors
                     </h3>
                     <button
                       type="button"
                       onClick={addColor}
-                      className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
-                      Add Color
+                      <Plus className="w-3 h-3" />
+                      Add
                     </button>
                   </div>
                   
-                  <p className="text-sm text-gray-600 mb-4">
-                    Define the available colors for this product.
+                  <p className="text-xs text-gray-600 mb-2">
+                    Define available colors.
                   </p>
 
                   {formData.availableColors.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No colors added yet. Click "Add Color" to define available colors.</p>
+                    <div className="text-center py-4 text-gray-500">
+                      <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs">No colors added yet.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {formData.availableColors.map((color, cIndex) => (
-                        <div key={cIndex} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <div className="grid grid-cols-3 gap-3 items-end mb-4">
+                        <div key={cIndex} className="border border-gray-200 rounded p-2 bg-gray-50">
+                          <div className="grid grid-cols-4 gap-2 items-end mb-2">
                             <div>
                               <label className="block text-xs font-medium text-gray-700 mb-1">
                                 Color Name *
@@ -1043,9 +1203,96 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                 type="text"
                                 value={color.name}
                                 onChange={(e) => updateColor(cIndex, 'name', e.target.value)}
-                                className="w-full px-2 py-1 border rounded text-sm border-gray-300"
-                                placeholder="e.g., Red, Blue, Black"
+                                className="w-full px-2 py-1 border rounded text-xs border-gray-300"
+                                placeholder="e.g., Red, Blue"
                               />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Predefined Colors
+                              </label>
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  const selectedColor = e.target.value;
+                                  if (selectedColor) {
+                                    const predefinedColors = {
+                                      'Red': '#FF0000',
+                                      'Blue': '#0000FF',
+                                      'Green': '#008000',
+                                      'Yellow': '#FFFF00',
+                                      'Orange': '#FFA500',
+                                      'Purple': '#800080',
+                                      'Pink': '#FFC0CB',
+                                      'Brown': '#A52A2A',
+                                      'Black': '#000000',
+                                      'White': '#FFFFFF',
+                                      'Gray': '#808080',
+                                      'Navy': '#000080',
+                                      'Maroon': '#800000',
+                                      'Olive': '#808000',
+                                      'Lime': '#00FF00',
+                                      'Aqua': '#00FFFF',
+                                      'Teal': '#008080',
+                                      'Silver': '#C0C0C0',
+                                      'Fuchsia': '#FF00FF',
+                                      'Coral': '#FF7F50',
+                                      'Salmon': '#FA8072',
+                                      'Gold': '#FFD700',
+                                      'Khaki': '#F0E68C',
+                                      'Violet': '#EE82EE',
+                                      'Indigo': '#4B0082',
+                                      'Turquoise': '#40E0D0',
+                                      'Crimson': '#DC143C',
+                                      'Chocolate': '#D2691E',
+                                      'Beige': '#F5F5DC',
+                                      'Ivory': '#FFFFF0'
+                                    };
+                                    updateColor(cIndex, 'name', selectedColor);
+                                    updateColor(cIndex, 'code', predefinedColors[selectedColor]);
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 border-gray-300"
+                                style={{
+                                  backgroundImage: 'none',
+                                  appearance: 'none',
+                                  WebkitAppearance: 'none',
+                                  MozAppearance: 'none'
+                                }}
+                              >
+                                <option value="" style={{ background: 'white' }}>🎨 Select Color</option>
+                                <option value="Red" style={{ background: 'linear-gradient(to right, #FF0000 20px, white 20px)', paddingLeft: '25px' }}>🔴 Red</option>
+                                <option value="Blue" style={{ background: 'linear-gradient(to right, #0000FF 20px, white 20px)', paddingLeft: '25px' }}>🔵 Blue</option>
+                                <option value="Green" style={{ background: 'linear-gradient(to right, #008000 20px, white 20px)', paddingLeft: '25px' }}>🟢 Green</option>
+                                <option value="Yellow" style={{ background: 'linear-gradient(to right, #FFFF00 20px, white 20px)', paddingLeft: '25px' }}>🟡 Yellow</option>
+                                <option value="Orange" style={{ background: 'linear-gradient(to right, #FFA500 20px, white 20px)', paddingLeft: '25px' }}>🟠 Orange</option>
+                                <option value="Purple" style={{ background: 'linear-gradient(to right, #800080 20px, white 20px)', paddingLeft: '25px' }}>🟣 Purple</option>
+                                <option value="Pink" style={{ background: 'linear-gradient(to right, #FFC0CB 20px, white 20px)', paddingLeft: '25px' }}>🩷 Pink</option>
+                                <option value="Brown" style={{ background: 'linear-gradient(to right, #A52A2A 20px, white 20px)', paddingLeft: '25px' }}>🤎 Brown</option>
+                                <option value="Black" style={{ background: 'linear-gradient(to right, #000000 20px, white 20px)', paddingLeft: '25px' }}>⚫ Black</option>
+                                <option value="White" style={{ background: 'linear-gradient(to right, #FFFFFF 20px, white 20px)', border: '1px solid #ccc', paddingLeft: '25px' }}>⚪ White</option>
+                                <option value="Gray" style={{ background: 'linear-gradient(to right, #808080 20px, white 20px)', paddingLeft: '25px' }}>🔘 Gray</option>
+                                <option value="Navy" style={{ background: 'linear-gradient(to right, #000080 20px, white 20px)', paddingLeft: '25px' }}>🔷 Navy</option>
+                                <option value="Maroon" style={{ background: 'linear-gradient(to right, #800000 20px, white 20px)', paddingLeft: '25px' }}>🔴 Maroon</option>
+                                <option value="Olive" style={{ background: 'linear-gradient(to right, #808000 20px, white 20px)', paddingLeft: '25px' }}>🫒 Olive</option>
+                                <option value="Lime" style={{ background: 'linear-gradient(to right, #00FF00 20px, white 20px)', paddingLeft: '25px' }}>🟢 Lime</option>
+                                <option value="Aqua" style={{ background: 'linear-gradient(to right, #00FFFF 20px, white 20px)', paddingLeft: '25px' }}>🔵 Aqua</option>
+                                <option value="Teal" style={{ background: 'linear-gradient(to right, #008080 20px, white 20px)', paddingLeft: '25px' }}>🔷 Teal</option>
+                                <option value="Silver" style={{ background: 'linear-gradient(to right, #C0C0C0 20px, white 20px)', paddingLeft: '25px' }}>🔘 Silver</option>
+                                <option value="Fuchsia" style={{ background: 'linear-gradient(to right, #FF00FF 20px, white 20px)', paddingLeft: '25px' }}>🟣 Fuchsia</option>
+                                <option value="Coral" style={{ background: 'linear-gradient(to right, #FF7F50 20px, white 20px)', paddingLeft: '25px' }}>🪸 Coral</option>
+                                <option value="Salmon" style={{ background: 'linear-gradient(to right, #FA8072 20px, white 20px)', paddingLeft: '25px' }}>🐟 Salmon</option>
+                                <option value="Gold" style={{ background: 'linear-gradient(to right, #FFD700 20px, white 20px)', paddingLeft: '25px' }}>🟡 Gold</option>
+                                <option value="Khaki" style={{ background: 'linear-gradient(to right, #F0E68C 20px, white 20px)', paddingLeft: '25px' }}>🟨 Khaki</option>
+                                <option value="Violet" style={{ background: 'linear-gradient(to right, #EE82EE 20px, white 20px)', paddingLeft: '25px' }}>🟣 Violet</option>
+                                <option value="Indigo" style={{ background: 'linear-gradient(to right, #4B0082 20px, white 20px)', paddingLeft: '25px' }}>🟣 Indigo</option>
+                                <option value="Turquoise" style={{ background: 'linear-gradient(to right, #40E0D0 20px, white 20px)', paddingLeft: '25px' }}>🔷 Turquoise</option>
+                                <option value="Crimson" style={{ background: 'linear-gradient(to right, #DC143C 20px, white 20px)', paddingLeft: '25px' }}>🔴 Crimson</option>
+                                <option value="Chocolate" style={{ background: 'linear-gradient(to right, #D2691E 20px, white 20px)', paddingLeft: '25px' }}>🤎 Chocolate</option>
+                                <option value="Beige" style={{ background: 'linear-gradient(to right, #F5F5DC 20px, white 20px)', paddingLeft: '25px' }}>🟨 Beige</option>
+                                <option value="Ivory" style={{ background: 'linear-gradient(to right, #FFFFF0 20px, white 20px)', paddingLeft: '25px' }}>🟨 Ivory</option>
+                              </select>
                             </div>
                             
                             <div>
@@ -1064,7 +1311,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                               <button
                                 type="button"
                                 onClick={() => removeColor(cIndex)}
-                                className="w-full px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                                className="w-full px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
                               >
                                 <Minus className="w-3 h-3 mx-auto" />
                               </button>
@@ -1130,46 +1377,46 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Available Sizes Section */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                      <Package className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                      <Package className="w-4 h-4" />
                       Available Sizes
                     </h3>
                     <button
                       type="button"
                       onClick={addSize}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
-                      Add Size
+                      <Plus className="w-3 h-3" />
+                      Add
                     </button>
                   </div>
                   
-                  <p className="text-sm text-gray-600 mb-4">
-                    Define the available sizes for this product.
+                  <p className="text-xs text-gray-600 mb-2">
+                    Define available sizes.
                   </p>
 
                   {formData.availableSizes.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No sizes added yet. Click "Add Size" to define available sizes.</p>
+                    <div className="text-center py-4 text-gray-500">
+                      <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs">No sizes added yet.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
                       {formData.availableSizes.map((size, sIndex) => (
-                        <div key={sIndex} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <div key={sIndex} className="flex items-center gap-1 p-1 bg-gray-50 rounded">
                           <input
                             type="text"
                             value={size.name}
                             onChange={(e) => updateSizeOption(sIndex, e.target.value)}
-                            className="flex-1 px-2 py-1 border rounded text-sm border-gray-300"
-                            placeholder="e.g., S, M, L"
+                            className="flex-1 px-1 py-1 border rounded text-xs border-gray-300"
+                            placeholder="S, M, L"
                           />
                           <button
                             type="button"
                             onClick={() => removeSizeOption(sIndex)}
-                            className="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                            className="px-1 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1180,171 +1427,169 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Product Variants Section */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                      <Package className="w-5 h-5" />
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                      <Package className="w-4 h-4" />
                       Color-Size Combinations
                     </h3>
                     <button
                       type="button"
                       onClick={addVariant}
-                      className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
                     >
-                      <Plus className="w-4 h-4" />
-                      Add Combination
+                      <Plus className="w-3 h-3" />
+                      Add
                     </button>
                   </div>
                   
-                  <p className="text-sm text-gray-600 mb-4">
-                    Create specific color-size combinations with individual pricing and stock levels.
+                  <p className="text-xs text-gray-600 mb-2">
+                    Create color-size combinations with pricing and stock.
                   </p>
 
                   {formData.variants.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No combinations added yet. Click "Add Combination" to create color-size combinations.</p>
+                    <div className="text-center py-4 text-gray-500">
+                      <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs">No combinations added yet.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {formData.variants.map((variant, vIndex) => (
-                        <div key={vIndex} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-medium text-gray-900">Combination {vIndex + 1}</h4>
+                        <div key={vIndex} className="border border-gray-200 rounded p-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-medium text-gray-900">#{vIndex + 1}</h4>
                             <button
                               type="button"
                               onClick={() => removeVariant(vIndex)}
-                              className="text-red-600 hover:text-red-700 p-1"
+                              className="text-red-600 hover:text-red-700 p-0.5"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
                                 Color *
                               </label>
                               <select
                                 value={variant.color}
                                 onChange={(e) => updateVariant(vIndex, 'color', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_color`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                               >
-                                <option value="">Select Color</option>
+                                <option value="">Color</option>
                                 {formData.availableColors.map((color, cIndex) => (
                                   <option key={cIndex} value={color.name}>{color.name}</option>
                                 ))}
                               </select>
                               {errors[`variant_${vIndex}_color`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_color`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_color`]}</p>
                               )}
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
                                 Size *
                               </label>
                               <select
                                 value={variant.size}
                                 onChange={(e) => updateVariant(vIndex, 'size', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_size`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                               >
-                                <option value="">Select Size</option>
+                                <option value="">Size</option>
                                 {formData.availableSizes.map((size, sIndex) => (
                                   <option key={sIndex} value={size.name}>{size.name}</option>
                                 ))}
                               </select>
                               {errors[`variant_${vIndex}_size`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_size`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_size`]}</p>
                               )}
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Selling Price * <span className="text-xs text-gray-500">(Discounted)</span>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Price *
                               </label>
                               <input
                                 type="number"
                                 value={variant.price}
                                 onChange={(e) => updateVariant(vIndex, 'price', parseFloat(e.target.value) || 0)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_price`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder="0.00"
                                 min="0"
                                 step="0.01"
                               />
-                              <p className="text-xs text-gray-500 mt-1">Current selling price for this variant</p>
                               {errors[`variant_${vIndex}_price`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_price`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_price`]}</p>
                               )}
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Original Price * <span className="text-xs text-gray-500">(Before Discount)</span>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Original *
                               </label>
                               <input
                                 type="number"
                                 value={variant.originalPrice}
                                 onChange={(e) => updateVariant(vIndex, 'originalPrice', parseFloat(e.target.value) || 0)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_originalPrice`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder="0.00"
                                 min="0"
                                 step="0.01"
                               />
-                              <p className="text-xs text-gray-500 mt-1">Original price before discount for this variant</p>
                               {errors[`variant_${vIndex}_originalPrice`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_originalPrice`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_originalPrice`]}</p>
                               )}
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
                                 Stock *
                               </label>
                               <input
                                 type="number"
                                 value={variant.stock}
                                 onChange={(e) => updateVariant(vIndex, 'stock', parseInt(e.target.value) || 0)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_stock`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder="0"
                                 min="0"
                               />
                               {errors[`variant_${vIndex}_stock`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_stock`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_stock`]}</p>
                               )}
                             </div>
                             
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
                                 SKU *
                               </label>
                               <input
                                 type="text"
                                 value={variant.sku || ''}
                                 onChange={(e) => updateVariant(vIndex, 'sku', e.target.value)}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                className={`w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                                   errors[`variant_${vIndex}_sku`] ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 placeholder="SKU-001"
                               />
                               {errors[`variant_${vIndex}_sku`] && (
-                                <p className="text-red-500 text-sm mt-1">{errors[`variant_${vIndex}_sku`]}</p>
+                                <p className="text-red-500 text-xs mt-0.5">{errors[`variant_${vIndex}_sku`]}</p>
                               )}
                             </div>
                             
                             <div className="flex items-end">
                               <div
-                                className="w-8 h-8 rounded border-2 border-gray-300"
+                                className="w-6 h-6 rounded border border-gray-300"
                                 style={{ backgroundColor: variant.colorCode || '#000000' }}
                                 title={`${variant.color} (${variant.colorCode})`}
                               ></div>
@@ -1359,32 +1604,217 @@ const ProductForm: React.FC<ProductFormProps> = ({
               </div>
 
               {/* Right Column - Filters & Settings */}
-              <div className="space-y-6">
+              <div className="space-y-3">
                 
                 {/* Product Filters */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <FilterIcon className="w-5 h-5" />
-                    Product Filters
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
+                    <FilterIcon className="w-4 h-4" />
+                    {isEditing ? 'Assigned Product Filters' : 'Product Filters'}
                   </h3>
+                  {isEditing && (
+                    <p className="text-xs text-blue-600 mb-2">
+                      💡 These are the filters currently assigned to this product. You can modify the values below.
+                    </p>
+                  )}
                   
-                  {availableFilters.length > 0 ? (
-                    <div className="space-y-4">
+                  {(() => {
+                    console.log('🎨 [RENDER DEBUG] === FILTER RENDERING CONDITIONS ===');
+                    console.log('🎨 [RENDER DEBUG] isLoadingFilters:', isLoadingFilters);
+                    console.log('🎨 [RENDER DEBUG] isEditing:', isEditing);
+                    console.log('🎨 [RENDER DEBUG] formData.filterValues.length:', formData.filterValues.length);
+                    console.log('🎨 [RENDER DEBUG] availableFilters.length:', availableFilters.length);
+                    console.log('🎨 [RENDER DEBUG] formData.category:', formData.category);
+                    console.log('🎨 [RENDER DEBUG] formData.subCategory:', formData.subCategory);
+                    console.log('🎨 [RENDER DEBUG] formData.subSubCategory:', formData.subSubCategory);
+                    return null;
+                  })()}
+                  {isLoadingFilters ? (
+                    <div className="text-center py-8">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <h4 className="text-lg font-medium text-blue-800 mb-2">🔄 Loading Filters</h4>
+                        <p className="text-sm text-blue-700">
+                          Fetching available filters for the selected category...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (isEditing && formData.filterValues.length > 0) ? (
+                    // Show assigned filters when editing
+                    <div className="space-y-2">
+                      {formData.filterValues.map((filterValue, index) => {
+                        // Find the corresponding filter from availableFilters
+                        const categoryFilter = availableFilters.find(cf => cf.filter._id === filterValue.filterId);
+                        if (!categoryFilter) return null;
+                        
+                        return (
+                          <div key={`assigned-${filterValue.filterId}-${index}`} className="space-y-2 p-2 border border-blue-200 bg-blue-50 rounded">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-xs font-medium text-blue-800">
+                                ✅ {categoryFilter.filter.displayName}
+                                {categoryFilter.isRequired && <span className="text-red-500 ml-1">*</span>}
+                                <span className="text-xs text-blue-600 ml-1">(Assigned)</span>
+                              </label>
+                              <label className="flex items-center space-x-1 text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.displayFilters.includes(categoryFilter.filter._id)}
+                                  onChange={() => handleDisplayFilterToggle(categoryFilter.filter._id)}
+                                  className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="text-blue-600">Show on page</span>
+                              </label>
+                            </div>
+                            
+                            {categoryFilter.filter.type === 'single' ? (
+                              categoryFilter.filter.dataType === 'string' && categoryFilter.filter.options && categoryFilter.filter.options.length > 0 ? (
+                                <div>
+                                  <select
+                                    value={getFilterValue(categoryFilter.filter._id)?.filterOptionId || ''}
+                                    onChange={(e) => handleFilterValueChange(categoryFilter.filter._id, e.target.value)}
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                      errors[`filter_${categoryFilter.filter._id}`] ? 'border-red-500' : 'border-gray-300'
+                                    }`}
+                                  >
+                                    <option value="">Select {categoryFilter.filter.displayName}</option>
+                                    {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
+                                      const optionId = option._id || option.id;
+                                      return (
+                                        <option key={`${optionId}-${optionIndex}`} value={optionId}>
+                                          {option.displayValue}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              ) : (
+                                <input
+                                  type={categoryFilter.filter.dataType === 'number' ? 'number' : 'text'}
+                                  value={getFilterValue(categoryFilter.filter._id)?.customValue || ''}
+                                  onChange={(e) => handleFilterValueChange(categoryFilter.filter._id, undefined, e.target.value)}
+                                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    errors[`filter_${categoryFilter.filter._id}`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
+                                  placeholder={`Enter ${categoryFilter.filter.displayName.toLowerCase()}`}
+                                />
+                              )
+                            ) : (
+                              <div>
+                                {/* Enhanced Color Filter Display for assigned filters */}
+                                {categoryFilter.filter.name.toLowerCase().includes('color') ? (
+                                  <div className="space-y-3">
+                                    <p className="text-xs text-blue-600 mb-2">💡 Currently assigned colors for this product</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+                                      {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
+                                        const filterValues = getMultipleFilterValues(categoryFilter.filter._id);
+                                        const optionId = option._id || option.id;
+                                        const isChecked = filterValues.some(fv => fv.filterOptionId === optionId);
+                                        const uniqueKey = `assigned-${categoryFilter.filter._id}-${optionId}-${optionIndex}`;
+                                        
+                                        return (
+                                          <label key={uniqueKey} className={`flex items-center p-3 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                                            isChecked ? 'border-blue-500 bg-blue-100' : 'border-gray-200 hover:border-gray-300'
+                                          }`}>
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={(e) => {
+                                                if (e.target.checked) {
+                                                  handleFilterValueChange(categoryFilter.filter._id, optionId);
+                                                } else {
+                                                  handleFilterValueRemove(categoryFilter.filter._id, optionId);
+                                                }
+                                              }}
+                                              className="sr-only"
+                                            />
+                                            <div className="flex items-center gap-3 w-full">
+                                              <div 
+                                                className="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0"
+                                                style={{ 
+                                                  backgroundColor: option.colorCode || option.value.toLowerCase(),
+                                                  borderColor: isChecked ? '#3B82F6' : '#D1D5DB'
+                                                }}
+                                              >
+                                                {isChecked && (
+                                                  <div className="w-full h-full flex items-center justify-center">
+                                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <span className={`text-sm font-medium ${
+                                                isChecked ? 'text-blue-800' : 'text-gray-700'
+                                              }`}>
+                                                {option.displayValue}
+                                              </span>
+                                            </div>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <p className="text-xs text-blue-600 mb-2">💡 Select multiple {categoryFilter.filter.displayName.toLowerCase()}</p>
+                                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                                      {(categoryFilter.filter.options || []).filter(option => option && (option._id || option.id)).map((option, optionIndex) => {
+                                        const filterValues = getMultipleFilterValues(categoryFilter.filter._id);
+                                        const optionId = option._id || option.id;
+                                        const isChecked = filterValues.some(fv => fv.filterOptionId === optionId);
+                                        const uniqueKey = `assigned-${categoryFilter.filter._id}-${optionId}-${optionIndex}`;
+                                        
+                                        return (
+                                          <label key={uniqueKey} className={`flex items-center p-2 border rounded cursor-pointer transition-all ${
+                                            isChecked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                          }`}>
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={(e) => {
+                                                if (e.target.checked) {
+                                                  handleFilterValueChange(categoryFilter.filter._id, optionId);
+                                                } else {
+                                                  handleFilterValueRemove(categoryFilter.filter._id, optionId);
+                                                }
+                                              }}
+                                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
+                                            />
+                                            <span className={`text-sm ${
+                                              isChecked ? 'text-blue-800 font-medium' : 'text-gray-700'
+                                            }`}>
+                                              {option.displayValue}
+                                            </span>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : availableFilters.length > 0 ? (
+                    // Show available filters when creating new product
+                    <div className="space-y-2">
                       {availableFilters.filter(categoryFilter => categoryFilter && categoryFilter.filter && categoryFilter._id).map((categoryFilter) => (
-                        <div key={categoryFilter._id} className="space-y-3 p-4 border border-gray-200 rounded-lg">
+                        <div key={categoryFilter._id} className="space-y-2 p-2 border border-gray-200 rounded">
                           <div className="flex items-center justify-between">
-                            <label className="block text-sm font-medium text-gray-700">
+                            <label className="block text-xs font-medium text-gray-700">
                               {categoryFilter.filter.displayName}
                               {categoryFilter.isRequired && <span className="text-red-500 ml-1">*</span>}
                             </label>
-                            <label className="flex items-center space-x-2 text-sm">
+                            <label className="flex items-center space-x-1 text-xs">
                               <input
                                 type="checkbox"
                                 checked={formData.displayFilters.includes(categoryFilter.filter._id)}
                                 onChange={() => handleDisplayFilterToggle(categoryFilter.filter._id)}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                               />
-                              <span className="text-gray-600">Show on product page</span>
+                              <span className="text-gray-600">Show on page</span>
                             </label>
                           </div>
                           
@@ -1524,25 +1954,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                        <FilterIcon className="w-12 h-12 mx-auto mb-4 text-yellow-400" />
-                        <h4 className="text-lg font-medium text-yellow-800 mb-2">🔍 Product Filters</h4>
-                        <p className="text-sm text-yellow-700 mb-4">
-                          {formData.subCategory ? (
-                            subSubCategories.length > 0 ? (
-                              "Please select a specific sub-sub-category above to see available filters"
-                            ) : (
-                              categories.find(cat => (cat.id || cat._id) === formData.subCategory)?.level === 3 ? (
-                                "No filters are assigned to this category yet. Please contact admin to assign filters."
-                              ) : (
-                                "Filters are only available for the most specific category level (sub-sub-categories). Please select a category that has sub-sub-categories."
-                              )
-                            )
+                      <div className={`border rounded-lg p-6 ${
+                        isEditing ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'
+                      }`}>
+                        <FilterIcon className={`w-12 h-12 mx-auto mb-4 ${
+                          isEditing ? 'text-blue-400' : 'text-yellow-400'
+                        }`} />
+                        <h4 className={`text-lg font-medium mb-2 ${
+                          isEditing ? 'text-blue-800' : 'text-yellow-800'
+                        }`}>
+                          {isEditing ? '📋 No Assigned Filters' : '🔍 Product Filters'}
+                        </h4>
+                        <p className={`text-sm mb-4 ${
+                          isEditing ? 'text-blue-700' : 'text-yellow-700'
+                        }`}>
+                          {isEditing ? (
+                            "This product doesn't have any filters assigned yet. You can assign filters by selecting values from the available filters for this category."
                           ) : (
-                            "Select a category above to see available product filters"
+                            formData.subCategory ? (
+                              subSubCategories.length > 0 ? (
+                                "Please select a specific sub-sub-category above to see available filters"
+                              ) : (
+                                categories.find(cat => (cat.id || cat._id) === formData.subCategory)?.level === 3 ? (
+                                  "No filters are assigned to this category yet. Please contact admin to assign filters."
+                                ) : (
+                                  "Filters are only available for the most specific category level (sub-sub-categories). Please select a category that has sub-sub-categories."
+                                )
+                              )
+                            ) : (
+                              "Select a category above to see available product filters"
+                            )
                           )}
                         </p>
-                        <div className="text-xs text-yellow-600">
+                        <div className={`text-xs ${
+                          isEditing ? 'text-blue-600' : 'text-yellow-600'
+                        }`}>
                           💡 Filters help customers find products by size, color, brand, price range, etc.
                         </div>
                       </div>
@@ -1551,20 +1997,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Product Settings */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Product Settings</h3>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Product Settings</h3>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     <label className="flex items-center">
                       <input
                         type="checkbox"
                         checked={formData.isActive}
                         onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Active Product</span>
-                        <p className="text-xs text-gray-500">Product will be visible to customers</p>
+                        <span className="text-xs font-medium text-gray-700">Active Product</span>
+                        <p className="text-xs text-gray-500">Visible to customers</p>
                       </div>
                     </label>
                     
@@ -1573,11 +2019,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         type="checkbox"
                         checked={formData.isFeatured}
                         onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
-                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Featured Product</span>
-                        <p className="text-xs text-gray-500">Product will appear in featured sections</p>
+                        <span className="text-xs font-medium text-gray-700">Featured Product</span>
+                        <p className="text-xs text-gray-500">Appears in featured sections</p>
                       </div>
                     </label>
                     
@@ -1586,11 +2032,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         type="checkbox"
                         checked={formData.isTrending}
                         onChange={(e) => handleInputChange('isTrending', e.target.checked)}
-                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-sm font-medium text-gray-700">Trending Product</span>
-                        <p className="text-xs text-gray-500">Product will appear in trending sections</p>
+                        <span className="text-xs font-medium text-gray-700">Trending Product</span>
+                        <p className="text-xs text-gray-500">Appears in trending sections</p>
                       </div>
                     </label>
                   </div>
@@ -1599,25 +2045,25 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end gap-4 pt-6 mt-8 border-t">
+            <div className="flex items-center justify-end gap-3 pt-4 mt-6 border-t">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-1.5 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 onClick={handleSubmit}
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-3 h-3" />
                 {isLoading ? 'Saving...' : isEditing ? 'Update Product' : 'Create Product'}
               </button>
               {errors.submit && (
-                <p className="text-red-500 text-sm">{errors.submit}</p>
+                <p className="text-red-500 text-xs">{errors.submit}</p>
               )}
             </div>
           </div>

@@ -52,6 +52,25 @@ interface Category {
   children?: Category[];
 }
 
+interface FilterAssignment {
+  _id: string;
+  category: {
+    _id: string;
+    name: string;
+    level: number;
+  };
+  filter: {
+    _id: string;
+    name: string;
+    displayName: string;
+  };
+  isRequired: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  assignedAt: string;
+  assignedBy: string;
+}
+
 interface CategoryFilter {
   _id: string;
   category: {
@@ -102,9 +121,17 @@ const FilterManagement: React.FC = () => {
   
   // Assignment Management State
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategoryInfo, setSelectedCategoryInfo] = useState<Category | null>(null);
   const [availableFilters, setAvailableFilters] = useState<Filter[]>([]);
-  const [assignedFilters, setAssignedFilters] = useState<CategoryFilter[]>([]);
+  const [assignedFilters, setAssignedFilters] = useState<FilterAssignment[]>([]);
   const [isAssignmentLoading, setIsAssignmentLoading] = useState(false);
+  const [hierarchyInfo, setHierarchyInfo] = useState<string>('');
+
+  // Debug useEffect to track availableFilters changes
+  useEffect(() => {
+    console.log('🔄 availableFilters state changed:', availableFilters);
+    console.log('📊 availableFilters length:', availableFilters.length);
+  }, [availableFilters]);
   
   const [filterFormData, setFilterFormData] = useState<FilterFormData>({
     name: '',
@@ -123,8 +150,12 @@ const FilterManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log('🔄 useEffect triggered, selectedCategory:', selectedCategory);
     if (selectedCategory) {
+      console.log('✅ Calling fetchCategoryFilters with:', selectedCategory);
       fetchCategoryFilters(selectedCategory);
+    } else {
+      console.log('❌ No selectedCategory, skipping fetchCategoryFilters');
     }
   }, [selectedCategory]);
 
@@ -159,21 +190,63 @@ const FilterManagement: React.FC = () => {
 
   const fetchCategoryFilters = async (categoryId: string) => {
     try {
+      console.log('🚀 fetchCategoryFilters called with categoryId:', categoryId);
       setIsAssignmentLoading(true);
+      setError(null);
 
-      // Fetch assigned filters
-      const assignedResponse = await authService.get(`/admin/categories/${categoryId}/filters`);
+      // Find category info for hierarchy display
+      const findCategory = (cats: Category[], id: string): Category | null => {
+        for (const cat of cats) {
+          if ((cat.id || cat._id) === id) return cat;
+          if (cat.children) {
+            const found = findCategory(cat.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const categoryInfo = findCategory(categories, categoryId);
+      setSelectedCategoryInfo(categoryInfo);
+
+      if (categoryInfo) {
+        const levelNames = ['Category', 'Subcategory', 'Product Type'];
+        setHierarchyInfo(`Level ${categoryInfo.level} - ${levelNames[categoryInfo.level - 1] || 'Unknown'}`);
+      }
+
+      // Fetch assigned filters using correct API
+      const assignedResponse = await authService.get(`/admin/categories/${categoryId}/filter-assignments`);
+      setAssignedFilters(assignedResponse.data?.data?.assignments || assignedResponse.data?.assignments || []);
       
-      setAssignedFilters(assignedResponse.data.categoryFilters || assignedResponse.data.filters || []);
-      
-      // Fetch available filters
+      // Fetch available filters using correct API
       const availableResponse = await authService.get(`/admin/categories/${categoryId}/available-filters`);
-
-      const availableFiltersData = availableResponse.data.availableFilters || [];
+      console.log('🔍 Available filters response:', availableResponse);
+      console.log('🔍 Available filters response.data:', availableResponse.data);
+      console.log('🔍 Available filters response.data.data:', availableResponse.data?.data);
+      console.log('🔍 Available filters response.data.data.availableFilters:', availableResponse.data?.data?.availableFilters);
+      
+      const availableFiltersData = availableResponse.data?.availableFilters || [];
+      console.log('📊 Available filters data to set:', availableFiltersData);
+      console.log('📊 Available filters count:', availableFiltersData.length);
+      console.log('📊 Available filters type:', typeof availableFiltersData);
+      console.log('📊 Available filters is array:', Array.isArray(availableFiltersData));
       
       setAvailableFilters(availableFiltersData);
-    } catch (error) {
-
+      
+      // Additional debug after setting state
+      setTimeout(() => {
+        console.log('⏰ After setState - availableFilters should be updated');
+      }, 100);
+      
+    } catch (error: any) {
+      console.error('❌ Error fetching category filters:', error);
+      console.error('❌ Error response:', error?.response);
+      console.error('❌ Error status:', error?.response?.status);
+      console.error('❌ Error data:', error?.response?.data);
+      const errorMessage = error?.response?.data?.message || 'Failed to fetch category filters';
+      setError(errorMessage);
+      // Reset available filters on error
+      setAvailableFilters([]);
     } finally {
       setIsAssignmentLoading(false);
     }
@@ -296,12 +369,11 @@ const FilterManagement: React.FC = () => {
 
   const handleAssignFilter = async (filterId: string) => {
     if (!selectedCategory) {
-      
+      setError('Please select a category first');
       return;
     }
     
     try {
-      
       const requestData = {
         filterId,
         isRequired: false,
@@ -309,46 +381,70 @@ const FilterManagement: React.FC = () => {
         sortOrder: assignedFilters.length + 1
       };
 
-      const response = await authService.post(`/admin/categories/${selectedCategory}/filters`, requestData);
+      const response = await authService.post(`/admin/categories/${selectedCategory}/filter-assignments`, requestData);
 
       if (response.success) {
         await fetchCategoryFilters(selectedCategory);
+        setError(null);
       } else {
         setError('Failed to assign filter: ' + (response.message || 'Unknown error'));
       }
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Failed to assign filter';
       setError(errorMessage);
-
+      console.error('Error assigning filter:', error);
     }
   };
 
-  const handleUnassignFilter = async (categoryFilterId: string) => {
-    try {
-      await authService.delete(`/admin/category-filters/${categoryFilterId}`);
-      if (selectedCategory) {
-        await fetchCategoryFilters(selectedCategory);
-      }
-    } catch (error) {
-      setError('Failed to unassign filter');
-      
-    }
-  };
-
-  const handleAutoAssignFilters = async () => {
-    if (!selectedCategory) return;
+  const handleUnassignFilter = async (assignmentId: string) => {
+    if (!confirm('Are you sure you want to remove this filter assignment?')) return;
     
     try {
-      const response = await authService.post(`/admin/categories/${selectedCategory}/filters/auto-assign`, {
-        force: true
+      const response = await authService.delete(`/admin/filter-assignments/${assignmentId}`);
+      
+      if (response.success) {
+        if (selectedCategory) {
+          await fetchCategoryFilters(selectedCategory);
+        }
+        setError(null);
+      } else {
+        setError('Failed to unassign filter: ' + (response.message || 'Unknown error'));
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Failed to unassign filter';
+      setError(errorMessage);
+      console.error('Error unassigning filter:', error);
+    }
+  };
+
+  const handleBulkAssignFilters = async () => {
+    if (!selectedCategory || availableFilters.length === 0) {
+      setError('No available filters to assign');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to assign all ${availableFilters.length} available filters to this category?`)) {
+      return;
+    }
+    
+    try {
+      const filterIds = availableFilters.map(filter => filter._id || filter.id);
+      const response = await authService.post(`/admin/categories/${selectedCategory}/filter-assignments/bulk`, {
+        filterIds,
+        isRequired: false,
+        isActive: true
       });
       
       if (response.success) {
         await fetchCategoryFilters(selectedCategory);
+        setError(null);
+      } else {
+        setError('Failed to bulk assign filters: ' + (response.message || 'Unknown error'));
       }
-    } catch (error) {
-      setError('Failed to auto-assign filters');
-      
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Failed to bulk assign filters';
+      setError(errorMessage);
+      console.error('Error bulk assigning filters:', error);
     }
   };
 
@@ -717,7 +813,7 @@ const FilterManagement: React.FC = () => {
           {/* Category Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Category
+              Select Category for Filter Assignment
             </label>
             <select
               value={selectedCategory}
@@ -727,6 +823,22 @@ const FilterManagement: React.FC = () => {
               <option value="">Choose a category...</option>
               {renderCategoryTree(categories)}
             </select>
+            
+            {selectedCategoryInfo && hierarchyInfo && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="text-sm text-blue-800">
+                  <strong>Selected:</strong> {selectedCategoryInfo.name}
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  {hierarchyInfo}
+                </div>
+                {selectedCategoryInfo.level > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    ⚠️ This category can only use filters assigned to its parent category
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {selectedCategory && (
@@ -736,11 +848,12 @@ const FilterManagement: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Assigned Filters</h3>
                   <button
-                    onClick={handleAutoAssignFilters}
-                    className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                    onClick={handleBulkAssignFilters}
+                    disabled={availableFilters.length === 0}
+                    className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Settings className="w-4 h-4" />
-                    Auto-Assign
+                    Assign All Available
                   </button>
                 </div>
                 
@@ -753,15 +866,29 @@ const FilterManagement: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {assignedFilters.map((categoryFilter) => (
-                      <div key={categoryFilter._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                        <div>
-                          <div className="font-medium text-gray-900">{categoryFilter.filter.displayName}</div>
-                          <div className="text-sm text-gray-500">{categoryFilter.filter.name}</div>
+                    {assignedFilters.map((assignment) => (
+                      <div key={assignment._id || assignment.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{assignment.filter.displayName}</div>
+                          <div className="text-sm text-gray-500">{assignment.filter.name}</div>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                            <span>Order: {assignment.sortOrder}</span>
+                            <span className={`px-2 py-1 rounded-full ${
+                              assignment.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {assignment.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            {assignment.isRequired && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                                Required
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button
-                          onClick={() => handleUnassignFilter(categoryFilter._id)}
-                          className="text-red-600 hover:text-red-900"
+                          onClick={() => handleUnassignFilter(assignment._id || assignment.id)}
+                          className="text-red-600 hover:text-red-900 ml-2"
+                          title="Remove assignment"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -773,34 +900,51 @@ const FilterManagement: React.FC = () => {
 
               {/* Available Filters */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Available Filters</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Available Filters</h3>
+                  {console.log('🎨 Rendering Available Filters section, availableFilters:', availableFilters)}
+                  {selectedCategoryInfo && selectedCategoryInfo.level > 1 && (
+                    <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      Inherited from parent
+                    </div>
+                  )}
+                </div>
                 
                 {isAssignmentLoading ? (
                   <div className="text-center py-4 text-gray-500">Loading...</div>
                 ) : availableFilters.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>All filters are already assigned</p>
+                    {console.log('🔍 Checking availableFilters.length:', availableFilters.length)}
+                    {selectedCategoryInfo && selectedCategoryInfo.level > 1 ? (
+                      <div>
+                        <p>No additional filters available</p>
+                        <p className="text-xs mt-2">This category can only use filters assigned to its parent category</p>
+                      </div>
+                    ) : (
+                      <p>All filters are already assigned</p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {availableFilters.map((filter) => (
-                      <div key={filter._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                        <div>
+                      <div key={filter._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50">
+                        <div className="flex-1">
                           <div className="font-medium text-gray-900">{filter.displayName}</div>
                           <div className="text-sm text-gray-500">{filter.name}</div>
                           {filter.description && (
                             <div className="text-xs text-gray-400 mt-1">{filter.description}</div>
                           )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-400">Type: {filter.type}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-400">{filter.options?.length || 0} options</span>
+                          </div>
                         </div>
                         <button
-                          onClick={() => {
-
-                            const filterId = filter._id || filter.id;
-                            
-                            handleAssignFilter(filterId);
-                          }}
-                          className="text-green-600 hover:text-green-900"
+                          onClick={() => handleAssignFilter(filter._id || filter.id)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
+                          title="Assign this filter"
                         >
                           <Plus className="w-4 h-4" />
                         </button>

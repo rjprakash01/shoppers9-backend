@@ -17,8 +17,9 @@ export interface Banner {
   order: number;
   startDate?: string;
   endDate?: string;
-  displayType?: 'carousel' | 'price-range';
+  displayType?: 'hero-banner';
   categoryId?: string;
+  categoryType?: 'men' | 'women' | 'electronics' | 'household' | 'gifts';
   priceRange?: {
     minPrice?: number;
     maxPrice?: number;

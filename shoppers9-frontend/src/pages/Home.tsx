@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, Truck, Shield, Headphones, Sparkles, Gift, Heart, TrendingUp, Search, Grid, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Star, Truck, Shield, Headphones, Sparkles, Gift, Heart, TrendingUp, Search, Grid, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Product } from '../services/products';
 import { productService } from '../services/products';
 import { formatPrice, formatPriceRange, calculateDiscountPercentage } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
-import BannerCarousel from '../components/BannerCarousel';
-import PriceRangeBanners from '../components/PriceRangeBanners';
+
+
+import HeroWithCategories from '../components/HeroWithCategories';
 import LazyImage from '../components/LazyImage';
 import { bannerService, type Banner } from '../services/banners';
 import { testimonialService, type Testimonial } from '../services/testimonials';
 import { useWishlist } from '../contexts/WishlistContext';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import LoginModal from '../components/LoginModal';
 import api from '../services/api';
 import shoppers9Logo from '../assets/shoppers9-logo.svg';
 
@@ -45,6 +47,27 @@ const Home: React.FC = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingWishlistProduct, setPendingWishlistProduct] = useState<Product | null>(null);
+
+  // Ref for trending products container
+  const trendingContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll function for trending products
+  const scrollTrending = (direction: 'left' | 'right') => {
+    if (trendingContainerRef.current) {
+      const scrollAmount = 300; // Adjust scroll distance as needed
+      const currentScroll = trendingContainerRef.current.scrollLeft;
+      const targetScroll = direction === 'left' 
+        ? currentScroll - scrollAmount 
+        : currentScroll + scrollAmount;
+      
+      trendingContainerRef.current.scrollTo({
+        left: targetScroll,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Wishlist context
   const { addToWishlist, removeFromWishlist, isInWishlist, isLoading: wishlistLoading } = useWishlist();
@@ -180,6 +203,13 @@ const Home: React.FC = () => {
       return;
     }
 
+    // If user is not authenticated, show login modal
+    if (!isAuthenticated) {
+      setPendingWishlistProduct(product);
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
       const isCurrentlyInWishlist = isInWishlist(product._id);
 
@@ -189,12 +219,28 @@ const Home: React.FC = () => {
         await addToWishlist(product);
       }
     } catch (error) {
-      // For unauthenticated users trying to use server wishlist, redirect to login
-      if (!isAuthenticated && (error as any)?.message?.includes('401')) {
-        window.location.href = '/login';
-      }
       // For other errors, just log them - don't crash the UI
+      console.error('Error toggling wishlist:', error);
     }
+  };
+
+  const handleLoginSuccess = async () => {
+    setShowLoginModal(false);
+    // If there's a pending wishlist product, add it after successful login
+    if (pendingWishlistProduct) {
+      try {
+        await addToWishlist(pendingWishlistProduct);
+      } catch (error) {
+        console.error('Error adding to wishlist after login:', error);
+      } finally {
+        setPendingWishlistProduct(null);
+      }
+    }
+  };
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    setPendingWishlistProduct(null);
   };
 
   // Helper function to get the minimum original price from product variants
@@ -250,39 +296,31 @@ const Home: React.FC = () => {
     <div className="min-h-screen bg-elite-base-white">
 
 
-      {/* Elite Hero Banner Section - Admin Panel Content Only */}
-      <section className="section-white w-full relative">
-        <div className="h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[500px] postcard-box">
-          <BannerCarousel className="w-full h-full" />
-        </div>
+      {/* Hero Banner Section - Main Website Banners */}
+      <section className="section-white w-full" style={{ zIndex: 1 }}>
+        <HeroWithCategories className="w-full" />
       </section>
 
-      {/* Elite Price Range Section - Light Grey Background */}
-      <section className="section-grey">
-        <div className="elite-container">
-          <PriceRangeBanners />
-        </div>
-      </section>
+
 
       {/* Elite Trending Products Section */}
       <section className="py-6 lg:py-12" style={{
         backgroundColor: 'var(--base-white)'
       }}>
-        <div className="elite-container">
-          <div className="text-center mb-6 lg:mb-8">
-            <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
-              color: 'var(--charcoal-black)'
-            }}>
-              Trending Now
-            </h2>
-            <p className="text-sm lg:text-base mb-4" style={{
-              color: 'var(--medium-grey)'
-            }}>
-              Popular products everyone loves
-            </p>
-            <div className="w-12 h-1 rounded-full mx-auto" style={{
-              backgroundColor: 'var(--cta-dark-purple)'
-            }}></div>
+        <div className="w-full px-2 sm:px-4">
+          <div className="flex items-center justify-between mb-6 lg:mb-8 px-12">
+            <div className="mx-12 text-center lg:text-left w-full lg:w-auto">
+              <h2 className="text-lg lg:text-2xl font-bold mb-2 whitespace-nowrap" style={{
+                color: 'var(--charcoal-black)'
+              }}>
+                Trending Products
+              </h2>
+              <p className="text-sm lg:text-base whitespace-nowrap" style={{
+                color: 'var(--medium-grey)'
+              }}>
+                Discover the latest fashion trends.
+              </p>
+            </div>
           </div>
 
           {trendingLoading ? (
@@ -296,12 +334,38 @@ const Home: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4">
+            <div className="relative px-2 lg:px-12">
+              {/* Left Navigation Button - Hidden on mobile */}
+              <button 
+                onClick={() => scrollTrending('left')}
+                className="hidden lg:block absolute left-2 top-1/2 transform -translate-y-1/2 z-10 p-2 bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-lg rounded-lg"
+                aria-label="Previous products"
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-600" />
+              </button>
+              
+              {/* Right Navigation Button - Hidden on mobile */}
+              <button 
+                onClick={() => scrollTrending('right')}
+                className="hidden lg:block absolute right-2 top-1/2 transform -translate-y-1/2 z-10 p-2 bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-lg rounded-lg"
+                aria-label="Next products"
+              >
+                <ChevronRight className="h-5 w-5 text-gray-600" />
+              </button>
+              
+              <div 
+                ref={trendingContainerRef}
+                className="grid grid-cols-2 gap-2 lg:flex lg:gap-2 lg:overflow-x-auto lg:scrollbar-hide pb-4 mx-2 lg:mx-12 overflow-x-auto"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+              >
               {(trendingProducts || []).slice(0, 12).map((product) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="bg-white rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg"
+                  className="bg-white overflow-hidden group transition-all duration-300 hover:shadow-lg w-full lg:flex-shrink-0 lg:w-[160px]"
                   style={{
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
@@ -354,6 +418,16 @@ const Home: React.FC = () => {
                       {product.name}
                     </h3>
                     
+                    {/* Star Rating */}
+                    <div className="flex items-center mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className="h-3 w-3 text-yellow-400 fill-current"
+                        />
+                      ))}
+                    </div>
+                    
                     <div className="flex flex-col space-y-1">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-bold" style={{
@@ -378,9 +452,10 @@ const Home: React.FC = () => {
                 </Link>
               ))}
             </div>
+          </div>
           )}
 
-          <div className="text-center mt-6 lg:mt-8">
+          <div className="text-center mt-6 lg:mt-8 hidden">
             <Link
               to="/products"
               className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg"
@@ -401,21 +476,18 @@ const Home: React.FC = () => {
       <section className="py-6 lg:py-12" style={{
         backgroundColor: 'var(--light-grey)'
       }}>
-        <div className="elite-container">
+        <div className="w-full px-2 sm:px-4">
           <div className="text-center mb-6 lg:mb-8">
             <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
               color: 'var(--charcoal-black)'
             }}>
               Featured Collections
             </h2>
-            <p className="text-sm lg:text-base mb-4" style={{
+            <p className="text-sm lg:text-base" style={{
               color: 'var(--medium-grey)'
             }}>
               Handpicked products just for you
             </p>
-            <div className="w-12 h-1 rounded-full mx-auto" style={{
-              backgroundColor: 'var(--cta-dark-purple)'
-            }}></div>
           </div>
 
           {isLoading ? (
@@ -429,7 +501,7 @@ const Home: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-8 gap-1 lg:gap-2">
               {(featuredProducts || []).map((product) => (
                 <Link
                   key={product._id}
@@ -515,41 +587,28 @@ const Home: React.FC = () => {
       <section className="py-6 lg:py-12" style={{
         backgroundColor: 'var(--base-white)'
       }}>
-        <div className="elite-container">
+        <div className="w-full px-2 sm:px-4">
           <div className="text-center mb-6 lg:mb-8">
             <h2 className="text-lg lg:text-2xl font-bold mb-2" style={{
               color: 'var(--charcoal-black)'
             }}>
               Customer Reviews
             </h2>
-            <p className="text-sm lg:text-base mb-4" style={{
+            <p className="text-sm lg:text-base" style={{
               color: 'var(--medium-grey)'
             }}>
               See what our happy customers have to say
             </p>
-            <div className="w-12 h-1 rounded-full mx-auto" style={{
-              backgroundColor: 'var(--cta-dark-purple)'
-            }}></div>
           </div>
           
           {/* Mobile Carousel Layout */}
-          <div>
-            <div className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-3" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          <div className="flex justify-center">
+            <div className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-3 justify-center" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
               {testimonials.length > 0 ? (
                 testimonials.map((testimonial, index) => (
                   <div key={testimonial._id} className={`flex-none w-72 lg:w-80 ${index % 2 === 0 ? 'bg-white' : 'postcard-box'} rounded-xl p-4 lg:p-6 snap-center`} style={{
                     boxShadow: index % 2 === 0 ? '0 2px 8px rgba(0,0,0,0.1)' : undefined
                   }}>
-                    <div className="flex items-center mb-3">
-                      <div className="flex text-elite-gold-highlight">
-                        {[...Array(testimonial.rating)].map((_, i) => (
-                          <Star key={i} className="h-4 w-4 fill-current" />
-                        ))}
-                        {[...Array(5 - testimonial.rating)].map((_, i) => (
-                          <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />
-                        ))}
-                      </div>
-                    </div>
                     <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
                       "{testimonial.content}"
                     </p>
@@ -559,55 +618,39 @@ const Home: React.FC = () => {
                       </div>
                       <div className="ml-2">
                         <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">{testimonial.customerName}</p>
-                        <p className="text-xs text-elite-medium-grey">Verified Customer</p>
+                        <div className="flex text-elite-gold-highlight">
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                            <Star key={i} className="h-3 w-3 fill-current" />
+                          ))}
+                          {[...Array(5 - testimonial.rating)].map((_, i) => (
+                            <Star key={`empty-${i}`} className="h-3 w-3 text-gray-300" />
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                // Fallback content when no testimonials are available
-                <div className="flex-none w-72 lg:w-80 bg-white rounded-xl p-4 lg:p-6 snap-center" style={{
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                }}>
-                  <div className="flex items-center mb-3">
-                    <div className="flex text-elite-gold-highlight">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-current" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="font-inter text-elite-charcoal-black mb-3 italic text-xs lg:text-sm leading-relaxed">
-                    "Great quality products and amazing service. Shopping here is always a wonderful experience!"
+                // Empty state when no testimonials are available
+                <div className="flex-none w-full flex justify-center py-8">
+                  <p className="text-elite-medium-grey text-sm text-center">
+                    No customer reviews available at the moment.
                   </p>
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-elite-cta-purple flex items-center justify-center text-elite-base-white font-bold font-playfair text-sm">
-                      S
-                    </div>
-                    <div className="ml-2">
-                      <p className="font-playfair font-semibold text-sm text-elite-charcoal-black">Shoppers9 Customer</p>
-                      <p className="text-xs text-elite-medium-grey">Happy Customer</p>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
             
-            {/* Slider Dots Indicator */}
-            {testimonials.length > 1 && (
-              <div className="flex justify-center mt-4 space-x-1.5">
-                {testimonials.map((_, index) => (
-                  <div 
-                    key={index}
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      index === 0 ? 'bg-elite-cta-purple' : 'bg-elite-medium-grey/30'
-                    }`}
-                  ></div>
-                ))}
-              </div>
-            )}
+
           </div>
         </div>
       </section>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={handleCloseLoginModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
 
     </div>
   );

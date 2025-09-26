@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import {
   LayoutDashboard,
-  Users,
   Package,
   ShoppingCart,
   BarChart3,
@@ -20,7 +19,9 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
-  EyeOff
+  EyeOff,
+  UserCircle,
+  Store
 } from 'lucide-react';
 
 interface MenuItem {
@@ -33,11 +34,16 @@ interface MenuItem {
   roles?: string[];
 }
 
-const PermissionBasedMenu: React.FC = () => {
+interface PermissionBasedMenuProps {
+  collapsed?: boolean;
+}
+
+const PermissionBasedMenu: React.FC<PermissionBasedMenuProps> = ({ collapsed = false }) => {
   const { user } = useAuth();
   const location = useLocation();
   const { hasModuleAccess, loading } = usePermissions();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
 
   // Define all possible menu items with their permission requirements
   const allMenuItems: MenuItem[] = [
@@ -50,10 +56,18 @@ const PermissionBasedMenu: React.FC = () => {
       roles: ['super_admin', 'admin', 'sub_admin', 'seller', 'customer']
     },
     {
-      id: 'users',
-      label: 'User Management',
-      path: '/users',
-      icon: <Users className="h-5 w-5" />,
+      id: 'customer-management',
+      label: 'Customer Management',
+      path: '/customer-management',
+      icon: <UserCircle className="h-5 w-5" />,
+      module: 'users'
+      // No role restrictions - visibility based on module access only
+    },
+    {
+      id: 'seller-management',
+      label: 'Seller Management',
+      path: '/seller-management',
+      icon: <Store className="h-5 w-5" />,
       module: 'users'
       // No role restrictions - visibility based on module access only
     },
@@ -70,8 +84,8 @@ const PermissionBasedMenu: React.FC = () => {
       label: 'Product Review Queue',
       path: '/product-review-queue',
       icon: <Package className="h-5 w-5" />,
-      module: 'products',
-      roles: ['super_admin'] // Restricted to super admin only
+      module: 'product_review_queue'
+      // No role restrictions - visibility based on module access only
     },
     {
       id: 'inventory',
@@ -219,13 +233,13 @@ const PermissionBasedMenu: React.FC = () => {
 
   const getPermissionIndicator = (item: MenuItem) => {
     if (user?.role === 'super_admin') {
-      return <Eye className="h-4 w-4 text-green-500" title="Full Access" />;
+      return null; // Hide green eye for super admin
     }
 
     const hasAccess = hasModuleAccess(item.module);
 
     if (hasAccess) {
-      return <Eye className="h-4 w-4 text-green-500" title="Module Access" />;
+      return null; // Hide green eye when access is granted
     }
 
     return <EyeOff className="h-4 w-4 text-red-500" title="No Access" />;
@@ -244,99 +258,77 @@ const PermissionBasedMenu: React.FC = () => {
   const visibleMenuItems = getVisibleMenuItems();
 
   return (
-    <nav className="space-y-1">
-      {visibleMenuItems.map((item) => (
-        <div key={item.id}>
-          <Link
-            to={item.path}
-            className={`group flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              isActive(item.path)
-                ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
-                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center">
-              <div className="mr-3">
-                {item.icon}
+    <div className="flex flex-col h-full">
+      <nav className={`space-y-1 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100`}>
+        {visibleMenuItems.map((item) => (
+          <div key={item.id}>
+            <Link
+              to={item.path}
+              className={`group flex items-center ${collapsed ? 'justify-center px-2' : 'justify-between px-3'} py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive(item.path)
+                  ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+              title={collapsed ? item.label : undefined}
+            >
+              <div className={`flex items-center ${collapsed ? '' : 'flex-1'}`}>
+                <div className={collapsed ? '' : 'mr-3'}>
+                  {item.icon}
+                </div>
+                {!collapsed && <span>{item.label}</span>}
               </div>
-              <span>{item.label}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              {getPermissionIndicator(item)}
-              {item.children && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleExpanded(item.id);
-                  }}
-                  className="p-1 hover:bg-gray-200 rounded"
-                >
-                  {expandedItems.includes(item.id) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
+              {!collapsed && (
+                <div className="flex items-center space-x-2">
+                  {getPermissionIndicator(item)}
+                  {item.children && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleExpanded(item.id);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      {expandedItems.includes(item.id) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               )}
-            </div>
-          </Link>
-          
-          {/* Submenu */}
-          {item.children && expandedItems.includes(item.id) && (
-            <div className="ml-6 mt-1 space-y-1">
-              {item.children.filter(isMenuItemVisible).map((child) => (
-                <Link
-                  key={child.id}
-                  to={child.path}
-                  className={`group flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
-                    isActive(child.path)
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="mr-3">
-                      {child.icon}
+            </Link>
+            
+            {/* Submenu - only show when not collapsed */}
+            {!collapsed && item.children && expandedItems.includes(item.id) && (
+              <div className="ml-6 mt-1 space-y-1">
+                {item.children.filter(isMenuItemVisible).map((child) => (
+                  <Link
+                    key={child.id}
+                    to={child.path}
+                    className={`group flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
+                      isActive(child.path)
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-3">
+                        {child.icon}
+                      </div>
+                      <span>{child.label}</span>
                     </div>
-                    <span>{child.label}</span>
-                  </div>
-                  {getPermissionIndicator(child)}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                    {getPermissionIndicator(child)}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </nav>
       
-      {/* Role and Scope Indicator */}
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="px-3 py-2">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-            Access Level
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Role:</span>
-              <span className="text-sm font-medium text-gray-900">
-                {user?.role?.replace('_', ' ').toUpperCase()}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Scope:</span>
-              <span className="text-sm font-medium text-gray-900">
-                {user?.role === 'super_admin' ? 'GLOBAL' : 'LIMITED'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Modules:</span>
-              <span className="text-sm font-medium text-gray-900">
-                {visibleMenuItems.length}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
+      {/* Access Level section hidden as requested */}
+    </div>
   );
 };
 

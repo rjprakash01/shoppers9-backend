@@ -17,8 +17,6 @@ import {
   Warehouse,
   Truck,
   Ticket,
-  Menu,
-  X,
   LogOut,
   User,
   Settings,
@@ -34,34 +32,13 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  // Handle responsive behavior
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 1024);
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    };
 
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  // Close sidebar when route changes on mobile
-  useEffect(() => {
-    if (isMobile) {
-      setSidebarOpen(false);
-    }
-  }, [location.pathname, isMobile]);
 
   // Handle click outside settings dropdown
   useEffect(() => {
@@ -87,22 +64,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shadow-lg`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Shoppers9 Admin</h1>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-          >
-            <X className="h-6 w-6" />
-          </button>
+      <div className="w-64 bg-white shadow-xl">
+        <div className="flex items-center h-16 px-6 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-900">Shoppers9</h1>
         </div>
         
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto px-3 mt-6">
-            <PermissionBasedMenu />
+          <div className="flex-1 overflow-y-auto px-3 mt-6 max-h-[calc(100vh-200px)]">
+            <PermissionBasedMenu collapsed={false} />
           </div>
           
           {/* User info and logout */}
@@ -129,33 +98,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-              
-              <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 capitalize truncate">
-                  {location.pathname.slice(1) || 'dashboard'}
-                </h2>
-              </div>
-            </div>
+          <div className="flex items-center justify-end h-16 px-4 sm:px-6 lg:px-8">
             
             <div className="flex items-center space-x-2 sm:space-x-4">
               <div className="hidden md:block">
@@ -171,7 +118,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   onClick={() => setSettingsOpen(!settingsOpen)}
                   className="flex items-center space-x-2 p-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <div className="hidden sm:block text-left">
@@ -234,11 +181,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <div className="py-4 sm:py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="min-h-full">
-                {children}
-              </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="min-h-full">
+              {children}
             </div>
           </div>
         </main>

@@ -442,6 +442,37 @@ class RoleService {
 
     return `${formattedAction} ${formattedResource} in ${formattedModule}`;
   }
+
+  // Update user
+  async updateUser(
+    userId: string,
+    userData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      primaryRole: string;
+    }
+  ): Promise<ApiResponse<User>> {
+    try {
+      const response = await roleApi.put(`/admin/users/${userId}`, userData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to update user');
+    }
+  }
+
+  // Delete user
+  async deleteUser(userId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await roleApi.delete(`/admin/users/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      throw new Error(error.response?.data?.message || error.message || 'Failed to delete user');
+    }
+  }
 }
 
 export const roleService = new RoleService();

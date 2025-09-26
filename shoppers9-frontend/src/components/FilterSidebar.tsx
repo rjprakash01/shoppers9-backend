@@ -8,6 +8,15 @@ interface FilterOption {
   name: string;
   count: number;
   colorCode?: string;
+  value?: string;
+}
+
+interface DynamicFilter {
+  name: string;
+  displayName: string;
+  type: string;
+  dataType: string;
+  options: FilterOption[];
 }
 
 interface FilterData {
@@ -18,6 +27,7 @@ interface FilterData {
   materials: FilterOption[];
   fabrics: FilterOption[];
   subcategories: { name: string; slug: string }[];
+  filters: DynamicFilter[];
 }
 
 interface FilterSidebarProps {
@@ -38,7 +48,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [searchParams] = useSearchParams();
   const [filterData, setFilterData] = useState<FilterData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedSections, setExpandedSections] = useState({
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     price: true,
     brand: true,
     size: true,
@@ -135,7 +145,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     }
   };
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
+  const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -192,7 +202,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
   const renderFilterSection = (
     title: string,
-    sectionKey: keyof typeof expandedSections,
+    sectionKey: string,
     options: FilterOption[],
     filterType: string
   ) => {
@@ -223,7 +233,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     type="checkbox"
                     checked={isChecked}
                     onChange={(e) => handleFilterChange(filterType, option.name, e.target.checked)}
-                    className="rounded border-gray-300 text-pink-600 focus:ring-pink-500 w-3 h-3"
+                    className="rounded border-gray-300 text-black focus:ring-black w-3 h-3"
                   />
                   <div className="flex items-center space-x-1.5 flex-1">
                     {filterType === 'colors' && option.colorCode && (
@@ -281,20 +291,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             </div>
           </div>
 
-          {/* Amazon-style Category Path in Filter */}
-          {category && (
-            <div className="p-3 border-b bg-gray-50">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Department</h3>
-              <div className="text-sm">
-                <div className="text-blue-600 font-medium">
-                  {category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ')}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  in {category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ')}
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Filter Content */}
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -506,51 +503,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     </div>
                   </div>
                   
-                  {/* Price Range */}
-                  {filterData.priceRange && (
-                    <div className="border-b border-gray-200 pb-3">
-                      <button
-                        onClick={() => toggleSection('price')}
-                        className="flex items-center justify-between w-full py-1.5 text-left font-medium text-gray-900 hover:text-gray-700"
-                      >
-                        <span className="text-sm">Price Range</span>
-                        {expandedSections.price ? (
-                          <ChevronUp className="w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3" />
-                        )}
-                      </button>
-                      
-                      {expandedSections.price && (
-                        <div className="mt-3 space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              placeholder="Min"
-                              value={priceRange.min}
-                              onChange={(e) => setPriceRange(prev => ({ ...prev, min: parseInt(e.target.value) || 0 }))}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-pink-500 focus:border-pink-500"
-                            />
-                            <span className="text-gray-500 text-xs">to</span>
-                            <input
-                              type="number"
-                              placeholder="Max"
-                              value={priceRange.max}
-                              onChange={(e) => setPriceRange(prev => ({ ...prev, max: parseInt(e.target.value) || 10000 }))}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-pink-500 focus:border-pink-500"
-                            />
-                          </div>
-                          <button
-                            onClick={handlePriceChange}
-                            className="w-full text-white py-1.5 px-3 rounded-md text-xs font-medium transition-colors"
-                            style={{ backgroundColor: '#322F61' }}
-                          >
-                            Apply Price Filter
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+
 
                   {/* Subcategories */}
                   {filterData.subcategories && filterData.subcategories.length > 0 && (
@@ -597,6 +550,66 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
                   {/* Fabrics */}
                   {renderFilterSection('Fabric', 'fabric', filterData.fabrics, 'fabric')}
+
+                  {/* Dynamic Filters */}
+                  {filterData.filters && filterData.filters.map((filter) => {
+                    const sectionKey = `dynamic_${filter.name}`;
+                    
+                    // Initialize expanded state for dynamic filters if not already set
+                    if (expandedSections[sectionKey] === undefined) {
+                      setExpandedSections(prev => ({
+                        ...prev,
+                        [sectionKey]: false
+                      }));
+                    }
+                    
+                    return (
+                      <div key={filter.name} className="border-b border-gray-200 pb-3">
+                        <button
+                          onClick={() => toggleSection(sectionKey)}
+                          className="flex items-center justify-between w-full py-1.5 text-left font-medium text-gray-900 hover:text-gray-700"
+                        >
+                          <span className="text-sm">{filter.displayName}</span>
+                          {expandedSections[sectionKey] ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </button>
+                        
+                        {expandedSections[sectionKey] && (
+                          <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto">
+                            {filter.options.map((option, index) => {
+                              const filterValue = option.value || option.name;
+                              const isChecked = currentFilters[filter.name]?.includes(filterValue) || false;
+                              const uniqueKey = `${filter.name}-${filterValue}-${index}-${option.colorCode || ''}`;
+                              
+                              return (
+                                <label key={uniqueKey} className="flex items-center space-x-2 cursor-pointer py-0.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => handleFilterChange(filter.name, filterValue, e.target.checked)}
+                                    className="rounded border-gray-300 text-pink-600 focus:ring-pink-500 w-3 h-3"
+                                  />
+                                  <div className="flex items-center space-x-1.5 flex-1">
+                                    {option.colorCode && (
+                                      <div
+                                        className="w-3 h-3 rounded-full border border-gray-300"
+                                        style={{ backgroundColor: option.colorCode }}
+                                      />
+                                    )}
+                                    <span className="text-xs text-gray-700">{option.name}</span>
+                                    <span className="text-xs text-gray-500">({option.count})</span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </>
               )
             )}

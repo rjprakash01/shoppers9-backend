@@ -6,6 +6,7 @@ import { WishlistProvider } from './contexts/WishlistContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
+import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
@@ -27,6 +28,7 @@ import NewTicket from './pages/NewTicket';
 import TicketDetail from './pages/TicketDetail';
 import TrackOrder from './pages/TrackOrder';
 import Coupons from './pages/Coupons';
+import Contact from './pages/Contact';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function AppContent() {
@@ -44,6 +46,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <ScrollToTop />
       {/* Hide Navbar on mobile for cart, checkout, and product detail pages */}
       <div className={hideNavbarOnMobile ? 'hidden lg:block' : ''}>
         <Navbar />
@@ -110,6 +113,7 @@ function AppContent() {
             }
           />
           <Route path="/track-order" element={<TrackOrder />} />
+          <Route path="/contact" element={<Contact />} />
           <Route
             path="/support"
             element={

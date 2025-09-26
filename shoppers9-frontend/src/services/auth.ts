@@ -93,10 +93,7 @@ class AuthService {
   logout(): void {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    // Only redirect if we're not already on the login page
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+    // Stay on the same page after logout
   }
 
   getCurrentUser(): User | null {

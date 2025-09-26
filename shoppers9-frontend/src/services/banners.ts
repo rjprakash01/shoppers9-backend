@@ -12,17 +12,10 @@ export interface Banner {
   link?: string;
   buttonText?: string;
   isActive: boolean;
-  order: number;
+  order: number; // 1 = hero banner, 2-5 = grid banners
   startDate?: string;
   endDate?: string;
-  displayType: 'carousel' | 'price-range';
-  categoryId?: string;
-  priceRange?: {
-    minPrice?: number;
-    maxPrice?: number;
-    label: string;
-    color?: string;
-  };
+  categoryId: string; // Required for all banners
   createdAt: string;
   updatedAt: string;
 }
@@ -249,6 +242,39 @@ class BannerService {
       );
     } catch (error) {
       
+      throw error;
+    }
+  }
+
+  async getBannersByOrder(order: number): Promise<Banner[]> {
+    try {
+      const allBanners = await this.getActiveBanners();
+      return allBanners.filter(banner => banner.order === order);
+    } catch (error) {
+      console.error('Error fetching banners by order:', error);
+      throw error;
+    }
+  }
+
+  async getHeroBanner(): Promise<Banner | null> {
+    try {
+      const banners = await this.getBannersByOrder(1);
+      return banners.length > 0 ? banners[0] : null;
+    } catch (error) {
+      console.error('Error fetching hero banner:', error);
+      return null;
+    }
+  }
+
+  async getGridBanners(): Promise<Banner[]> {
+    try {
+      const allBanners = await this.getActiveBanners();
+      // Filter banners with order 2-5 and sort by order
+      return allBanners
+        .filter((banner: Banner) => banner.order >= 2 && banner.order <= 5)
+        .sort((a: Banner, b: Banner) => a.order - b.order);
+    } catch (error) {
+      console.error('Error fetching grid banners:', error);
       throw error;
     }
   }

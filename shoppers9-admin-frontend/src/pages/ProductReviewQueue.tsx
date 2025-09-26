@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { authService } from '../services/authService';
-import { FiSearch, FiFilter, FiCheck, FiX, FiEdit, FiEye, FiMoreVertical, FiShield } from 'react-icons/fi';
+import { FiFilter, FiCheck, FiX, FiEdit, FiEye, FiMoreVertical, FiShield } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import ProductReviewPreviewModal from '../components/ProductReviewPreviewModal';
 
@@ -37,21 +38,24 @@ interface ReviewQueueResponse {
 }
 
 const ProductReviewQueue: React.FC = () => {
-  const { user, isSuperAdmin, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
 
   // Debug logging
   console.log('🔍 ProductReviewQueue: Auth state -', {
     authLoading,
+    permissionsLoading,
     user: !!user,
     userRole: user?.role,
-    isSuperAdminResult: user ? isSuperAdmin() : 'user is null'
+    hasAccess: user ? hasModuleAccess('product_review_queue') : 'user is null'
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedProductForPreview, setSelectedProductForPreview] = useState<Product | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -74,13 +78,14 @@ const ProductReviewQueue: React.FC = () => {
   useEffect(() => {
     console.log('🔍 ProductReviewQueue useEffect: Checking auth state -', {
       authLoading,
+      permissionsLoading,
       user: !!user,
       userRole: user?.role,
-      canCallIsSuperAdmin: !!user
+      hasAccess: user ? hasModuleAccess('product_review_queue') : false
     });
     
-    if (authLoading) {
-      console.log('🔍 ProductReviewQueue: Auth still loading, skipping fetch');
+    if (authLoading || permissionsLoading) {
+      console.log('🔍 ProductReviewQueue: Auth or permissions still loading, skipping fetch');
       return;
     }
     
@@ -89,20 +94,13 @@ const ProductReviewQueue: React.FC = () => {
       return;
     }
     
-    try {
-      const isSuper = isSuperAdmin();
-      console.log('🔍 ProductReviewQueue: isSuperAdmin result:', isSuper);
-      if (isSuper) {
-        console.log('🔍 ProductReviewQueue: User is super admin, fetching review queue');
-        fetchReviewQueue(currentPage);
-      } else {
-        console.log('🔍 ProductReviewQueue: User is not super admin');
-      }
-    } catch (error) {
-      console.error('🔍 ProductReviewQueue: Error calling isSuperAdmin:', error);
-      setError('Authentication error: ' + (error as Error).message);
+    if (hasModuleAccess('product_review_queue')) {
+      console.log('🔍 ProductReviewQueue: User has module access, fetching review queue');
+      fetchReviewQueue(currentPage);
+    } else {
+      console.log('🔍 ProductReviewQueue: User does not have module access');
     }
-  }, [currentPage, pageSize, statusFilter, searchTerm, authLoading, user]);
+  }, [currentPage, pageSize, statusFilter, authLoading, permissionsLoading, user, hasModuleAccess]);
 
   const fetchReviewQueue = async (page: number) => {
     try {
@@ -114,8 +112,7 @@ const ProductReviewQueue: React.FC = () => {
       const response: ReviewQueueResponse = await authService.getReviewQueue(
         page,
         pageSize,
-        statusFilter !== 'all' ? statusFilter : undefined,
-        searchTerm || undefined
+        statusFilter !== 'all' ? statusFilter : undefined
       );
       
       console.log('🔍 ProductReviewQueue: Received response:', {
@@ -162,11 +159,7 @@ const ProductReviewQueue: React.FC = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    fetchReviewQueue(1);
-  };
+
 
   const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status);
@@ -190,11 +183,13 @@ const ProductReviewQueue: React.FC = () => {
   };
 
   const openReviewModal = (product: Product, action: 'approve' | 'reject' | 'request_changes') => {
+    console.log('🔍 openReviewModal called with:', { productId: product.id, productName: product.name, action });
     setSelectedProduct(product);
     setReviewAction(action);
     setReviewComments('');
     setRejectionReason('');
     if (action === 'reject') {
+      console.log('🚫 Opening reject modal for product:', product.name);
       setShowRejectModal(true);
     } else {
       setShowReviewModal(true);
@@ -213,101 +208,74 @@ const ProductReviewQueue: React.FC = () => {
 
   const handleDirectApproval = async (product: Product) => {
     try {
-      setIsLoading(true);
+      setLoadingProductId(product.id);
       
       // Make API call first, only update UI after success
       await authService.approveProduct(product.id, '');
       
-      // Remove the product from the UI only after successful API call
-      const updatedProducts = products.filter(p => p.id !== product.id);
-      setProducts(updatedProducts);
-      
-      // Update pagination count
-      setPagination(prev => ({
-        ...prev,
-        totalProducts: prev.totalProducts - 1
-      }));
-      
       toast.success('Product approved successfully');
       
-      // Check if this was the only product on the current page and we need to go back
-      const isOnlyProductOnPage = updatedProducts.length === 0;
-      const shouldGoToPreviousPage = isOnlyProductOnPage && currentPage > 1;
+      // Refresh the current page to get updated data from server
+      // This ensures the approved product is removed from the review queue
+      fetchReviewQueue(currentPage);
       
-      if (shouldGoToPreviousPage) {
-        setCurrentPage(currentPage - 1);
-      } else if (updatedProducts.length === 0) {
-        // If no products left on current page but it's page 1, refresh to show empty state
-        fetchReviewQueue(currentPage);
-      }
     } catch (err) {
       console.error('Error approving product:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to approve product');
-      // No need to revert since UI wasn't changed yet
     } finally {
-      setIsLoading(false);
+      setLoadingProductId(null);
     }
   };
 
   const handleRejectSubmit = async () => {
+    console.log('🚫 handleRejectSubmit called');
+    console.log('📝 Selected product:', selectedProduct);
+    console.log('📝 Rejection reason:', rejectionReason);
+    
     if (!selectedProduct || !rejectionReason.trim()) {
+      console.log('❌ Validation failed: missing product or reason');
       toast.error('Rejection reason is required');
       return;
     }
 
     try {
-      setIsLoading(true);
+      console.log('🔄 Starting rejection process for product:', selectedProduct.id);
+      setLoadingProductId(selectedProduct.id);
       
       const productToReject = selectedProduct;
       const reasonToSubmit = rejectionReason;
       
+      console.log('📡 Making API call to reject product:', {
+        productId: productToReject.id,
+        reason: reasonToSubmit
+      });
+      
+      // Make API call first, only update UI after success
       await authService.rejectProduct(productToReject.id, reasonToSubmit, '');
+      
+      console.log('✅ API call successful, updating UI');
       
       // Close modal and reset form after successful API call
       setShowRejectModal(false);
       setSelectedProduct(null);
       setRejectionReason('');
       
-      // Remove the product from the UI
-      const updatedProducts = products.filter(p => p.id !== productToReject.id);
-      setProducts(updatedProducts);
-      
-      // Update pagination count
-      setPagination(prev => ({
-        ...prev,
-        totalProducts: prev.totalProducts - 1
-      }));
-      
       toast.success('Product rejected successfully');
       
-      // Check if this was the only product on the current page and we need to go back
-      const isOnlyProductOnPage = updatedProducts.length === 0;
-      const shouldGoToPreviousPage = isOnlyProductOnPage && currentPage > 1;
+      console.log('🔄 Refreshing review queue');
+      // Refresh the current page to get updated data from server
+      // This prevents any UI state inconsistencies
+      fetchReviewQueue(currentPage);
       
-      if (shouldGoToPreviousPage) {
-        setCurrentPage(currentPage - 1);
-      } else if (updatedProducts.length === 0) {
-        // If no products left on current page but it's page 1, refresh to show empty state
-        fetchReviewQueue(currentPage);
-      }
     } catch (err) {
-      console.error('Error rejecting product:', err);
+      console.error('❌ Error rejecting product:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to reject product');
-      
-      // Revert UI changes on error - add the product back to the list
-      const productToRevert = selectedProduct;
-      if (productToRevert) {
-        setProducts(prevProducts => [...prevProducts, productToRevert]);
-        setPagination(prev => ({
-          ...prev,
-          totalProducts: prev.totalProducts + 1
-        }));
-      }
       
       // Keep the modal open so user can retry
       // Don't reset selectedProduct or rejectionReason
     } finally {
-      setIsLoading(false);
+      console.log('🏁 Clearing loading state');
+      setLoadingProductId(null);
     }
   };
 
@@ -340,19 +308,15 @@ const ProductReviewQueue: React.FC = () => {
           break;
       }
       
+      // Close modal and reset form
       setShowReviewModal(false);
+      setSelectedProduct(null);
+      setReviewComments('');
+      setRejectionReason('');
       
-      // Check if this was the only product on the current page
-      const isOnlyProductOnPage = products.length === 1;
-      const shouldGoToPreviousPage = isOnlyProductOnPage && currentPage > 1;
+      // Refresh current page to get updated data from server
+      fetchReviewQueue(currentPage);
       
-      if (shouldGoToPreviousPage) {
-        // Navigate to previous page if current page will be empty
-        setCurrentPage(currentPage - 1);
-      } else {
-        // Refresh current page
-        fetchReviewQueue(currentPage);
-      }
     } catch (err) {
       console.error('Error processing review:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to process review');
@@ -446,18 +410,22 @@ const ProductReviewQueue: React.FC = () => {
     );
   };
 
-  // Show loading state while authentication is loading
-  if (authLoading) {
+  // Show loading state while authentication or permissions are loading
+  if (authLoading || permissionsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-        <p className="ml-4 text-gray-600">Authenticating...</p>
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="text-blue-500 mb-4">
+          <FiShield className="h-16 w-16 mx-auto animate-spin" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading...</h2>
+        <p className="text-gray-600">
+          {authLoading ? 'Authenticating...' : 'Checking permissions...'}
+        </p>
       </div>
     );
   }
 
-  // Check if user exists and has super admin access
-  if (!user || !isSuperAdmin()) {
+  if (!user || !hasModuleAccess('product_review_queue')) {
     return (
       <div className="bg-white rounded-lg shadow-md p-8 text-center">
         <div className="text-red-500 mb-4">
@@ -465,7 +433,7 @@ const ProductReviewQueue: React.FC = () => {
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
         <p className="text-gray-600 mb-4">
-          {!user ? 'Please log in to access this page.' : 'You need Super Admin privileges to access the Product Review Queue.'}
+          {!user ? 'Please log in to access this page.' : 'You need permission to access the Product Review Queue.'}
         </p>
         <p className="text-sm text-gray-500">
           Current role: {user?.role || 'Unknown'}
@@ -481,22 +449,9 @@ const ProductReviewQueue: React.FC = () => {
         <p className="text-gray-600">Review and manage product submissions</p>
       </div>
 
-      {/* Search and Filters */}
+      {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <form onSubmit={handleSearch} className="flex-1">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </form>
-          
+        <div className="flex flex-col lg:flex-row gap-4 justify-end">
           <div className="flex gap-2">
             <select
               value={statusFilter}
@@ -663,25 +618,36 @@ const ProductReviewQueue: React.FC = () => {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleDirectApproval(product)}
-                            disabled={isLoading}
+                            disabled={loadingProductId === product.id || isLoading}
                             className="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                             title="Approve Product"
                           >
-                            <FiCheck size={12} />
-                            Approve
+                            {loadingProductId === product.id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                            ) : (
+                              <FiCheck size={12} />
+                            )}
+                            {loadingProductId === product.id ? 'Processing...' : 'Approve'}
                           </button>
                           <button
-                            onClick={() => openReviewModal(product, 'reject')}
-                            disabled={isLoading}
+                            onClick={() => {
+                              console.log('🔴 Reject button clicked for product:', product.name, 'ID:', product.id);
+                              openReviewModal(product, 'reject');
+                            }}
+                            disabled={loadingProductId === product.id || isLoading}
                             className="px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                             title="Reject Product"
                           >
-                            <FiX size={12} />
-                            Reject
+                            {loadingProductId === product.id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                            ) : (
+                              <FiX size={12} />
+                            )}
+                            {loadingProductId === product.id ? 'Processing...' : 'Reject'}
                           </button>
                           <button
                             onClick={() => openPreviewModal(product)}
-                            disabled={isLoading}
+                            disabled={loadingProductId === product.id || isLoading}
                             className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                             title="Preview Product"
                           >
@@ -780,10 +746,13 @@ const ProductReviewQueue: React.FC = () => {
               </button>
               <button
                 onClick={handleReviewSubmit}
-                disabled={isLoading || !rejectionReason.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={loadingProductId !== null || !rejectionReason.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
-                {isLoading ? 'Processing...' : 'Request Changes'}
+                {loadingProductId !== null && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                )}
+                {loadingProductId !== null ? 'Processing...' : 'Request Changes'}
               </button>
             </div>
           </div>
@@ -832,10 +801,13 @@ const ProductReviewQueue: React.FC = () => {
               </button>
               <button
                 onClick={handleRejectSubmit}
-                disabled={isLoading || !rejectionReason.trim()}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={loadingProductId !== null || !rejectionReason.trim()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
-                {isLoading ? 'Rejecting...' : 'Reject Product'}
+                {loadingProductId !== null && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                )}
+                {loadingProductId !== null ? 'Rejecting...' : 'Reject Product'}
               </button>
             </div>
           </div>

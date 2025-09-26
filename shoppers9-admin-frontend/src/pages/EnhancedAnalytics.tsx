@@ -544,7 +544,7 @@ const EnhancedAnalytics: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-6 rounded-lg text-white">
+            <div className="bg-blue-500 p-6 rounded-lg text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100">Next Month Revenue</p>
@@ -555,7 +555,7 @@ const EnhancedAnalytics: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 rounded-lg text-white">
+            <div className="bg-green-500 p-6 rounded-lg text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100">Customer Segments</p>

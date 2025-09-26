@@ -14,8 +14,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  EyeOff,
   Star,
   Tag,
   Calendar,
@@ -59,10 +57,14 @@ interface Product {
   createdAt: string;
   updatedAt: string;
   brand?: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | 'needs_changes';
+  reviewStatus?: 'draft' | 'pending' | 'approved' | 'rejected' | 'changes_requested';
   createdBy?: {
     firstName: string;
     lastName: string;
     email: string;
+    _id?: string;
+    id?: string;
   };
 }
 
@@ -87,7 +89,7 @@ const ProductManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'rejected'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -221,43 +223,37 @@ const ProductManagement: React.FC = () => {
       console.log('=== FRONTEND: Fetching all products ===');
       console.log('Page:', page, 'PageSize:', pageSize, 'FilterStatus:', filterStatus);
       setIsProductsLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: pageSize.toString(),
-        ...(filterStatus !== 'all' && { status: filterStatus })
-      });
       
-      console.log('API URL:', `/api/admin/products?${params}`);
-      // Check authentication status
-      const adminToken = localStorage.getItem('adminToken');
-      console.log('Admin token exists:', !!adminToken);
-      console.log('Admin token preview:', adminToken ? adminToken.substring(0, 20) + '...' : 'No token');
-      
-      // TEMPORARY FIX: Use test endpoint with proper authentication
-      console.log('=== USING WORKING TEST ENDPOINT WITH AUTH ===');
-      const response = await fetch('http://localhost:5001/api/test/products', {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
+      // Map filter status to backend expected values
+      let statusParam: string | undefined;
+      if (filterStatus !== 'all') {
+        switch (filterStatus) {
+          case 'active':
+            statusParam = 'active';
+            break;
+          case 'pending':
+            statusParam = 'pending';
+            break;
+          case 'rejected':
+            statusParam = 'rejected';
+            break;
+          default:
+            statusParam = undefined;
         }
-      });
-      const responseData = await response.json();
-      console.log('Test API Response:', responseData);
-      console.log('Response status:', response.status);
-      // Handle backend response format: {success: true, data: {products: [...], pagination: {...}}}
-      const data = responseData.success ? responseData.data : responseData;
-      const products = data.products || [];
-      setProducts(products);
+      }
       
-      // Ensure pagination has proper fallback values
-      const paginationData = data.pagination || {};
-      setPagination({
-        currentPage: paginationData.currentPage || page,
-        totalPages: paginationData.totalPages || Math.ceil(products.length / pageSize) || 1,
-        totalProducts: paginationData.totalProducts || products.length,
-        hasNext: paginationData.hasNext || false,
-        hasPrev: paginationData.hasPrev || page > 1
-      });
+      // Use the proper authService method that calls the correct admin endpoint
+      const response = await authService.getAllProducts(
+        page,
+        pageSize,
+        searchQuery || undefined,
+        statusParam,
+        selectedCategory || undefined
+      );
+      
+
+       setProducts(response.products || []);
+       setPagination(response.pagination);
       setError(null);
     } catch (err) {
         console.error('=== FRONTEND ERROR ===', err);
@@ -283,7 +279,7 @@ const ProductManagement: React.FC = () => {
         ...(filterStatus !== 'all' && { isActive: filterStatus === 'active' ? 'true' : 'false' })
       });
       
-      const responseData = await authService.get(`/api/admin/products/category/${categoryId}?${params}`);
+      const responseData = await authService.get(`/admin/products/category/${categoryId}?${params}`);
       // Handle backend response format: {success: true, data: {products: [...], pagination: {...}}}
       const data = responseData.success ? responseData.data : responseData;
       const products = data.products || [];
@@ -351,7 +347,7 @@ const ProductManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     
     try {
-      await authService.delete(`/api/admin/products/${productId}`);
+      await authService.delete(`/admin/products/${productId}`);
       
       if (selectedCategory) {
         fetchProductsByCategory(selectedCategory, currentPage);
@@ -364,19 +360,7 @@ const ProductManagement: React.FC = () => {
     }
   };
 
-  const handleToggleProductStatus = async (productId: string, currentStatus: boolean) => {
-    try {
-      await authService.put(`/api/admin/products/${productId}/toggle-status`, { isActive: !currentStatus });
-      
-      if (selectedCategory) {
-        fetchProductsByCategory(selectedCategory, currentPage);
-      } else {
-        fetchAllProducts(currentPage);
-      }
-    } catch (err) {
-      
-    }
-  };
+
 
   const handleEditProduct = async (product: Product) => {
     try {
@@ -384,7 +368,7 @@ const ProductManagement: React.FC = () => {
       const completeProductData = await authService.getProductById(product.id);
       
       // Fetch product filter values
-      const filterValuesResponse = await authService.get(`/api/admin/products/${product.id}/filter-values`);
+      const filterValuesResponse = await authService.get(`/admin/products/${product.id}/filter-values`);
       const filterValues = filterValuesResponse.success ? filterValuesResponse.data.filterValues : [];
       
       // Transform filter values to match ProductForm expectations
@@ -552,13 +536,13 @@ const ProductManagement: React.FC = () => {
     return (
       <div 
         key={product.id} 
-        className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:border-blue-300 cursor-pointer hover:-translate-y-1 relative overflow-hidden"
+        className="group bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-all duration-200 hover:border-blue-300 cursor-pointer relative overflow-hidden"
         onClick={() => handleProductClick(product)}
       >
         {/* Product Image */}
         {product.images && product.images.length > 0 ? (
-          <div className="mb-6 relative">
-            <div className="aspect-square w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden">
+          <div className="mb-2 relative">
+            <div className="aspect-square w-full bg-gradient-to-br from-gray-50 to-gray-100 rounded-md overflow-hidden">
               <img
                 src={product.images[0]}
                 alt={product.name}
@@ -569,59 +553,53 @@ const ProductManagement: React.FC = () => {
                 }}
               />
             </div>
-            {/* Status Badge */}
-            <div className="absolute top-3 right-3">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${stockStatus.color}`}>
-                {stockStatus.label}
-              </span>
-            </div>
           </div>
         ) : (
           <div className="mb-6">
-            <div className="aspect-square w-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
+            <div className="aspect-square w-full bg-gray-100 rounded-xl flex items-center justify-center">
               <Package className="h-12 w-12 text-gray-400" />
             </div>
           </div>
         )}
         
         {/* Product Info */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div>
-            <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-lg leading-tight line-clamp-2">
+            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm leading-tight line-clamp-2">
               {product.name}
             </h3>
             {product.brand && (
-              <div className="flex items-center mt-2 text-sm text-gray-500">
-                <Tag className="h-4 w-4 mr-1.5" />
+              <div className="flex items-center mt-1 text-xs text-gray-500">
+                <Tag className="h-3 w-3 mr-1" />
                 <span className="font-medium">{product.brand}</span>
               </div>
             )}
           </div>
           
-          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
             {product.description}
           </p>
         </div>
         
         {/* Pricing Section */}
-        <div className="mt-4 space-y-3">
+        <div className="mt-2 space-y-1">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-sm font-bold text-gray-900">
                   {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
                     `₹${product.minPrice} - ₹${product.maxPrice}` : 
                     `₹${product.price}`
                   }
                 </span>
                 {product.maxDiscount && product.maxDiscount > 0 && (
-                  <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
                     {product.maxDiscount}% OFF
                   </span>
                 )}
               </div>
               {product.maxDiscount && product.maxDiscount > 0 && (
-                <span className="text-sm text-gray-500 line-through">
+                <span className="text-xs text-gray-500 line-through">
                   {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
                     `₹${product.minOriginalPrice} - ₹${product.maxOriginalPrice}` : 
                     `₹${product.originalPrice}`
@@ -629,49 +607,42 @@ const ProductManagement: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-lg">
-              <Star className="h-4 w-4 text-yellow-500 fill-current" />
-              <span className="text-sm text-yellow-700 font-medium">
-                {product.rating} ({product.reviewCount})
-              </span>
-            </div>
           </div>
         </div>
         
         {/* Status and Stock */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${stockStatus.color}`}>
-              {product.stock} in stock
-            </span>
-          </div>
-          <span className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
-            product.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        <div className="mt-2 flex items-center justify-between">
+          <span className={`px-2 py-1 rounded text-xs font-medium ${stockStatus.color}`}>
+            {product.stock} in stock
+          </span>
+          <span className={`px-2 py-1 rounded text-xs font-medium ${
+            product.approvalStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+            product.approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+            product.approvalStatus === 'needs_changes' ? 'bg-orange-100 text-orange-700' :
+            product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
           }`}>
-            {product.isActive ? 'Active' : 'Inactive'}
+            {product.approvalStatus === 'rejected' ? 'Rejected' :
+             product.approvalStatus === 'pending' ? 'Pending' :
+             product.approvalStatus === 'needs_changes' ? 'Needs Changes' :
+             product.isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
         
         {/* Footer */}
-        <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center text-xs text-gray-500">
-              <Calendar className="h-3 w-3 mr-1.5" />
+        <div className="mt-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span className="flex items-center">
+              <Calendar className="h-3 w-3 mr-1" />
               {new Date(product.createdAt).toLocaleDateString()}
             </span>
-            <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded">
+            <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded">
               #{product.id.slice(-6)}
             </span>
           </div>
           {/* Product Owner Information */}
           {product.createdBy && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full">
-                Created by: {product.createdBy.firstName} {product.createdBy.lastName}
-              </span>
-              <span className="text-xs text-gray-400">
-                {product.createdBy.email}
-              </span>
+            <div className="mt-1 text-xs text-blue-600">
+              Created by: {product.createdBy.firstName} {product.createdBy.lastName}
             </div>
           )}
         </div>
@@ -685,26 +656,26 @@ const ProductManagement: React.FC = () => {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
-          <div className="p-6">
+          <div className="p-3">
             {/* Title */}
-            <div className="flex items-center space-x-2 mb-6">
-              <div className="p-1.5 bg-green-100 rounded-md">
-                <Package className="h-5 w-5 text-green-600" />
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="p-1 bg-green-100 rounded-md">
+                <Package className="h-4 w-4 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Product Management</h1>
+              <h1 className="text-lg font-bold text-gray-900">Product Management</h1>
             </div>
             
             {/* Category Selection Dropdowns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
               {/* Main Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Category
                 </label>
                 <select
                   value={selectedMainCategory}
                   onChange={(e) => handleMainCategoryChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="">Select Category</option>
                   {getMainCategories().map(category => (
@@ -717,14 +688,14 @@ const ProductManagement: React.FC = () => {
               
               {/* Sub Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Sub-category
                 </label>
                 <select
                   value={selectedSubCategory}
                   onChange={(e) => handleSubCategoryChange(e.target.value)}
                   disabled={!selectedMainCategory}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Select Sub-category</option>
                   {getSubCategories().map(subCategory => (
@@ -737,14 +708,14 @@ const ProductManagement: React.FC = () => {
               
               {/* Sub-Sub Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Sub-sub-category
                 </label>
                 <select
                   value={selectedSubSubCategory}
                   onChange={(e) => handleSubSubCategoryChange(e.target.value)}
                   disabled={!selectedSubCategory}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Select Sub-sub-category</option>
                   {getSubSubCategories().map(subSubCategory => (
@@ -757,19 +728,19 @@ const ProductManagement: React.FC = () => {
             </div>
             
             {/* Action Buttons and Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               {/* Search Bar */}
               <div className="flex-1 max-w-md">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+                    <Search className="h-4 w-4 text-gray-400" />
                   </div>
                   <input
                     type="text"
                     placeholder="Search products..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full pl-6 pr-2 py-1 text-xs border border-gray-300 rounded-md leading-4 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 {searchQuery.trim() && (
@@ -780,7 +751,7 @@ const ProductManagement: React.FC = () => {
               </div>
             
             {/* Action Buttons */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               {/* Add Product Button */}
               <CreateButton
                 module="products"
@@ -789,6 +760,7 @@ const ProductManagement: React.FC = () => {
                   setIsProductFormOpen(true);
                 }}
                 tooltip="Add a new product"
+                size="sm"
               >
                 Add Product
               </CreateButton>
@@ -796,18 +768,18 @@ const ProductManagement: React.FC = () => {
               {/* Manual Refresh Button */}
               <button
                 onClick={handleManualRefresh}
-                className="flex items-center px-4 py-2 text-sm font-medium bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                className="flex items-center px-2 py-1 text-xs font-medium bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Products
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Refresh
               </button>
               
               {/* Reset Button */}
               <button
                 onClick={handleResetPage}
-                className="flex items-center px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex items-center px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-3 w-3 mr-1.5" />
                 Reset
               </button>
             </div>
@@ -817,15 +789,49 @@ const ProductManagement: React.FC = () => {
             <div className="flex items-center space-x-4 mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <Filter className="h-5 w-5 text-gray-500" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                <span className="text-xs text-gray-600 font-medium">Filter by Status:</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    filterStatus === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
-                  <option value="all">All Products</option>
-                  <option value="active">Active Only</option>
-                  <option value="inactive">Inactive Only</option>
-                </select>
+                  All
+                </button>
+                <button
+                  onClick={() => setFilterStatus('active')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    filterStatus === 'active'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => setFilterStatus('pending')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    filterStatus === 'pending'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Pending
+                </button>
+                <button
+                  onClick={() => setFilterStatus('rejected')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    filterStatus === 'rejected'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Rejected
+                </button>
               </div>
             </div>
           </div>
@@ -866,7 +872,7 @@ const ProductManagement: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 mb-6">
                 {(searchQuery.trim() ? filteredProducts : products).map(product => renderProductCard(product))}
               </div>
               
@@ -1115,7 +1121,6 @@ const ProductManagement: React.FC = () => {
           product={selectedProduct}
           onEdit={handleEditProduct}
           onDelete={handleDeleteProduct}
-          onToggleStatus={handleToggleProductStatus}
         />
       )}
 

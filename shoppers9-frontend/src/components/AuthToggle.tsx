@@ -217,23 +217,15 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+    <div className="w-full">
+      <div className="w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {mode === 'login' ? 'Sign in to your account' : 'Join our community today'}
-          </p>
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Sign-In</h2>
         </div>
         
         {/* Auth Method Toggle */}
-        <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+        <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
           <button
             onClick={() => switchAuthMethod('email')}
             className={`flex-1 flex items-center justify-center py-2 px-4 rounded-md transition-all ${
@@ -279,7 +271,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter your full name"
                     required
                   />
@@ -297,7 +289,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your email"
                   required
                 />
@@ -314,7 +306,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your password"
                   required
                 />
@@ -366,7 +358,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -383,7 +375,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter 10-digit phone number"
                       maxLength={10}
                       required
@@ -419,7 +411,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
                     type="text"
                     value={formData.otp}
                     onChange={(e) => handleInputChange('otp', e.target.value.replace(/\D/g, ''))}
-                    className="w-full py-3 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
+                    className="w-full py-2 px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-2xl tracking-widest"
                     placeholder="1234"
                     maxLength={4}
                     required
@@ -459,27 +451,6 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
           </form>
         )}
         
-        {/* Mode Switch */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-            <button
-              onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-              className="text-blue-600 hover:text-blue-700 font-medium ml-1"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
-        </div>
-        
-        {/* Forgot Password Link (Email only) */}
-        {authMethod === 'email' && mode === 'login' && (
-          <div className="mt-4 text-center">
-            <button className="text-sm text-blue-600 hover:text-blue-700">
-              Forgot your password?
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

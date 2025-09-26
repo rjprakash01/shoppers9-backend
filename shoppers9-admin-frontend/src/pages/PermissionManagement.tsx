@@ -36,7 +36,7 @@ interface UserPermission {
 const PermissionManagement: React.FC = () => {
   const { user } = useAuth();
   const { refreshPermissions } = usePermissions();
-  const [activeTab, setActiveTab] = useState<'permissions' | 'roles' | 'assignments'>('permissions');
+  const [activeTab, setActiveTab] = useState<'permissions' | 'roles' | 'assignments'>('assignments');
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userPermissions, setUserPermissions] = useState<UserPermission[]>([]);
@@ -54,7 +54,7 @@ const PermissionManagement: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const modules = [
-    'dashboard', 'users', 'products', 'inventory', 'orders', 'shipping',
+    'dashboard', 'users', 'products', 'product_review_queue', 'inventory', 'orders', 'shipping',
     'coupons', 'support', 'categories', 'filters', 'banners', 'testimonials',
     'admin_management', 'settings', 'analytics'
   ];
@@ -406,6 +406,7 @@ const PermissionManagement: React.FC = () => {
       filters: <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd"/></svg>,
       banners: <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd"/></svg>,
       testimonials: <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd"/></svg>,
+      product_review_queue: <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 8a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 12a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 16a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/></svg>,
       admin_management: <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>,
       settings: <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/></svg>,
       analytics: <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
@@ -441,15 +442,28 @@ const PermissionManagement: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Permission Management</h1>
         <p className="text-gray-600">Manage granular permissions for roles and users</p>
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-blue-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">Unified Permission System</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                <strong>User Assignments</strong> take priority over role permissions. If a user has specific module access assigned, it overrides their role-based permissions. Role permissions serve as fallback when no user-specific assignment exists.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'permissions', label: 'Permissions', icon: Shield },
-            { id: 'roles', label: 'Role Permissions', icon: Users },
-            { id: 'assignments', label: 'User Assignments', icon: Settings }
+            { id: 'assignments', label: 'User Assignments (Primary)', icon: Settings },
+            { id: 'roles', label: 'Role Permissions (Fallback)', icon: Users },
+            { id: 'permissions', label: 'Available Permissions', icon: Shield }
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -568,8 +582,17 @@ const PermissionManagement: React.FC = () => {
           {/* Role Permissions Tab */}
           {activeTab === 'roles' && (
             <div className="p-6">
-
-              
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                  </svg>
+                  <h3 className="text-sm font-medium text-yellow-800">Fallback Permission Method</h3>
+                </div>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Role-based permissions serve as defaults when no user-specific assignments exist. These are overridden by individual user assignments.
+                </p>
+              </div>
               <div className="space-y-6">
                 {roles.filter(role => role.name !== 'super_admin').map((role) => (
                   <div key={role._id} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -658,6 +681,17 @@ const PermissionManagement: React.FC = () => {
           {/* User Assignments Tab */}
           {activeTab === 'assignments' && (
             <div className="p-6">
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  <h3 className="text-sm font-medium text-green-800">Primary Permission Method</h3>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  User-specific module assignments configured here take precedence over role-based permissions. These settings directly control what each user can access.
+                </p>
+              </div>
               <div className="space-y-4">
                 {userPermissions.map((userPerm) => (
                   <div key={userPerm.userId} className="border border-gray-200 rounded-lg p-4">

@@ -9,8 +9,6 @@ import {
   Star,
   Calendar,
   DollarSign,
-  Eye,
-  EyeOff,
   Trash2
 } from 'lucide-react';
 
@@ -372,24 +370,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       Edit Product
                     </button>
                     
-                    <button
-                      onClick={handleStatusUpdate}
-                      disabled={updatingStatus}
-                      className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium ${
-                        product.isActive
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {updatingStatus ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                      ) : product.isActive ? (
-                        <EyeOff className="h-4 w-4 mr-2" />
-                      ) : (
-                        <Eye className="h-4 w-4 mr-2" />
-                      )}
-                      {product.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
+
                     
                     <button
                       onClick={handleDelete}

@@ -10,11 +10,9 @@ export interface IBanner extends Document {
   link?: string;
   buttonText?: string;
   isActive: boolean;
-  order: number;
+  order: number; // 1 = hero banner, 2-5 = grid banners
   startDate?: Date;
   endDate?: Date;
-  // New fields for banner placement
-  displayType: 'carousel' | 'category-card' | 'both';
   categoryId?: string; // For category-specific banners
   createdAt: Date;
   updatedAt: Date;
@@ -65,24 +63,15 @@ const bannerSchema = new Schema<IBanner>({
   endDate: {
     type: Date
   },
-  displayType: {
-    type: String,
-    enum: ['carousel', 'category-card', 'both'],
-    default: 'carousel',
-    required: true
-  },
   categoryId: {
     type: String,
     trim: true,
-    // Required only when displayType is 'category-card' or 'both'
+    required: true,
     validate: {
-      validator: function(this: IBanner, value: string) {
-        if (this.displayType === 'category-card' || this.displayType === 'both') {
-          return !!(value && value.trim().length > 0);
-        }
-        return true;
+      validator: function(value: string) {
+        return !!(value && value.trim().length > 0);
       },
-      message: 'Category ID is required for category-card banners'
+      message: 'Category ID is required for all banners'
     }
   }
 }, {

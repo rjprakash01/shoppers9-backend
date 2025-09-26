@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft, ZoomIn, ZoomOut, X } from 'lucide-react';
+import { ShoppingCart, Truck, Shield, RotateCcw, ArrowLeft, ZoomIn, ZoomOut, X, ChevronRight } from 'lucide-react';
 import { productService, type Product } from '../services/products';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useWishlist } from '../contexts/WishlistContext';
+import LoginModal from '../components/LoginModal';
+
 import { formatPrice } from '../utils/currency';
 import { getImageUrls } from '../utils/imageUtils';
 
@@ -13,7 +14,7 @@ const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart, cart, localCart, cartCount, isInCart } = useCart();
   const { isAuthenticated, user } = useAuth();
-  const { addToWishlist, removeFromWishlist, isInWishlist: checkIsInWishlist, isLoading: wishlistLoading } = useWishlist();
+
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string>('');
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -24,6 +25,7 @@ const ProductDetail: React.FC = () => {
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -70,18 +72,18 @@ const ProductDetail: React.FC = () => {
       return;
     }
     
+    // If user is not authenticated, show login modal
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    
     try {
       setIsAddingToCart(true);
       console.log('Authentication status:', {
         isAuthenticated,
         user: user ? { id: user.id, phone: user.phone } : null
       });
-      
-      // If user is not authenticated, show login prompt
-      if (!isAuthenticated) {
-        alert('Please log in to add items to cart. For now, adding to local cart.');
-        // The CartContext should handle local cart for unauthenticated users
-      }
       // Find the selected variant to check pricing
       const selectedVariantData = product.variants.find(v => v._id === selectedVariant);
       console.log('Selected variant pricing:', selectedVariantData);
@@ -116,34 +118,7 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const handleToggleWishlist = async () => {
-    if (!product || !product._id) {
-      
-      return;
-    }
 
-    try {
-      
-      const isCurrentlyInWishlist = checkIsInWishlist(product._id);
-
-      if (isCurrentlyInWishlist) {
-        
-        await removeFromWishlist(product._id);
-      } else {
-        
-        await addToWishlist(product);
-      }
-      
-    } catch (error) {
-      
-      // For unauthenticated users trying to use server wishlist, redirect to login
-      if (!isAuthenticated && (error as any)?.message?.includes('401')) {
-        
-        navigate('/login');
-      }
-      // For other errors, just log them - don't crash the UI
-    }
-  };
 
   const handleCheckout = () => {
     navigate('/cart');
@@ -248,24 +223,24 @@ const ProductDetail: React.FC = () => {
                  </div>
                  
                  <div className="grid grid-cols-5 gap-3 mb-6">
-                   {Array.from(new Set(product.variants.map(v => v.size).filter(s => s && s.trim() !== ''))).map((size) => {
-                     const sizeVariant = product.variants.find(v => v.size === size);
+                   {product.availableSizes && product.availableSizes.map((sizeOption) => {
+                     const sizeVariant = product.variants.find(v => v.size === sizeOption.name);
                      return (
                        <button
-                         key={size}
+                         key={sizeOption.name}
                          onClick={() => {
                            if (sizeVariant) {
                              setSelectedVariant(sizeVariant._id || '');
-                             setSelectedSize(size);
+                             setSelectedSize(sizeOption.name);
                            }
                          }}
                          className={`py-4 px-4 border rounded-xl text-center font-medium transition-colors ${
-                           selectedSize === size
+                           selectedSize === sizeOption.name
                              ? 'border-red-500 bg-red-50 text-red-600'
                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
                          }`}
                        >
-                         {size}
+                         {sizeOption.name}
                        </button>
                      );
                    })}
@@ -354,25 +329,65 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
         
-        {/* Desktop Back Button */}
-        <div className="hidden lg:block mb-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-elite-medium-grey hover:text-elite-cta-purple transition-colors font-inter"
-          >
-            <ArrowLeft className="h-3 w-3 mr-1" />
-            <span className="font-medium text-xs">Back</span>
-          </button>
-        </div>
+
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
+        {/* Breadcrumb Navigation */}
+        {product && (
+          <div className="mb-3 lg:mb-4">
+            <nav className="flex items-center space-x-1 text-xs lg:text-sm text-gray-600">
+              <button 
+                onClick={() => navigate('/')}
+                className="hover:text-elite-cta-purple transition-colors"
+              >
+                Home
+              </button>
+              <ChevronRight className="h-3 w-3 text-gray-400" />
+              {product.category && (
+                <>
+                  <button 
+                    onClick={() => navigate(`/products?category=${product.category.slug}`)}
+                    className="hover:text-elite-cta-purple transition-colors"
+                  >
+                    {product.category.name}
+                  </button>
+                  <ChevronRight className="h-3 w-3 text-gray-400" />
+                </>
+              )}
+              {product.subCategory && (
+                <>
+                  <button 
+                    onClick={() => navigate(`/products?category=${product.category?.slug}&subcategory=${product.subCategory.slug}`)}
+                    className="hover:text-elite-cta-purple transition-colors"
+                  >
+                    {product.subCategory.name}
+                  </button>
+                  <ChevronRight className="h-3 w-3 text-gray-400" />
+                </>
+              )}
+              {product.subSubCategory && (
+                <>
+                  <button 
+                    onClick={() => navigate(`/products?category=${product.category?.slug}&subcategory=${product.subCategory?.slug}&subsubcategory=${product.subSubCategory.slug}`)}
+                    className="hover:text-elite-cta-purple transition-colors"
+                  >
+                    {product.subSubCategory.name}
+                  </button>
+                  <ChevronRight className="h-3 w-3 text-gray-400" />
+                </>
+              )}
+              <span className="text-gray-900 font-medium">{product.name}</span>
+            </nav>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-4">
           {/* Elite Product Images */}
-          <div className="space-y-1 lg:space-y-2">
-            <div className="postcard-box p-1 lg:p-2 cursor-pointer" onClick={() => setShowImagePreview(true)}>
+          <div className="lg:col-span-2 space-y-1 lg:space-y-2">
+            <div className="postcard-box cursor-pointer" onClick={() => setShowImagePreview(true)}>
               <img
                 src={currentImages[selectedImageIndex] || '/placeholder-image.svg'}
                 alt={product.name}
-                className="w-full h-56 lg:h-80 object-cover hover:opacity-90 transition-opacity"
+                className="w-full h-56 lg:h-96 object-cover"
               />
             </div>
             {currentImages.length > 1 && (
@@ -470,21 +485,16 @@ const ProductDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Color Selection - Show if there are multiple colors or displayFilters allows */}
-            {(() => {
-              const uniqueColors = Array.from(new Set(product.variants.map(v => v.color).filter(c => c && c !== 'Default')));
-              return uniqueColors.length > 0 && (!product.displayFilters || 
-                product.displayFilters.length === 0 || 
-                product.displayFilters.some(filterId => filterId.toLowerCase().includes('color')));
-            })() && (
+            {/* Color Selection - Show if there are available colors */}
+            {product.availableColors && product.availableColors.length > 0 && (
               <div className="mb-3 lg:mb-4">
                 <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Color: {currentVariant?.color}</h3>
                 <div className="flex space-x-1 lg:space-x-2">
-                  {Array.from(new Set(product.variants.map(v => v.color).filter(c => c && c !== 'Default'))).map((color) => {
-                    const colorVariant = product.variants.find(v => v.color === color);
+                  {product.availableColors.map((colorOption) => {
+                    const colorVariant = product.variants.find(v => v.color === colorOption.name);
                     return (
                       <button
-                        key={color}
+                        key={colorOption.name}
                         onClick={() => {
                           if (colorVariant) {
                             setSelectedVariant(colorVariant._id || '');
@@ -492,10 +502,10 @@ const ProductDetail: React.FC = () => {
                           }
                         }}
                         className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full border-2 ${
-                          currentVariant?.color === color ? 'border-primary-600' : 'border-gray-300'
+                          currentVariant?.color === colorOption.name ? 'border-primary-600' : 'border-gray-300'
                         }`}
-                        style={{ backgroundColor: colorVariant?.colorCode || color }}
-                        title={color}
+                        style={{ backgroundColor: colorOption.code || colorVariant?.colorCode || colorOption.name }}
+                        title={colorOption.name}
                       />
                     );
                   })}
@@ -504,44 +514,33 @@ const ProductDetail: React.FC = () => {
             )}
 
             {/* Size Selection - Show available sizes */}
-            {(() => {
-              const uniqueSizes = Array.from(new Set(product.variants.map(v => v.size).filter(s => s && s.trim() !== '')));
-              return uniqueSizes.length > 0 && (!product.displayFilters || 
-                product.displayFilters.length === 0 || 
-                product.displayFilters.some(filterId => filterId.toLowerCase().includes('size')));
-            })() && (
+            {product.availableSizes && product.availableSizes.length > 0 && (
               <div className="mb-3 lg:mb-4">
                 <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Size</h3>
                 <div className="flex flex-wrap gap-1">
-                  {/* Get unique sizes available for the selected color */}
-                  {Array.from(new Set(
-                    product.variants
-                      .filter(v => !currentVariant || v.color === currentVariant.color || v.color === 'Default')
-                      .map(v => v.size)
-                      .filter(s => s && s.trim() !== '')
-                  )).map((size) => {
+                  {product.availableSizes.map((sizeOption) => {
                     const sizeVariant = product.variants.find(v => 
-                      (v.color === (currentVariant?.color || 'Default')) && v.size === size
+                      (v.color === (currentVariant?.color || 'Default')) && v.size === sizeOption.name
                     );
                     return (
                       <button
-                        key={size}
+                        key={sizeOption.name}
                         onClick={() => {
                           if (sizeVariant) {
                             setSelectedVariant(sizeVariant._id || '');
-                            setSelectedSize(size);
+                            setSelectedSize(sizeOption.name);
                           }
                         }}
                         disabled={!sizeVariant || sizeVariant.stock === 0}
                         className={`px-2 py-1 lg:px-3 lg:py-1 border rounded-lg font-medium text-xs ${
-                          selectedSize === size
+                          selectedSize === sizeOption.name
                             ? 'border-primary-600 bg-primary-50 text-primary-600'
                             : !sizeVariant || sizeVariant.stock === 0
                             ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'border-gray-300 hover:border-gray-400'
                         }`}
                       >
-                        {size}
+                        {sizeOption.name}
                         {(!sizeVariant || sizeVariant.stock === 0) && ' (Out of Stock)'}
                       </button>
                     );
@@ -592,25 +591,7 @@ const ProductDetail: React.FC = () => {
                 </span>
               </button>
               
-              <button 
-                onClick={handleToggleWishlist}
-                disabled={wishlistLoading}
-                className={`w-full border py-2 px-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors text-xs ${
-                  product && checkIsInWishlist(product._id)
-                    ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <Heart className={`h-3 w-3 ${
-                  product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
-                }`} />
-                <span>
-                  {wishlistLoading 
-                    ? (product && checkIsInWishlist(product._id) ? 'Removing...' : 'Adding...') 
-                    : (product && checkIsInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist')
-                  }
-                </span>
-              </button>
+
             </div>
 
             {/* Desktop Add to Cart - Hidden on Mobile */}
@@ -635,25 +616,7 @@ const ProductDetail: React.FC = () => {
                 </span>
               </button>
               
-              <button 
-                onClick={handleToggleWishlist}
-                disabled={wishlistLoading}
-                className={`w-full border py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors text-sm ${
-                  product && checkIsInWishlist(product._id)
-                    ? 'border-red-500 bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <Heart className={`h-4 w-4 ${
-                  product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
-                }`} />
-                <span>
-                  {wishlistLoading 
-                    ? (product && checkIsInWishlist(product._id) ? 'Removing...' : 'Adding...') 
-                    : (product && checkIsInWishlist(product._id) ? 'Remove from Wishlist' : 'Add to Wishlist')
-                  }
-                </span>
-              </button>
+
             </div>
 
 
@@ -661,7 +624,6 @@ const ProductDetail: React.FC = () => {
             {/* Product Details */}
             {product.specifications && (
               <div className="mt-3 lg:mt-4">
-                <h3 className="text-xs lg:text-sm font-medium text-gray-900 mb-1 lg:mb-2">Product Details</h3>
                 <div className="space-y-1 text-xs">
                   {product.specifications.fabric && (
                     <div className="flex justify-between">
@@ -779,21 +741,6 @@ const ProductDetail: React.FC = () => {
         }}>
           {/* Action Buttons */}
           <div className="flex space-x-3">
-            <button 
-              onClick={handleToggleWishlist}
-              disabled={wishlistLoading}
-              className={`flex-1 py-3 px-4 font-medium rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
-                product && checkIsInWishlist(product._id)
-                  ? 'border-2 border-red-500 bg-red-50 text-red-600'
-                  : 'border-2 border-gray-300 text-gray-700 hover:border-gray-400'
-              }`}
-            >
-              <Heart className={`h-4 w-4 ${
-                product && checkIsInWishlist(product._id) ? 'fill-current text-red-500' : ''
-              }`} />
-              <span>Wishlist</span>
-            </button>
-            
             <button
               onClick={() => setShowSizeModal(true)}
               className="flex-1 py-3 px-4 font-medium rounded-lg flex items-center justify-center space-x-2 text-sm text-white transition-all duration-200 hover:shadow-lg"
@@ -809,6 +756,17 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          // Retry adding to cart after successful login
+          handleAddToCart();
+        }}
+      />
     </div>
   );
 };

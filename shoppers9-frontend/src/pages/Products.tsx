@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Grid, List, Heart } from 'lucide-react';
+import { Search, Filter, Heart } from 'lucide-react';
 import { productService, type Product, type ProductFilters } from '../services/products';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,8 +8,8 @@ import { useWishlist } from '../contexts/WishlistContext';
 import { formatPrice, formatPriceRange } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import FilterSidebar from '../components/FilterSidebar';
-import EnhancedSearch from '../components/EnhancedSearch';
-import { searchService } from '../services/searchService';
+import LoginModal from '../components/LoginModal';
+
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,12 +20,12 @@ const Products: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false); // Hide filters by default, show only when clicked
-  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true); // Show filters by default on desktop, toggle on mobile
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingWishlistProduct, setPendingWishlistProduct] = useState<Product | null>(null);
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
-    limit: 12,
+    limit: 50,
     sortBy: 'createdAt',
     sortOrder: 'desc'
   });
@@ -40,17 +40,24 @@ const Products: React.FC = () => {
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     
-    if (search) setSearchQuery(search);
-    
-    // Build category filter based on hierarchy
-    let categoryFilter = category;
+    // Build category filter based on hierarchy - use actual database slugs
+    let categoryFilter = undefined;
     if (subsubcategory) {
-      // If subsubcategory is selected, use the full path
-      categoryFilter = `${category}-${subcategory}-${subsubcategory}`;
+      // For Level 3 categories, use the subsubcategory slug directly
+      // Database stores Level 3 categories with slugs like 'men-tshirts', 'women-jeans', etc.
+      categoryFilter = decodeURIComponent(subsubcategory);
     } else if (subcategory) {
-      // If subcategory is selected, use category-subcategory
-      categoryFilter = `${category}-${subcategory}`;
+      // For Level 2 categories, use the subcategory slug directly
+      // Database stores Level 2 categories with slugs like 'men-clothing', 'women-footwear', etc.
+      categoryFilter = decodeURIComponent(subcategory);
+    } else if (category) {
+      // For Level 1 categories, use the category slug directly
+      // Database stores Level 1 categories with slugs like 'men', 'women', 'household'
+      categoryFilter = decodeURIComponent(category);
     }
+    
+    // Clear products immediately when category changes to prevent showing stale data
+    setProducts([]);
     
     setFilters(prev => ({
       ...prev,
@@ -107,20 +114,17 @@ const Products: React.FC = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateFilters({ search: searchQuery.trim() || undefined, page: 1 });
-  };
+
 
   const updateFilters = (newFilters: Partial<ProductFilters>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     
-    // Update URL - preserve existing category hierarchy unless explicitly changing category
+    // Update URL parameters
     const params = new URLSearchParams();
     if (updatedFilters.search) params.set('search', updatedFilters.search);
     
-    // Preserve category hierarchy from current URL unless category filter is being updated
+    // Preserve existing category hierarchy unless explicitly changing category
     if (!newFilters.hasOwnProperty('category')) {
       const currentCategory = searchParams.get('category');
       const currentSubcategory = searchParams.get('subcategory');
@@ -129,12 +133,6 @@ const Products: React.FC = () => {
       if (currentCategory) params.set('category', currentCategory);
       if (currentSubcategory) params.set('subcategory', currentSubcategory);
       if (currentSubsubcategory) params.set('subsubcategory', currentSubsubcategory);
-    } else if (updatedFilters.category) {
-      // If category is being updated, parse the hierarchical category string
-      const categoryParts = updatedFilters.category.split('-');
-      if (categoryParts.length >= 1) params.set('category', categoryParts[0]);
-      if (categoryParts.length >= 2) params.set('subcategory', categoryParts[1]);
-      if (categoryParts.length >= 3) params.set('subsubcategory', categoryParts[2]);
     }
     
     if (updatedFilters.minPrice) params.set('minPrice', updatedFilters.minPrice.toString());
@@ -171,120 +169,59 @@ const Products: React.FC = () => {
 
   const handleToggleWishlist = async (product: Product) => {
     if (!product || !product._id) {
-      
+      return;
+    }
+
+    // If user is not authenticated, show login modal
+    if (!isAuthenticated) {
+      setPendingWishlistProduct(product);
+      setShowLoginModal(true);
       return;
     }
 
     try {
-      
       const isCurrentlyInWishlist = checkIsInWishlist(product._id);
 
       if (isCurrentlyInWishlist) {
-        
         await removeFromWishlist(product._id);
       } else {
-        
         await addToWishlist(product);
       }
       
     } catch (error) {
-      
-      // For unauthenticated users trying to use server wishlist, redirect to login
-      if (!isAuthenticated && (error as any)?.message?.includes('401')) {
-        
-        window.location.href = '/login';
-      }
       // For other errors, just log them - don't crash the UI
+      console.error('Error toggling wishlist:', error);
     }
+  };
+
+  const handleLoginSuccess = async () => {
+    setShowLoginModal(false);
+    // If there's a pending wishlist product, add it after successful login
+    if (pendingWishlistProduct) {
+      try {
+        await addToWishlist(pendingWishlistProduct);
+      } catch (error) {
+        console.error('Error adding to wishlist after login:', error);
+      } finally {
+        setPendingWishlistProduct(null);
+      }
+    }
+  };
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    setPendingWishlistProduct(null);
   };
 
   const renderProductCard = (product: Product) => {
     const firstVariant = product.variants?.[0];
     const priceRange = product.minPrice !== product.maxPrice;
     
-    if (viewMode === 'list') {
-      return (
-        <div key={product._id} className="postcard-box">
-          <div className="flex p-3">
-            <Link to={`/products/${product._id}`} className="flex-shrink-0">
-              <img
-                src={getImageUrl(product.images?.[0] || '/placeholder-image.svg')}
-                alt={product.name}
-                className="w-24 h-32 object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-image.svg';
-                }}
-              />
-            </Link>
-            
-            <div className="flex-1 ml-3">
-              <Link to={`/products/${product._id}`}>
-                <h3 className="font-playfair text-base font-semibold text-elite-charcoal-black mb-1 hover:text-elite-cta-purple transition-colors">
-                  {product.name}
-                </h3>
-              </Link>
-              <p className="font-inter text-elite-medium-grey text-sm mb-2 line-clamp-2">
-                {product.description}
-              </p>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-inter font-bold text-elite-charcoal-black" style={{ fontSize: '13px' }}>
-                      {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                        `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}` : 
-                        formatPrice(product.minPrice || 0)
-                      }
-                    </span>
-                    {product.maxDiscount && product.maxDiscount > 0 && (
-                      <>
-                        <span className="font-inter text-elite-medium-grey line-through" style={{ fontSize: '10px' }}>
-                          {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                            formatPriceRange(product.minOriginalPrice, product.maxOriginalPrice) : 
-                            formatPrice(product.minOriginalPrice || 0)
-                          }
-                        </span>
-                        <span className="bg-elite-cta-purple text-elite-base-white font-bold font-inter px-1 py-0.5 uppercase tracking-wide" style={{ fontSize: '9px' }}>
-                          {product.maxDiscount}%
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleToggleWishlist(product);
-                    }}
-                    disabled={wishlistLoading}
-                    className={`p-1 transition-colors disabled:opacity-50 ${
-                      checkIsInWishlist(product._id)
-                        ? 'text-red-500 hover:text-red-600'
-                        : 'text-elite-medium-grey hover:text-red-500'
-                    }`}
-                  >
-                    <Heart className={`h-3 w-3 ${
-                      checkIsInWishlist(product._id) ? 'fill-current' : ''
-                    }`} />
-                  </button>
-
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
     return (
       <Link
         key={product._id}
         to={`/products/${product._id}`}
-        className="bg-white rounded-xl overflow-hidden group transition-all duration-300 hover:shadow-lg"
+        className="bg-white overflow-hidden group transition-all duration-300 hover:shadow-lg"
         style={{
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}
@@ -370,134 +307,8 @@ const Products: React.FC = () => {
   };
 
   const renderPagination = () => {
-    if (totalPages <= 1 && products.length <= 12) return null;
-    
-    const pages = [];
-    const maxVisiblePages = 5;
-    const startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => updateFilters({ page: i })}
-          className={`px-2 py-1 text-xs font-medium font-poppins rounded-lg transition-colors ${
-            i === currentPage
-              ? 'bg-brand-gold text-brand-indigo shadow-sm'
-              : 'bg-white text-brand-indigo border border-brand-gold/30 hover:bg-brand-gold/10'
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-    
-    return (
-      <div className="mt-4 py-4">
-        {/* Items per page selector and pagination info */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-3 sm:space-y-0">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <label htmlFor="itemsPerPage" className="text-xs font-medium font-poppins text-brand-indigo">
-                Items per page:
-              </label>
-              <select
-                id="itemsPerPage"
-                value={filters.limit || 12}
-                onChange={(e) => updateFilters({ limit: parseInt(e.target.value), page: 1 })}
-                className="input-field px-2 py-1 border border-brand-light-grey focus:outline-none bg-white text-xs font-inter text-brand-charcoal-black"
-              >
-                <option value={12}>12</option>
-                <option value={24}>24</option>
-                <option value={36}>36</option>
-                <option value={48}>48</option>
-                <option value={60}>60</option>
-              </select>
-            </div>
-            
-            <div className="text-xs text-brand-indigo/70 font-poppins">
-              Showing {((currentPage - 1) * (filters.limit || 12)) + 1} to {Math.min(currentPage * (filters.limit || 12), products.length)} of {products.length} products
-            </div>
-          </div>
-          
-          {totalPages > 1 && (
-            <div className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </div>
-          )}
-        </div>
-        
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center space-x-1">
-            <button
-              onClick={() => updateFilters({ page: 1 })}
-              disabled={currentPage === 1}
-              className="btn-secondary px-2 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              First
-            </button>
-            
-            <button
-              onClick={() => updateFilters({ page: currentPage - 1 })}
-              disabled={currentPage === 1}
-              className="btn-secondary px-3 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            
-            <div className="flex items-center space-x-1">
-              {startPage > 1 && (
-                <>
-                  <button
-                    onClick={() => updateFilters({ page: 1 })}
-                    className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    1
-                  </button>
-                  {startPage > 2 && (
-                    <span className="px-2 py-2 text-sm text-gray-500">...</span>
-                  )}
-                </>
-              )}
-              
-              {pages}
-              
-              {endPage < totalPages && (
-                <>
-                  {endPage < totalPages - 1 && (
-                    <span className="px-2 py-2 text-sm text-gray-500">...</span>
-                  )}
-                  <button
-                    onClick={() => updateFilters({ page: totalPages })}
-                    className="px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-            </div>
-            
-            <button
-              onClick={() => updateFilters({ page: currentPage + 1 })}
-              disabled={currentPage === totalPages}
-              className="btn-secondary px-3 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-            
-            <button
-              onClick={() => updateFilters({ page: totalPages })}
-              disabled={currentPage === totalPages}
-              className="btn-secondary px-2 py-1 text-xs font-medium font-montserrat disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Last
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    // No pagination controls - always show 50 products
+    return null;
   };
 
   return (
@@ -509,6 +320,7 @@ const Products: React.FC = () => {
           onClose={() => setShowFilters(false)}
           onFiltersChange={handleFiltersChange}
           currentFilters={filters}
+          category={filters.category}
         />
         
         {/* Main Content */}
@@ -516,15 +328,15 @@ const Products: React.FC = () => {
           <div className="w-full px-4 sm:px-6 lg:px-8">
           
           {/* Mobile Header and Controls - Single Line */}
-          <div className="lg:hidden px-3 py-1">
-            <div className="bg-white rounded-md p-2" style={{
+          <div className="lg:hidden px-2 py-0.5">
+            <div className="bg-white rounded-md p-1.5" style={{
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               border: '1px solid #e5e7eb'
             }}>
-              <div className="flex items-center justify-between space-x-2 mb-2">
+              <div className="flex items-center justify-between space-x-1.5 mb-1">
                 {/* Category Title */}
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-sm font-bold truncate" style={{
+                  <h1 className="text-xs font-bold truncate" style={{
                     fontFamily: 'Inter, sans-serif',
                     color: '#1f2937'
                   }}>
@@ -552,20 +364,20 @@ const Products: React.FC = () => {
                 </div>
                 
                 {/* Filter and Sort Controls */}
-                <div className="flex items-center space-x-1.5">
+                <div className="flex items-center space-x-2">
                   {/* Filter Button */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded transition-colors relative" style={{
+                    className="flex items-center space-x-1.5 px-2 py-1 text-xs font-medium rounded transition-colors relative" style={{
                       backgroundColor: showFilters ? 'var(--cta-dark-purple)' : 'transparent',
                       color: showFilters ? 'white' : 'var(--cta-dark-purple)',
                       border: '1px solid var(--cta-dark-purple)'
                     }}
                   >
-                    <Filter className="h-3 w-3" />
+                    <Filter className="h-3.5 w-3.5" />
                     <span className="hidden xs:inline">{showFilters ? 'HIDE' : 'FILTER'}</span>
                     {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length > 0 && (
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1 py-0.5 rounded-full ml-1">
+                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded-full ml-1">
                         {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length}
                       </span>
                     )}
@@ -578,34 +390,24 @@ const Products: React.FC = () => {
                       const [sortBy, sortOrder] = e.target.value.split('-');
                       updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
                     }}
-                    className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent bg-white min-w-0 text-gray-700"
                   >
                     <option value="createdAt-desc">Newest</option>
-                    <option value="price-asc">Price: Low</option>
-                    <option value="price-desc">Price: High</option>
-                    <option value="name-asc">A to Z</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name-asc">Name: A to Z</option>
                   </select>
                 </div>
               </div>
-              
-              {/* Enhanced Search Bar */}
-              <EnhancedSearch
-                placeholder="Search products..."
-                onSearch={(query) => {
-                  setSearchQuery(query);
-                  updateFilters({ search: query.trim() || undefined, page: 1 });
-                }}
-                size="sm"
-                className="w-full"
-              />
             </div>
           </div>
           
           {/* Desktop Header */}
-          <div className="hidden lg:block py-4 lg:py-6">
-            {/* Amazon-style Category Path */}
-            <div className="mb-4">
-              <nav className="flex items-center space-x-2 text-sm mb-3">
+          <div className="hidden lg:block py-2">
+            {/* Top Row: Category Path and Sort Dropdown */}
+            <div className="flex items-center justify-between mb-2">
+              {/* Amazon-style Category Path */}
+              <nav className="flex items-center space-x-1 text-xs">
                 <Link to="/" className="text-blue-600 hover:text-blue-800 hover:underline">
                   Home
                 </Link>
@@ -648,163 +450,92 @@ const Products: React.FC = () => {
                       )}
                     </React.Fragment>
                   ));
-                })()
-                }
+                })()}
               </nav>
               
-              <h1 className="font-playfair text-xl lg:text-2xl font-semibold text-elite-charcoal-black mb-1">
-                {(() => {
-                  const category = searchParams.get('category');
-                  const subcategory = searchParams.get('subcategory');
-                  const subsubcategory = searchParams.get('subsubcategory');
-                  
-                  if (subsubcategory) {
-                    return subsubcategory.charAt(0).toUpperCase() + subsubcategory.slice(1).replace(/-/g, ' ');
-                  } else if (subcategory) {
-                    return subcategory.charAt(0).toUpperCase() + subcategory.slice(1).replace(/-/g, ' ');
-                  } else if (category) {
-                    return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
-                  }
-                  return 'All Products';
-                })()
-                }
-              </h1>
-              
-              <p className="font-inter text-sm text-elite-medium-grey">
-                {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
-              </p>
-            </div>
+              {/* Desktop Sort Dropdown */}
+               <select
+                 value={`${filters.sortBy}-${filters.sortOrder}`}
+                 onChange={(e) => {
+                   const [sortBy, sortOrder] = e.target.value.split('-');
+                   updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
+                 }}
+                 className="elite-input px-1 py-0.5 text-xs font-inter mt-3"
+                 style={{ fontSize: '10px' }}
+               >
+                 <option value="createdAt-desc">Newest</option>
+                 <option value="price-asc">Price: Low</option>
+                 <option value="price-desc">Price: High</option>
+                 <option value="name-asc">A to Z</option>
+               </select>
+             </div>
+             
+             {/* Title and Product Count */}
+             <div className="mb-2">
+               <h1 className="font-playfair text-lg font-semibold text-elite-charcoal-black mb-1">
+                 {(() => {
+                   const category = searchParams.get('category');
+                   const subcategory = searchParams.get('subcategory');
+                   const subsubcategory = searchParams.get('subsubcategory');
+                   
+                   if (subsubcategory) {
+                     return subsubcategory.charAt(0).toUpperCase() + subsubcategory.slice(1).replace(/-/g, ' ');
+                   } else if (subcategory) {
+                     return subcategory.charAt(0).toUpperCase() + subcategory.slice(1).replace(/-/g, ' ');
+                   } else if (category) {
+                     return category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+                   }
+                   return 'All Products';
+                 })()
+                 }
+               </h1>
+               
+               <p className="font-inter text-xs text-elite-medium-grey">
+                 {products.length > 0 ? `${products.length} products found` : 'Discover amazing products'}
+               </p>
+             </div>
             
-            {/* Elite Search and Controls */}
-            <div className="postcard-box p-3 mb-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 gap-3">
-                {/* Elite Enhanced Search */}
-                <div className="flex-1 max-w-md">
-                  <EnhancedSearch
-                    placeholder="Search products, brands, categories..."
-                    onSearch={(query) => {
-                      setSearchQuery(query);
-                      updateFilters({ search: query.trim() || undefined, page: 1 });
-                    }}
-                    size="lg"
-                    className="w-full"
-                    autoFocus={false}
-                  />
-                </div>
-                
-                {/* Elite Controls */}
-                <div className="flex items-center space-x-3">
-                  {/* Mobile Filter Toggle */}
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="lg:hidden btn-secondary flex items-center space-x-1 px-3 py-2 text-xs font-medium font-inter"
-                  >
-                    <Filter className="h-3 w-3" />
-                    <span>FILTER</span>
-                  </button>
-                  
-                  {/* Desktop Filter Toggle */}
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="hidden lg:flex btn-secondary items-center space-x-1 px-3 py-2 text-xs font-medium font-inter relative"
-                  >
-                    <Filter className="h-3 w-3" />
-                    <span>{showFilters ? 'HIDE' : 'FILTERS'}</span>
-                    {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length > 0 && (
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                        {Object.keys(filters).filter(key => !['search', 'category', 'page', 'limit', 'sortBy', 'sortOrder'].includes(key) && filters[key as keyof ProductFilters] !== undefined).length}
-                      </span>
-                    )}
-                  </button>
-                
-                <select
-                  value={`${filters.sortBy}-${filters.sortOrder}`}
-                  onChange={(e) => {
-                    const [sortBy, sortOrder] = e.target.value.split('-');
-                    updateFilters({ sortBy: sortBy as any, sortOrder: sortOrder as any, page: 1 });
-                  }}
-                  className="elite-input px-2 py-2 text-xs font-inter"
-                >
-                  <option value="createdAt-desc">Newest</option>
-                  <option value="price-asc">Price: Low</option>
-                  <option value="price-desc">Price: High</option>
-                  <option value="name-asc">A to Z</option>
-                </select>
-                
-                <div className="flex items-center border border-elite-medium-grey overflow-hidden">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-1.5 transition-colors ${
-                      viewMode === 'grid' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
-                    }`}
-                  >
-                    <Grid className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-1.5 transition-colors ${
-                      viewMode === 'list' ? 'bg-elite-cta-purple text-elite-base-white' : 'text-elite-charcoal-black hover:bg-elite-light-grey'
-                    }`}
-                  >
-                    <List className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
+            {/* Mobile Filter Toggle - Compact */}
+            <div className="lg:hidden mb-2">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn-secondary flex items-center space-x-1 px-2 py-1 text-xs font-medium font-inter"
+              >
+                <Filter className="h-3 w-3" />
+                <span>FILTER</span>
+              </button>
             </div>
           </div>
-        </div>
-        
-        {/* Results */}
+          
+          {/* Results */}
         {isLoading ? (
-          <div className={`grid gap-4 ${
-            viewMode === 'grid'
-              ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-              : 'grid-cols-1'
-          }`}>
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {[...Array(20)].map((_, index) => (
               <div key={index} className="bg-white border border-gray-200 animate-pulse">
-                {viewMode === 'grid' ? (
-                  <>
-                    <div className="bg-gray-200 aspect-[3/4]"></div>
-                    <div className="p-3 space-y-2">
-                      <div className="bg-gray-200 h-4 rounded"></div>
-                      <div className="bg-gray-200 h-3 rounded w-2/3"></div>
-                      <div className="bg-gray-200 h-8 rounded mt-2"></div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex p-4">
-                    <div className="bg-gray-200 w-32 h-40 flex-shrink-0"></div>
-                    <div className="flex-1 ml-4 space-y-3">
-                      <div className="bg-gray-200 h-5 rounded"></div>
-                      <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                      <div className="bg-gray-200 h-4 rounded w-1/2"></div>
-                      <div className="flex justify-between items-center mt-4">
-                        <div className="bg-gray-200 h-5 rounded w-20"></div>
-                        <div className="bg-gray-200 h-8 rounded w-24"></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="bg-gray-200 aspect-[3/4]"></div>
+                <div className="p-3 space-y-2">
+                  <div className="bg-gray-200 h-4 rounded"></div>
+                  <div className="bg-gray-200 h-3 rounded w-2/3"></div>
+                  <div className="bg-gray-200 h-8 rounded mt-2"></div>
+                </div>
               </div>
             ))}
           </div>
         ) : products.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-8">
             <div className="max-w-md mx-auto">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                <Search className="h-12 w-12 text-gray-400" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Search className="h-8 w-8 text-gray-400" />
               </div>
-              <h2 className="text-xl font-medium text-gray-900 mb-2">No Products Found</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-2">No Products Found</h2>
+              <p className="text-sm text-gray-600 mb-4">
                 We couldn't find any products matching your criteria.
               </p>
               <button
                 onClick={() => {
-                  setSearchQuery('');
                   updateFilters({ search: undefined, category: undefined, page: 1 });
                 }}
-                className="px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white font-medium transition-colors"
+                className="px-4 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition-colors"
               >
                 Clear Filters
               </button>
@@ -812,11 +543,7 @@ const Products: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className={`grid gap-3 lg:gap-4 ${
-              viewMode === 'grid'
-                ? 'grid-cols-2 lg:grid-cols-4 xl:grid-cols-5'
-                : 'grid-cols-1'
-            }`}>
+            <div className="grid gap-2 lg:gap-3 grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
               {products.map(renderProductCard)}
             </div>
             
@@ -826,6 +553,13 @@ const Products: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={handleCloseLoginModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 };
