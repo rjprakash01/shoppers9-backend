@@ -17,8 +17,20 @@ export const getInventoryReport = async (req: AuthRequest, res: Response): Promi
       { $match: filter },
       {
         $project: {
-          variantCount: { $size: '$variants' },
-          totalStock: { $sum: '$variants.stock' },
+          variantCount: { 
+            $cond: {
+              if: { $isArray: '$variants' },
+              then: { $size: '$variants' },
+              else: 0
+            }
+          },
+          totalStock: { 
+            $cond: {
+              if: { $isArray: '$variants' },
+              then: { $sum: '$variants.stock' },
+              else: 0
+            }
+          },
           variants: 1
         }
       },
@@ -36,6 +48,7 @@ export const getInventoryReport = async (req: AuthRequest, res: Response): Promi
     // Count products with different stock levels
     const stockLevels = await Product.aggregate([
       { $match: filter },
+      { $match: { variants: { $exists: true, $ne: null, $not: { $size: 0 } } } },
       { $unwind: '$variants' },
       {
         $group: {
@@ -253,7 +266,7 @@ export const getDetailedInventory = async (req: AuthRequest, res: Response): Pro
     // Apply role-based filtering and pagination
     const { query: filteredQuery, pagination } = applyPaginationWithFilter(req, baseQuery, 'Product');
 
-    // Build aggregation pipeline
+    // Build aggregation pipeline - simplified version to avoid $size errors
     const pipeline: any[] = [
       { $match: filteredQuery },
       {
@@ -273,74 +286,15 @@ export const getDetailedInventory = async (req: AuthRequest, res: Response): Pro
         }
       },
       {
-        $addFields: {
-          totalStock: { $sum: '$variants.stock' },
-          variantCount: { $size: '$variants' },
-          lowStockVariants: {
-            $size: {
-              $filter: {
-                input: '$variants',
-                cond: { $and: [{ $lte: ['$$this.stock', 10] }, { $gt: ['$$this.stock', 0] }] }
-              }
-            }
-          },
-          outOfStockVariants: {
-            $size: {
-              $filter: {
-                input: '$variants',
-                cond: { $eq: ['$$this.stock', 0] }
-              }
-            }
-          },
-          variants: {
-            $map: {
-              input: '$variants',
-              as: 'variant',
-              in: {
-                _id: '$$variant._id',
-                color: '$$variant.color',
-                size: '$$variant.size',
-                sku: '$$variant.sku',
-                price: '$$variant.price',
-                originalPrice: '$$variant.originalPrice',
-                stock: '$$variant.stock',
-                stockStatus: {
-                  $cond: {
-                    if: { $eq: ['$$variant.stock', 0] },
-                    then: 'out_of_stock',
-                    else: {
-                      $cond: {
-                        if: { $lte: ['$$variant.stock', 5] },
-                        then: 'critical',
-                        else: {
-                          $cond: {
-                            if: { $lte: ['$$variant.stock', 10] },
-                            then: 'low',
-                            else: 'in_stock'
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                images: '$$variant.images'
-              }
-            }
-          }
-        }
-      },
-      {
         $project: {
           _id: 1,
           name: 1,
           brand: 1,
           category: { $arrayElemAt: ['$categoryInfo', 0] },
           subCategory: { $arrayElemAt: ['$subCategoryInfo', 0] },
-          totalStock: 1,
-          variants: 1,
-          variantCount: 1,
-          lowStockVariants: 1,
-          outOfStockVariants: 1
+          variants: { $ifNull: ['$variants', []] },
+          totalStock: { $sum: { $ifNull: ['$variants.stock', []] } },
+          variantCount: { $size: { $ifNull: ['$variants', []] } }
         }
       }
     ];
@@ -436,7 +390,7 @@ export const updateVariantStock = async (req: AuthRequest, res: Response): Promi
       });
     }
     
-    const variant = product.variants.find(v => v._id?.toString() === variantId);
+    const variant = product.variants.find(v => v.sku === variantId);
     if (!variant) {
       return res.status(404).json({
         success: false,
@@ -478,7 +432,7 @@ export const updateVariantStock = async (req: AuthRequest, res: Response): Promi
         await NotificationService.createOutOfStockNotification({
           productId: product._id.toString(),
           productName: product.name,
-          variantId: variant._id?.toString(),
+          variantId: variant.sku,
           color: variant.color,
           size: variant.size
         });
@@ -487,7 +441,7 @@ export const updateVariantStock = async (req: AuthRequest, res: Response): Promi
         await NotificationService.createLowStockNotification({
           productId: product._id.toString(),
           productName: product.name,
-          variantId: variant._id?.toString(),
+          variantId: variant.sku,
           color: variant.color,
           size: variant.size,
           stock: newStock

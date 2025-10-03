@@ -20,11 +20,11 @@ router.get('/test', (req, res) => {
 
 // Category-based filter assignment routes
 router.get('/categories/:categoryId/filter-assignments', auth, getFilterAssignments);
-router.get('/categories/:categoryId/available-filters', auth, (req, res, next) => {
+router.get('/categories/:categoryId/available-filters', auth, (req, res) => {
   console.log('🔍 Available filters route matched! CategoryId:', req.params.categoryId);
   console.log('🔍 Request URL:', req.url);
   console.log('🔍 Request method:', req.method);
-  getAvailableFilters(req, res, next);
+  getAvailableFilters(req, res);
 });
 router.post('/categories/:categoryId/filter-assignments', auth, assignFilter);
 router.post('/categories/:categoryId/filter-assignments/bulk', auth, bulkAssignFilters);

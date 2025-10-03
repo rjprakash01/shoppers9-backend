@@ -22,7 +22,7 @@ export const usePermissions = (): PermissionHookReturn => {
   const [loading, setLoading] = useState(true);
 
   const fetchPermissions = useCallback(async () => {
-    if (!user) {
+    if (!user?.id) {
       setModuleAccess([]);
       setLoading(false);
       return;
@@ -41,22 +41,14 @@ export const usePermissions = (): PermissionHookReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchPermissions();
   }, [fetchPermissions]);
 
-  // Refresh permissions every 30 seconds
-  useEffect(() => {
-    if (!user) return;
-    
-    const interval = setInterval(() => {
-      fetchPermissions();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [user, fetchPermissions]);
+  // Remove the automatic refresh interval to prevent constant re-renders
+  // Permissions will be refreshed when user changes or manually via refreshPermissions()
 
   const hasModuleAccess = useCallback((module: string): boolean => {
     // Super admin has all permissions
@@ -65,6 +57,10 @@ export const usePermissions = (): PermissionHookReturn => {
     }
 
     // Check if user has access to this module
+    if (!moduleAccess || !Array.isArray(moduleAccess)) {
+      return false;
+    }
+    
     const moduleAccessItem = moduleAccess.find(m => m.module === module);
     return moduleAccessItem?.granted || false;
   }, [user?.role, user?.primaryRole, moduleAccess]);

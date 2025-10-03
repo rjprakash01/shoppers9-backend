@@ -40,13 +40,17 @@ class AuthController {
   // Verify OTP and login/register user
   async verifyOTP(req: any, res: any): Promise<void> {
     const { phone, otp, name, email } = req.body;
+    console.log('🔐 VerifyOTP called with:', { phone, otp, name, email });
 
     try {
       // For test phone number, use hardcoded OTP
       if (phone === '1234567890') {
+        console.log('🔐 Using test phone number, checking OTP...');
         if (otp !== '1234') {
+          console.log('🔐 Invalid OTP for test phone');
           throw new AppError('Invalid OTP', 400);
         }
+        console.log('🔐 OTP verified for test phone');
         
       } else {
         // For production, verify actual OTP from database
@@ -130,6 +134,7 @@ class AuthController {
               name: name || 'Test User',
               email: email || `test${phone}@example.com`,
               phone,
+              authMethod: 'phone',
               isVerified: true
             });
             await user.save();
@@ -150,6 +155,7 @@ class AuthController {
               name,
               email,
               phone,
+              authMethod: 'phone',
               isVerified: true
             });
             await user.save();
@@ -180,7 +186,11 @@ class AuthController {
        }
 
       // Generate tokens
+      console.log('🔐 Generating tokens for user:', user);
+      console.log('🔐 JWT_SECRET exists:', !!process.env.JWT_SECRET);
+      console.log('🔐 JWT_REFRESH_SECRET exists:', !!process.env.JWT_REFRESH_SECRET);
       const { accessToken, refreshToken } = authController.generateTokens(user);
+      console.log('🔐 Tokens generated successfully');
 
       const response: ApiResponse = {
         success: true,
@@ -199,8 +209,10 @@ class AuthController {
         }
       };
 
+      console.log('🔐 Sending successful response');
       res.status(200).json(response);
     } catch (error) {
+      console.log('🔐 Error in verifyOTP:', error);
       if (error instanceof AppError) {
         throw error;
       }

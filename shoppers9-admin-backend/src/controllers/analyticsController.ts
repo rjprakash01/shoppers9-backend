@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import User from '../models/User';
+import { getUserModel } from '../models/User';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import Admin from '../models/Admin';
-import { AuthRequest, DashboardStats, SalesAnalytics, UserAnalytics } from '../types';
+import { AuthRequest } from '../types';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
@@ -22,6 +22,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const userFilter = userRole === 'super_admin' ? {} : (userRole === 'admin' ? { primaryRole: 'customer' } : (req.dataFilter?.getFilter('User') || {}));
 
     // Basic counts with filtering
+    const User = getUserModel();
     const totalUsers = await User.countDocuments(userFilter);
     const totalProducts = await Product.countDocuments(productFilter);
     const totalOrders = await Order.countDocuments(orderFilter);
@@ -109,7 +110,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
-    const dashboardData: DashboardStats = {
+    const dashboardData = {
       totalUsers,
       totalOrders,
       totalRevenue,
@@ -284,7 +285,7 @@ export const getSalesAnalytics = async (req: AuthRequest, res: Response) => {
       { $sort: { totalSales: -1 } }
     ]);
 
-    const analytics: SalesAnalytics = {
+    const analytics = {
       totalSales: salesMetrics[0]?.totalSales || 0,
       totalOrders: salesMetrics[0]?.totalOrders || 0,
       averageOrderValue: salesMetrics[0]?.averageOrderValue || 0,
@@ -317,6 +318,7 @@ export const getUserAnalytics = async (req: AuthRequest, res: Response) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
     }
 
+    const User = getUserModel();
     const totalUsers = await User.countDocuments(dateFilter);
     const activeUsers = await User.countDocuments({ ...dateFilter, isActive: true });
     const newUsers = await User.countDocuments({
@@ -380,7 +382,7 @@ export const getUserAnalytics = async (req: AuthRequest, res: Response) => {
       { $limit: 10 }
     ]);
 
-    const analytics: UserAnalytics = {
+    const analytics = {
       totalUsers,
       activeUsers,
       newUsers,

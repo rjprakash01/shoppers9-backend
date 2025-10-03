@@ -178,7 +178,7 @@ export class PaymentService {
       }
 
       // Update order with successful payment
-      order.paymentStatus = PaymentStatus.SUCCESS;
+      order.paymentStatus = PaymentStatus.COMPLETED;
       order.paymentId = paymentId;
       order.paidAt = new Date();
       await order.save();
@@ -205,7 +205,7 @@ export class PaymentService {
       const refund = await this.provider.refundPayment(order.paymentId, refundAmount);
 
       // Update order with refund information
-      order.refundStatus = RefundStatus.SUCCESS;
+      order.refundStatus = RefundStatus.PROCESSED;
       order.refundAmount = refundAmount;
       order.refundId = refund.id;
       order.refundedAt = new Date();

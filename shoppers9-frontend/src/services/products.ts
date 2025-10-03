@@ -1,274 +1,153 @@
 import api from './api';
-import axios from 'axios';
 
-// Create a separate API instance for admin backend products
-const adminApi = axios.create({
-  baseURL: 'http://localhost:5001/api/public',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Available Color interface (from admin panel)
-export interface AvailableColor {
+export interface ProductColor {
   name: string;
   code: string;
-  images: string[];
+  images?: string[];
 }
 
-// Available Size interface (from admin panel)
-export interface AvailableSize {
+export interface ProductSizeOption {
   name: string;
-}
-
-// Product Variant interface (color-size combination)
-export interface ProductVariant {
-  _id?: string;
-  color: string;
-  colorCode?: string;
-  size: string;
-  price: number;
-  originalPrice: number;
-  stock: number;
-  sku: string; // Unique SKU for this variant
-  images: string[];
-}
-
-// Legacy Product Size interface (for backward compatibility)
-export interface ProductSize {
-  size: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  stock: number;
-  sku: string;
-}
-
-export interface ProductSpecification {
-  fabric?: string;
-  fit?: string;
-  washCare?: string;
-  material?: string;
-  capacity?: string;
-  microwaveSafe?: boolean;
-  dimensions?: string;
-  weight?: string;
 }
 
 export interface Product {
   _id: string;
   name: string;
   description: string;
-  category: string;
-  subCategory: string;
+  price: number;
+  originalPrice: number;
+  discount?: number;
+  images: string[];
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+    level?: number;
+    parentCategory?: string | null;
+  } | string;
+  subCategory?: {
+    _id: string;
+    name: string;
+    slug: string;
+    level?: number;
+    parentCategory?: string;
+  };
+  subcategory?: string;
+  subsubcategory?: string;
   brand: string;
-  price?: number; // Legacy field, now populated with minPrice
-  originalPrice?: number;
-  images: string[]; // Master/Default images
-  availableColors?: AvailableColor[]; // Master color list from admin panel
-  availableSizes?: AvailableSize[]; // Master size list from admin panel
-  variants: ProductVariant[]; // Color-size combinations
-  specifications: ProductSpecification;
+  variants: ProductVariant[];
+  availableColors?: ProductColor[];
+  availableSizes?: ProductSizeOption[];
+  specifications: Record<string, any>;
   tags: string[];
   isActive: boolean;
   isFeatured: boolean;
-  isTrending: boolean;
-  displayFilters: string[];
+  stock: number;
+  rating: number;
+  reviewCount: number;
   createdAt: string;
   updatedAt: string;
-  // Virtual fields calculated from variants
-  minPrice?: number; // Minimum price across all variants
-  maxPrice?: number; // Maximum price across all variants
-  minOriginalPrice?: number; // Minimum original price across all variants
-  maxOriginalPrice?: number; // Maximum original price across all variants
-  maxDiscount?: number; // Maximum discount percentage across all variants
-  totalStock?: number; // Total stock across all variants
+}
+
+export interface ProductVariant {
+  _id: string;
+  size: string;
+  color?: string;
+  price: number;
+  originalPrice?: number;
+  stock: number;
+  sku: string;
+  images?: string[];
+}
+
+export interface ProductFilters {
+  category?: string;
+  subcategory?: string;
+  subsubcategory?: string;
+  brand?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  rating?: number;
+  sortBy?: 'price_low' | 'price_high' | 'newest' | 'rating' | 'popularity';
+  page?: number;
+  limit?: number;
+  search?: string;
+  filters?: Record<string, string[]>;
+  _t?: number; // Cache busting
 }
 
 export interface ProductsResponse {
   products: Product[];
   pagination: {
-    totalItems: number;
     currentPage: number;
     totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
   };
 }
 
-export interface ProductFilters {
-  category?: string;
-  subCategory?: string;
-  brand?: string[];
-  minPrice?: number;
-  maxPrice?: number;
-  sizes?: string[];
-  colors?: string[];
-  fabric?: string[];
-  fit?: string;
-  material?: string[];
-  microwaveSafe?: boolean;
-  inStock?: boolean;
-  search?: string;
-  page?: number;
-  limit?: number;
-  sortBy?: 'name' | 'price' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
-  // Dynamic filters - any filter name can have string or string[] values
-  [key: string]: any;
-}
-
-export interface FilterOption {
-  name: string;
-  count: number;
-  colorCode?: string;
-}
-
-export interface FilterData {
-  priceRange: { minPrice: number; maxPrice: number };
-  brands: FilterOption[];
-  sizes: FilterOption[];
-  colors: FilterOption[];
-  materials: FilterOption[];
-  fabrics: FilterOption[];
-  subcategories: { name: string; slug: string }[];
-  filters: DynamicFilter[];
-}
-
-export interface DynamicFilter {
-  name: string;
-  displayName: string;
-  type: string;
-  dataType: string;
-  options: (FilterOption & { value: string; colorCode?: string })[];
+export interface FiltersResponse {
+  brands: Array<{ name: string; count: number }>;
+  categories: Array<{ name: string; slug: string; count: number }>;
+  priceRanges: Array<{ min: number; max: number; count: number }>;
+  dynamicFilters: Record<string, Array<{ value: string; displayValue: string; count: number }>>;
 }
 
 class ProductService {
   async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
-    try {
-      const params = new URLSearchParams();
-      
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+    const params = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, v.toString()));
+        } else {
           params.append(key, value.toString());
         }
-      });
-
-      const response = await api.get(`/products?${params.toString()}`);
-      
-      // Handle the nested response structure from backend
-      if (response.data.success && response.data.data) {
-        return {
-          products: response.data.data.products,
-          pagination: {
-            totalItems: response.data.data.pagination.totalItems,
-            currentPage: response.data.data.pagination.currentPage,
-            totalPages: response.data.data.pagination.totalPages,
-            hasNext: response.data.data.pagination.hasNext,
-            hasPrev: response.data.data.pagination.hasPrev
-          }
-        };
       }
-      
-      // Fallback for direct response structure
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      console.error('Error status:', error.response?.status);
-      console.error('API URL being called:', `${api.defaults.baseURL}/products`);
-      throw error;
-    }
+    });
+
+    const response = await api.get(`/products?${params.toString()}`);
+    return response.data.data;
   }
 
   async getProduct(id: string): Promise<Product> {
     const response = await api.get(`/products/${id}`);
-    // Handle the nested response structure from backend
-    if (response.data.success && response.data.data) {
-      return response.data.data.product;
-    }
-    // Fallback for direct response structure
-    return response.data.product;
-  }
-
-  async getCategories(): Promise<string[]> {
-    const response = await api.get('/products/categories');
-    return response.data.categories;
-  }
-
-  async getSubcategories(category: string): Promise<string[]> {
-    const response = await api.get(`/products/categories/${category}/subcategories`);
-    return response.data.subcategories;
-  }
-
-  async searchProducts(query: string, filters: Omit<ProductFilters, 'search'> = {}): Promise<ProductsResponse> {
-    return this.getProducts({ ...filters, search: query });
+    return response.data.data.product;
   }
 
   async getFeaturedProducts(limit: number = 8): Promise<Product[]> {
-    try {
-      const response = await api.get('/products/featured');
-      if (response.data.success) {
-        return response.data.data.products.slice(0, limit);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error fetching featured products:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      console.error('Error status:', error.response?.status);
-      console.error('API URL being called:', `${api.defaults.baseURL}/products/featured`);
-      return [];
-    }
+    const response = await api.get(`/products/featured?limit=${limit}`);
+    return response.data.data.products || [];
   }
 
-  async getTrendingProducts(limit: number = 8): Promise<Product[]> {
-    try {
-      const response = await api.get('/products/trending');
-      if (response.data.success) {
-        return response.data.data.products.slice(0, limit);
-      }
-      return [];
-    } catch (error) {
-      
-      return [];
-    }
+  async getTrendingProducts(limit: number = 12): Promise<Product[]> {
+    const response = await api.get(`/products/trending?limit=${limit}`);
+    return response.data.data.products || [];
   }
 
-  async getRelatedProducts(productId: string, category: string, limit: number = 4): Promise<Product[]> {
-    const response = await this.getProducts({ 
-      category, 
-      limit: limit + 1 // Get one extra to exclude current product
-    });
-    
-    // Filter out the current product
-    return response.products.filter(product => product._id !== productId).slice(0, limit);
+  async getFilters(category?: string): Promise<FiltersResponse> {
+    const params = category ? `?category=${encodeURIComponent(category)}` : '';
+    const response = await api.get(`/products/filters${params}`);
+    return response.data.data;
   }
 
-  async getFilters(category?: string): Promise<{ success: boolean; data: FilterData }> {
-    try {
-      const params = new URLSearchParams();
-      if (category) {
-        params.append('category', category);
-      }
-      
-      const response = await api.get(`/products/filters?${params.toString()}`);
-      return response.data;
-    } catch (error) {
-      
-      return {
-        success: false,
-        data: {
-          priceRange: { minPrice: 0, maxPrice: 10000 },
-          brands: [],
-          sizes: [],
-          colors: [],
-          materials: [],
-          fabrics: [],
-          subcategories: []
-        }
-      };
-    }
+  async searchProducts(query: string, filters: ProductFilters = {}): Promise<ProductsResponse> {
+    const searchFilters = { ...filters, search: query };
+    return this.getProducts(searchFilters);
+  }
+
+  async getProductsByCategory(category: string, filters: ProductFilters = {}): Promise<ProductsResponse> {
+    const categoryFilters = { ...filters, category };
+    return this.getProducts(categoryFilters);
+  }
+
+  async getRelatedProducts(productId: string, limit: number = 4): Promise<Product[]> {
+    const response = await api.get(`/products/${productId}/related?limit=${limit}`);
+    return response.data.data.products || [];
   }
 }
 

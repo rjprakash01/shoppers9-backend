@@ -1,150 +1,124 @@
-import mongoose, { Schema } from 'mongoose';
-import { IProduct, IProductVariant, IAvailableColor, IAvailableSize, IProductSpecification, ReviewStatus } from '../types';
+import mongoose, { Schema, Document } from 'mongoose';
 
-// Available Color schema (from admin panel)
-const availableColorSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  code: {
-    type: String,
-    required: true,
-    trim: true,
-    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
-  },
-  images: [{
-    type: String,
-    required: false
-  }]
-});
-
-// Available Size schema (from admin panel)
-const availableSizeSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  }
-});
-
-// Product Variant schema (color-size combination)
-const productVariantSchema = new Schema<IProductVariant>({
-  color: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  colorCode: {
-    type: String,
-    trim: true,
-    match: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
-  },
-  size: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  originalPrice: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  stock: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  sku: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  images: [{
-    type: String,
-    required: false
-  }]
-});
-
-const productSpecificationSchema = new Schema<IProductSpecification>({
-  fabric: String,
-  fit: String,
-  washCare: String,
-  material: String,
-  capacity: String,
-  microwaveSafe: Boolean,
-  dimensions: String,
-  weight: String
-});
+export interface IProduct extends Document {
+  name: string;
+  description: string;
+  category: any;
+  subCategory?: any;
+  brand: string;
+  price?: number;
+  discountedPrice?: number;
+  originalPrice?: number;
+  stock?: number;
+  images: string[];
+  variants: Array<{
+    size?: string;
+    color?: string;
+    price: number;
+    discountedPrice?: number;
+    stock: number;
+    sku: string;
+    images?: string[];
+  }>;
+  specifications: Record<string, any>;
+  tags: string[];
+  status: 'active' | 'inactive' | 'pending' | 'rejected';
+  approvalStatus: 'pending' | 'approved' | 'rejected' | 'needs_changes';
+  isActive: boolean;
+  isFeatured?: boolean;
+  isTrending?: boolean;
+  rating?: number;
+  reviewCount?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
+  totalStock?: number;
+}
 
 const productSchema = new Schema<IProduct>({
   name: {
     type: String,
     required: true,
-    trim: true,
-    minlength: 2,
-    maxlength: 200
+    trim: true
   },
   description: {
     type: String,
-    required: true,
-    trim: true,
-    maxlength: 2000
+    required: true
   },
   category: {
-    type: Schema.Types.ObjectId,
-    ref: 'Category',
+    type: Schema.Types.Mixed,
     required: true
   },
   subCategory: {
-    type: Schema.Types.ObjectId,
-    ref: 'Category',
-    required: true
-  },
-  subSubCategory: {
-    type: Schema.Types.ObjectId,
-    ref: 'Category',
-    required: false
+    type: Schema.Types.Mixed
   },
   brand: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   price: {
     type: Number,
-    min: 0,
-    required: false
+    min: 0
+  },
+  discountedPrice: {
+    type: Number,
+    min: 0
   },
   originalPrice: {
     type: Number,
-    min: 0,
-    required: false
+    min: 0
   },
-  images: [{
-    type: String,
-    required: true
+  stock: {
+    type: Number,
+    min: 0
+  },
+  images: {
+    type: [String],
+    default: []
+  },
+  variants: [{
+    size: String,
+    color: String,
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    discountedPrice: {
+      type: Number,
+      min: 0
+    },
+    stock: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    sku: {
+      type: String,
+      required: true,
+      unique: true
+    },
+    images: [String]
   }],
-  availableColors: [availableColorSchema],
-  availableSizes: [availableSizeSchema],
-  variants: [productVariantSchema],
-  displayFilters: [{
-    type: String,
-    trim: true
-  }],
-  specifications: productSpecificationSchema,
+  specifications: {
+    type: Schema.Types.Mixed,
+    default: {}
+  },
   tags: [{
     type: String,
     trim: true
   }],
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'pending', 'rejected'],
+    default: 'pending'
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'needs_changes'],
+    default: 'pending'
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -157,159 +131,41 @@ const productSchema = new Schema<IProduct>({
     type: Boolean,
     default: false
   },
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
+  reviewCount: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: false
+    ref: 'User'
   },
   updatedBy: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: false
-  },
-  reviewStatus: {
-    type: String,
-    enum: Object.values(ReviewStatus),
-    default: ReviewStatus.DRAFT,
-    required: true
-  },
-  submittedForReviewAt: {
-    type: Date,
-    required: false
-  },
-  approvedAt: {
-    type: Date,
-    required: false
-  },
-  approvedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: false
-  },
-  approvalStatus: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected', 'needs_changes'],
-    default: 'pending',
-    required: true
+    ref: 'User'
   }
 }, {
-  timestamps: true,
-  toJSON: {
-    transform: function(doc: any, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-      return ret;
-    }
-  }
+  timestamps: true
 });
 
-// Virtual for filter values
-productSchema.virtual('filterValues', {
-  ref: 'ProductFilterValue',
-  localField: '_id',
-  foreignField: 'product'
-});
-
-// Indexes
-productSchema.index({ name: 'text', description: 'text', tags: 'text' });
-productSchema.index({ category: 1, subCategory: 1, subSubCategory: 1 });
-productSchema.index({ category: 1, subCategory: 1 });
-productSchema.index({ subSubCategory: 1 });
+// Create indexes for better performance
+productSchema.index({ name: 1 });
+productSchema.index({ category: 1 });
 productSchema.index({ brand: 1 });
+productSchema.index({ status: 1 });
+productSchema.index({ approvalStatus: 1 });
 productSchema.index({ isActive: 1 });
 productSchema.index({ isFeatured: 1 });
 productSchema.index({ isTrending: 1 });
-productSchema.index({ createdAt: -1 });
-productSchema.index({ 'variants.price': 1 });
-productSchema.index({ createdBy: 1 });
-productSchema.index({ createdBy: 1, isActive: 1 });
-
-// Virtual for minimum price calculation
-productSchema.virtual('minPrice').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let minPrice = Infinity;
-  this.variants.forEach((variant: any) => {
-    if (variant.price < minPrice) {
-      minPrice = variant.price;
-    }
-  });
-  
-  return minPrice === Infinity ? 0 : minPrice;
-});
-
-// Virtual for maximum price calculation
-productSchema.virtual('maxPrice').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let maxPrice = 0;
-  this.variants.forEach((variant: any) => {
-    if (variant.price > maxPrice) {
-      maxPrice = variant.price;
-    }
-  });
-  
-  return maxPrice;
-});
-
-// Virtual for minimum original price calculation
-productSchema.virtual('minOriginalPrice').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let minOriginalPrice = Infinity;
-  this.variants.forEach((variant: any) => {
-    if (variant.originalPrice && variant.originalPrice < minOriginalPrice) {
-      minOriginalPrice = variant.originalPrice;
-    }
-  });
-  
-  return minOriginalPrice === Infinity ? 0 : minOriginalPrice;
-});
-
-// Virtual for maximum original price calculation
-productSchema.virtual('maxOriginalPrice').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let maxOriginalPrice = 0;
-  this.variants.forEach((variant: any) => {
-    if (variant.originalPrice && variant.originalPrice > maxOriginalPrice) {
-      maxOriginalPrice = variant.originalPrice;
-    }
-  });
-  
-  return maxOriginalPrice;
-});
-
-// Virtual for maximum discount percentage calculation
-productSchema.virtual('maxDiscount').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let maxDiscount = 0;
-  this.variants.forEach((variant: any) => {
-    if (variant.originalPrice && variant.price && variant.originalPrice > variant.price) {
-      const discount = Math.round(((variant.originalPrice - variant.price) / variant.originalPrice) * 100);
-      if (discount > maxDiscount) {
-        maxDiscount = discount;
-      }
-    }
-  });
-  
-  return maxDiscount;
-});
-
-// Virtual for total stock calculation
-productSchema.virtual('totalStock').get(function() {
-  if (!this.variants || this.variants.length === 0) return 0;
-  
-  let totalStock = 0;
-  this.variants.forEach((variant: any) => {
-    totalStock += variant.stock || 0;
-  });
-  
-  return totalStock;
-});
+productSchema.index({ 'variants.sku': 1 });
 
 const Product = mongoose.model<IProduct>('Product', productSchema);
 
 export default Product;
+export { productSchema };

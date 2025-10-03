@@ -3,7 +3,7 @@ import { RBACRequest } from '../middleware/rbac';
 import Role from '../models/Role';
 import Permission from '../models/Permission';
 import UserRole from '../models/UserRole';
-import User from '../models/User';
+import { getUserModel } from '../models/User';
 import AuditLog from '../models/AuditLog';
 import RBACService from '../services/rbacService';
 import mongoose from 'mongoose';
@@ -76,6 +76,7 @@ export const getUserRoles = async (req: RBACRequest, res: Response, next: NextFu
       });
     }
 
+    const User = getUserModel();
     const user = await User.findById(userId)
       .select('-password')
       .populate('createdBy', 'firstName lastName email');
@@ -237,8 +238,9 @@ export const updatePermissions = async (req: RBACRequest, res: Response, next: N
     }
 
     // Check if current user can manage the target user
+    const User = getUserModel();
     const targetUser = await User.findById(userId);
-    if (!targetUser || !req.user!.canManage(targetUser)) {
+    if (!targetUser || !req.admin!.canManage(targetUser)) {
       return res.status(403).json({
         success: false,
         message: 'Insufficient privileges to modify this user\'s permissions'
@@ -326,6 +328,7 @@ export const getUsersWithRoles = async (req: RBACRequest, res: Response, next: N
     const sort: any = {};
     sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
+    const User = getUserModel();
     const users = await User.find(query)
       .select('-password -security.sessionTokens -security.twoFactorSecret')
       .populate('createdBy', 'firstName lastName email')

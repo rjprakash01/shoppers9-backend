@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import Banner from '../models/Banner';
 import Category from '../models/Category';
 import connectDB from '../config/database';
+
+// Load environment variables
+dotenv.config();
 
 interface BannerData {
   title: string;
@@ -169,6 +173,14 @@ const seedBanners = async (): Promise<void> => {
       categoryMap.set(cat.slug, cat._id.toString());
     });
 
+    // Get default category ID (first available category)
+    const defaultCategoryId = categories.length > 0 ? categories[0]._id.toString() : null;
+    
+    if (!defaultCategoryId) {
+      console.error('No categories found. Please seed categories first.');
+      return;
+    }
+
     // Process banner data and add category IDs
     const bannersToInsert = bannerData.map(banner => {
       const bannerDoc: any = {
@@ -183,10 +195,12 @@ const seedBanners = async (): Promise<void> => {
         displayType: banner.displayType
       };
 
-      // Add categoryId if it's a carousel banner with category
-    if (banner.categorySlug && categoryMap.has(banner.categorySlug)) {
-      bannerDoc.categoryId = categoryMap.get(banner.categorySlug);
-    }
+      // Add categoryId - use specific category if available, otherwise use default
+      if (banner.categorySlug && categoryMap.has(banner.categorySlug)) {
+        bannerDoc.categoryId = categoryMap.get(banner.categorySlug);
+      } else {
+        bannerDoc.categoryId = defaultCategoryId;
+      }
 
       return bannerDoc;
     });

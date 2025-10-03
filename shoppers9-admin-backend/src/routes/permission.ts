@@ -12,7 +12,8 @@ import {
   createPermission,
   initializePermissions,
   initializeRoles,
-  checkUserPermission
+  checkUserPermission,
+  createUserRolesForAdmins
 } from '../controllers/permissionController';
 import { auth, superAdminOnly } from '../middleware/auth';
 
@@ -62,5 +63,8 @@ router.post('/permissions/initialize', initializePermissions);
 
 // Initialize default roles
 router.post('/roles/initialize', initializeRoles);
+
+// Create UserRole entries for existing admin users
+router.post('/user-roles/create-for-admins', createUserRolesForAdmins);
 
 export default router;

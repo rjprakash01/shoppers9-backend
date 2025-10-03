@@ -339,7 +339,7 @@ const Navbar: React.FC = () => {
                   <Heart className="h-6 w-6" />
                   <span className="text-xs mt-1 font-semibold font-inter">Wishlist</span>
                   {wishlistCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-elite-base-white text-xs h-6 w-6 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-elite-base-white h-5 w-5 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter" style={{fontSize: '10px'}}>
                       {wishlistCount > 99 ? '99+' : wishlistCount}
                     </span>
                   )}
@@ -352,7 +352,7 @@ const Navbar: React.FC = () => {
                   <ShoppingCart className="h-6 w-6" />
                   <span className="text-xs mt-1 font-semibold font-inter">Cart</span>
                   {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-elite-base-white text-xs h-6 w-6 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-elite-base-white h-5 w-5 rounded-full flex items-center justify-center font-bold shadow-card animate-pulse font-inter" style={{fontSize: '10px'}}>
                       {cartCount > 99 ? '99+' : cartCount}
                     </span>
                   )}

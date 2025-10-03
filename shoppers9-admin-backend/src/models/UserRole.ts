@@ -3,6 +3,11 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUserRole extends Document {
   userId: mongoose.Types.ObjectId;
   roleId: mongoose.Types.ObjectId;
+  permissions?: {
+    permissionId: mongoose.Types.ObjectId;
+    granted: boolean;
+    restrictions?: any;
+  }[];
   moduleAccess: {
     module: string;
     hasAccess: boolean;
@@ -14,6 +19,15 @@ export interface IUserRole extends Document {
   lastAccessedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  isAccessAllowed(): boolean;
+  hasModuleAccess(module: string): boolean;
+  updateLastAccess(): Promise<IUserRole>;
+  grantModuleAccess(module: string): void;
+  revokeModuleAccess(module: string): void;
+}
+
+export interface IUserRoleModel extends mongoose.Model<IUserRole> {
+  getUserPermissions(userId: mongoose.Types.ObjectId): Promise<any[]>;
 }
 
 const userRoleSchema = new Schema<IUserRole>({
@@ -27,6 +41,18 @@ const userRoleSchema = new Schema<IUserRole>({
     ref: 'Role',
     required: true
   },
+  permissions: [{
+    permissionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Permission',
+      required: true
+    },
+    granted: {
+      type: Boolean,
+      default: true
+    },
+    restrictions: Schema.Types.Mixed
+  }],
   moduleAccess: [{
     module: {
       type: String,
@@ -141,5 +167,48 @@ userRoleSchema.methods.revokeModuleAccess = function(module: string) {
   }
 };
 
-export const UserRole = mongoose.model<IUserRole>('UserRole', userRoleSchema);
+// Static method to get user permissions
+userRoleSchema.statics.getUserPermissions = async function(userId: mongoose.Types.ObjectId) {
+  const userRoles = await this.find({ userId, isActive: true })
+    .populate('roleId')
+    .populate('permissions.permissionId');
+  
+  const permissions: any[] = [];
+  userRoles.forEach((userRole: any) => {
+    if (userRole.permissions) {
+      userRole.permissions.forEach((perm: any) => {
+        if (perm.granted) {
+          permissions.push({
+            permissionId: perm.permissionId,
+            restrictions: perm.restrictions
+          });
+        }
+      });
+    }
+  });
+  
+  return permissions;
+};
+
+// Lazy model creation
+let _userRoleModel: any = null;
+
+// Function to get UserRole model with proper connection
+export const getUserRoleModel = () => {
+  if (!_userRoleModel) {
+    const { adminConnection } = require('../config/database');
+    if (!adminConnection) {
+      throw new Error('Admin connection not established');
+    }
+    _userRoleModel = adminConnection.model<IUserRole, IUserRoleModel>('UserRole', userRoleSchema);
+  }
+  return _userRoleModel;
+};
+
+// Export the model (for backward compatibility)
+export const UserRole = new Proxy({}, {
+  get(target, prop) {
+    return getUserRoleModel()[prop];
+  }
+});
 export default UserRole;

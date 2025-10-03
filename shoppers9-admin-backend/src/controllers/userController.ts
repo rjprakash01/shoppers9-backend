@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import User from '../models/User';
+import { getUserModel } from '../models/User';
 import Order from '../models/Order';
 import { AuthRequest, UserQueryParams } from '../types';
 
@@ -38,6 +38,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const sortOptions: any = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
+    const User = getUserModel();
     const users = await User.find(query)
       .select('-password')
       .sort(sortOptions)
@@ -69,6 +70,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
+    const User = getUserModel();
     const user = await User.findById(req.params.id).select('-password');
 
     if (!user) {
@@ -125,6 +127,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const User = getUserModel();
     const user = await User.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -154,6 +157,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 
 export const deleteUser = async (req: Request, res: Response) => {
   try {
+    const User = getUserModel();
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -190,6 +194,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 
 export const toggleUserStatus = async (req: Request, res: Response) => {
   try {
+    const User = getUserModel();
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -227,6 +232,7 @@ export const getUserAnalytics = async (req: Request, res: Response) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate as string);
     }
 
+    const User = getUserModel();
     const totalUsers = await User.countDocuments(dateFilter);
     const activeUsers = await User.countDocuments({ ...dateFilter, isActive: true });
     const verifiedUsers = await User.countDocuments({ ...dateFilter, isVerified: true });
@@ -321,6 +327,7 @@ export const exportUsers = async (req: Request, res: Response) => {
       if (endDate) query.createdAt.$lte = new Date(endDate as string);
     }
 
+    const User = getUserModel();
     const users = await User.find(query)
       .select('-password')
       .sort({ createdAt: -1 });

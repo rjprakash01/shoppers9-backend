@@ -121,7 +121,10 @@ const ProductPreviewModal: React.FC<ProductPreviewModalProps> = ({
 
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      onDelete(product.id);
+      const productId = product.id || product._id;
+      if (productId) {
+        onDelete(productId);
+      }
       onClose();
     }
   };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import ProductSpecificationsForm from './ProductSpecificationsForm';
 import {
   Save,
   X,
@@ -128,6 +129,7 @@ interface ProductFormData {
   availableSizes: ProductSizeOption[];
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   submissionNotes?: string;
+  specifications?: any;
 }
 
 interface ProductFormProps {
@@ -167,7 +169,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
     availableColors: [],
     availableSizes: [],
     approvalStatus: 'pending',
-    submissionNotes: ''
+    submissionNotes: '',
+    specifications: {}
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -214,7 +217,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
           availableColors: initialData.availableColors || [],
           availableSizes: initialData.availableSizes || [],
           approvalStatus: initialData.approvalStatus || 'pending',
-          submissionNotes: initialData.submissionNotes || ''
+          submissionNotes: initialData.submissionNotes || '',
+          specifications: initialData.specifications || {}
         });
         
         // If editing an existing product, fetch its assigned filter values
@@ -903,7 +907,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         if (key === 'availableColors' || key === 'availableSizes') {
           // Skip these fields - they're only for frontend management
           return;
-        } else if (key === 'variants' || key === 'filterValues' || key === 'displayFilters' || key === 'features' || key === 'tags') {
+        } else if (key === 'variants' || key === 'filterValues' || key === 'displayFilters' || key === 'features' || key === 'tags' || key === 'specifications') {
           submitData.append(key, JSON.stringify(value));
         } else if (key === 'images') {
           // Handle images separately - they're already base64 strings from FileReader
@@ -948,20 +952,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
         {/* Form Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-2">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+          <div className="p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
               {/* Left Column - Main Form Fields */}
-              <div className="lg:col-span-2 space-y-2">
+              <div className="space-y-4">
                 
                 {/* Category Selection */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
-                    <Tag className="w-4 h-4" />
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <Tag className="w-5 h-5" />
                     Category Selection
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Main Category *
@@ -1030,13 +1034,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Basic Product Information */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
-                    <Package className="w-4 h-4" />
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <Package className="w-5 h-5" />
                     Basic Information
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Product Name *
@@ -1102,13 +1106,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Pricing & Inventory */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
                     Pricing & Inventory
                   </h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Original Price * <span className="text-xs text-gray-400">(Before Discount)</span>
@@ -1165,24 +1169,26 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
 
                 {/* Available Colors Section */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                      <Package className="w-4 h-4" />
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 21h10a2 2 0 002-2v-4a2 2 0 00-2-2H7m0-4h10a2 2 0 002-2V5a2 2 0 00-2-2H7" />
+                      </svg>
                       Available Colors
                     </h3>
                     <button
                       type="button"
                       onClick={addColor}
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      <Plus className="w-3 h-3" />
-                      Add
+                      <Plus className="w-4 h-4" />
+                      Add Color
                     </button>
                   </div>
                   
-                  <p className="text-xs text-gray-600 mb-2">
-                    Define available colors.
+                  <p className="text-sm text-gray-600 mb-4">
+                    Define available colors for this product.
                   </p>
 
                   {formData.availableColors.length === 0 ? (
@@ -1603,8 +1609,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
               </div>
 
-              {/* Right Column - Filters & Settings */}
-              <div className="space-y-3">
+              {/* Right Column - Product Details & Settings */}
+              <div className="space-y-4">
                 
                 {/* Product Filters */}
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
@@ -1996,47 +2002,67 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   )}
                 </div>
 
+                {/* Product Specifications */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Product Specifications
+                  </h3>
+                  <ProductSpecificationsForm
+                    specifications={formData.specifications}
+                    onSpecificationsChange={(specs) => setFormData(prev => ({ ...prev, specifications: specs }))}
+                  />
+                </div>
+
                 {/* Product Settings */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">Product Settings</h3>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Product Settings
+                  </h3>
                   
-                  <div className="space-y-2">
-                    <label className="flex items-center">
+                  <div className="space-y-3">
+                    <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <input
                         type="checkbox"
                         checked={formData.isActive}
                         onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-xs font-medium text-gray-700">Active Product</span>
-                        <p className="text-xs text-gray-500">Visible to customers</p>
+                        <span className="text-sm font-medium text-gray-900">Active Product</span>
+                        <p className="text-sm text-gray-500">Make this product visible to customers on the website</p>
                       </div>
                     </label>
                     
-                    <label className="flex items-center">
+                    <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <input
                         type="checkbox"
                         checked={formData.isFeatured}
                         onChange={(e) => handleInputChange('isFeatured', e.target.checked)}
-                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-xs font-medium text-gray-700">Featured Product</span>
-                        <p className="text-xs text-gray-500">Appears in featured sections</p>
+                        <span className="text-sm font-medium text-gray-900">Featured Product</span>
+                        <p className="text-sm text-gray-500">Display this product in featured sections and homepage</p>
                       </div>
                     </label>
                     
-                    <label className="flex items-center">
+                    <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <input
                         type="checkbox"
                         checked={formData.isTrending}
                         onChange={(e) => handleInputChange('isTrending', e.target.checked)}
-                        className="mr-2 h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div>
-                        <span className="text-xs font-medium text-gray-700">Trending Product</span>
-                        <p className="text-xs text-gray-500">Appears in trending sections</p>
+                        <span className="text-sm font-medium text-gray-900">Trending Product</span>
+                        <p className="text-sm text-gray-500">Show this product in trending sections and recommendations</p>
                       </div>
                     </label>
                   </div>

@@ -15,7 +15,8 @@ const sampleBanners = [
     link: '/products?category=sale',
     buttonText: 'Shop Now',
     isActive: true,
-    order: 1
+    order: 1,
+    categoryId: '68d821c70822ba1d8adcc0c9' // Fashion
   },
   {
     title: 'New Arrivals',
@@ -25,7 +26,8 @@ const sampleBanners = [
     link: '/products?sort=newest',
     buttonText: 'Explore Collection',
     isActive: true,
-    order: 2
+    order: 2,
+    categoryId: '68d821c70822ba1d8adcc0c8' // Electronics
   }
 ];
 
@@ -39,13 +41,19 @@ async function seedBanners() {
 
     // Insert sample banners
     const createdBanners = await Banner.insertMany(sampleBanners);
+    console.log('Connected to database');
+    console.log('Cleared existing banners');
+    console.log(`Created ${createdBanners.length} banners:`);
 
     createdBanners.forEach((banner, index) => {
-      
+      console.log(`- ${banner.title} (Order: ${banner.order})`);
     });
 
+    console.log('\n✅ Banners seeded successfully!');
+
   } catch (error) {
-    
+    console.error('Error seeding banners:', error);
+    process.exit(1);
   } finally {
     // Close database connection
     await mongoose.connection.close();

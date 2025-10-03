@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-import ProductForm from '../components/ProductForm';
+import ProductWizard from '../components/ProductWizard';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ProductPreviewModal from '../components/ProductPreviewModal';
 import { CreateButton, EditButton, DeleteButton, ViewButton } from '../components/PermissionButton';
+import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Search,
   RefreshCw,
@@ -34,7 +36,8 @@ interface Category {
 }
 
 interface Product {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
   description: string;
   price: number;
@@ -80,16 +83,41 @@ interface ProductsResponse {
 }
 
 const ProductManagement: React.FC = () => {
+  const { user } = useAuth();
+  const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
+  
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedMainCategory, setSelectedMainCategory] = useState<string>('');
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('');
-  const [selectedSubSubCategory, setSelectedSubSubCategory] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string>(() => {
+    const saved = localStorage.getItem('productManagement_selectedMainCategory') || '';
+    console.log('🔧 [INIT] selectedMainCategory from localStorage:', saved);
+    return saved;
+  });
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>(() => {
+    const saved = localStorage.getItem('productManagement_selectedSubCategory') || '';
+    console.log('🔧 [INIT] selectedSubCategory from localStorage:', saved);
+    return saved;
+  });
+  const [selectedSubSubCategory, setSelectedSubSubCategory] = useState<string>(() => {
+    const saved = localStorage.getItem('productManagement_selectedSubSubCategory') || '';
+    console.log('🔧 [INIT] selectedSubSubCategory from localStorage:', saved);
+    return saved;
+  });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(() => {
+    const saved = localStorage.getItem('productManagement_selectedCategory');
+    console.log('🔧 [INIT] selectedCategory from localStorage:', saved);
+    console.log('🔧 [INIT] selectedCategory type:', typeof saved);
+    console.log('🔧 [INIT] selectedCategory === "null":', saved === 'null');
+    console.log('🔧 [INIT] selectedCategory === null:', saved === null);
+    // Handle the case where localStorage contains the string 'null'
+    return (saved && saved !== 'null') ? saved : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'rejected'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'rejected'>(() => {
+    return (localStorage.getItem('productManagement_filterStatus') as 'all' | 'active' | 'pending' | 'rejected') || 'all';
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -98,7 +126,7 @@ const ProductManagement: React.FC = () => {
     hasNext: false,
     hasPrev: false
   });
-  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [isProductWizardOpen, setIsProductWizardOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -110,12 +138,70 @@ const ProductManagement: React.FC = () => {
   const [showPageSelector, setShowPageSelector] = useState(false);
 
   useEffect(() => {
-    console.log('=== PRODUCT MANAGEMENT COMPONENT MOUNTED ===');
-    console.log('Starting to fetch categories and products...');
+    console.log('\n=== PRODUCT MANAGEMENT COMPONENT MOUNTED ===');
+    console.log('🔧 [MOUNT] Starting to fetch categories and products...');
+    console.log('🔧 [MOUNT] Current selectedCategory state:', selectedCategory);
+    console.log('🔧 [MOUNT] Current selectedMainCategory state:', selectedMainCategory);
+    console.log('🔧 [MOUNT] Current selectedSubCategory state:', selectedSubCategory);
+    console.log('🔧 [MOUNT] Current selectedSubSubCategory state:', selectedSubSubCategory);
+    
+    // Check localStorage values at mount time
+    const savedCategory = localStorage.getItem('productManagement_selectedCategory');
+    const savedMainCategory = localStorage.getItem('productManagement_selectedMainCategory');
+    const savedSubCategory = localStorage.getItem('productManagement_selectedSubCategory');
+    const savedSubSubCategory = localStorage.getItem('productManagement_selectedSubSubCategory');
+    
+    console.log('🔧 [MOUNT] localStorage values:');
+    console.log('  - selectedCategory:', savedCategory);
+    console.log('  - selectedMainCategory:', savedMainCategory);
+    console.log('  - selectedSubCategory:', savedSubCategory);
+    console.log('  - selectedSubSubCategory:', savedSubSubCategory);
+    
     fetchCategoryTree();
-    // Fetch all products by default
-    fetchAllProducts(1);
+    
+    // Check if there's a selected category from localStorage
+    if (savedCategory && savedCategory !== 'null' && savedCategory !== '') {
+      console.log('🔧 [MOUNT] Found saved category, will fetch products for category:', savedCategory);
+      console.log('🔧 [MOUNT] selectedCategory state should trigger useEffect for category products');
+      // The selectedCategory state will trigger the useEffect that fetches category products
+    } else {
+      console.log('🔧 [MOUNT] No saved category found, fetching all products');
+      fetchAllProducts(1);
+    }
+    console.log('=== END COMPONENT MOUNT ===\n');
   }, []);
+
+  // Persist state to localStorage
+  useEffect(() => {
+    console.log('💾 [PERSIST] Saving selectedMainCategory to localStorage:', selectedMainCategory);
+    localStorage.setItem('productManagement_selectedMainCategory', selectedMainCategory);
+  }, [selectedMainCategory]);
+
+  useEffect(() => {
+    console.log('💾 [PERSIST] Saving selectedSubCategory to localStorage:', selectedSubCategory);
+    localStorage.setItem('productManagement_selectedSubCategory', selectedSubCategory);
+  }, [selectedSubCategory]);
+
+  useEffect(() => {
+    console.log('💾 [PERSIST] Saving selectedSubSubCategory to localStorage:', selectedSubSubCategory);
+    localStorage.setItem('productManagement_selectedSubSubCategory', selectedSubSubCategory);
+  }, [selectedSubSubCategory]);
+
+  useEffect(() => {
+    console.log('💾 [PERSIST] selectedCategory changed, value:', selectedCategory, 'type:', typeof selectedCategory);
+    if (selectedCategory) {
+      console.log('💾 [PERSIST] Saving selectedCategory to localStorage:', selectedCategory);
+      localStorage.setItem('productManagement_selectedCategory', selectedCategory);
+    } else {
+      console.log('💾 [PERSIST] Removing selectedCategory from localStorage (value is falsy)');
+      localStorage.removeItem('productManagement_selectedCategory');
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    console.log('💾 [PERSIST] Saving filterStatus to localStorage:', filterStatus);
+    localStorage.setItem('productManagement_filterStatus', filterStatus);
+  }, [filterStatus]);
 
   // Filter products based on search query
   useEffect(() => {
@@ -132,23 +218,47 @@ const ProductManagement: React.FC = () => {
     }
   }, [products, searchQuery]);
 
+  // Handle category selection and pagination changes
   useEffect(() => {
+    console.log('\n🔄 [EFFECT-1] Category/Filter/PageSize changed:');
+    console.log('  - selectedCategory:', selectedCategory);
+    console.log('  - filterStatus:', filterStatus);
+    console.log('  - pageSize:', pageSize);
+    console.log('  - currentPage before:', currentPage);
+    
     if (selectedCategory) {
+      console.log('🔄 [EFFECT-1] Has selectedCategory, setting currentPage to 1 and fetching category products');
       setCurrentPage(1);
       fetchProductsByCategory(selectedCategory, 1);
     } else {
+      console.log('🔄 [EFFECT-1] No selectedCategory, setting currentPage to 1 and fetching all products');
       setCurrentPage(1);
       fetchAllProducts(1);
     }
+    console.log('🔄 [EFFECT-1] End\n');
   }, [selectedCategory, filterStatus, pageSize]);
 
+  // Handle pagination changes (when currentPage changes but not due to category/filter changes)
   useEffect(() => {
-    if (selectedCategory) {
-      fetchProductsByCategory(selectedCategory, currentPage);
+    console.log('\n🔄 [EFFECT-2] CurrentPage changed:');
+    console.log('  - currentPage:', currentPage);
+    console.log('  - selectedCategory:', selectedCategory);
+    
+    // Only fetch if currentPage is not 1 (to avoid duplicate calls when category changes)
+    if (currentPage > 1) {
+      console.log('🔄 [EFFECT-2] currentPage > 1, fetching products');
+      if (selectedCategory) {
+        console.log('🔄 [EFFECT-2] Fetching category products for page:', currentPage);
+        fetchProductsByCategory(selectedCategory, currentPage);
+      } else {
+        console.log('🔄 [EFFECT-2] Fetching all products for page:', currentPage);
+        fetchAllProducts(currentPage);
+      }
     } else {
-      fetchAllProducts(currentPage);
+      console.log('🔄 [EFFECT-2] currentPage is 1, skipping fetch to avoid duplicates');
     }
-  }, [currentPage, pageSize]);
+    console.log('🔄 [EFFECT-2] End\n');
+  }, [currentPage]);
 
   // Close page selector when clicking outside
   useEffect(() => {
@@ -206,22 +316,71 @@ const ProductManagement: React.FC = () => {
       console.log('Categories set in state:', categories);
       console.log('Main categories (level 1):', categories.filter(cat => cat.level === 1));
     } catch (err) {
-      console.error('=== PRODUCT MANAGEMENT: Error fetching categories ===', err);
-      if (err && typeof err === 'object' && 'response' in err) {
-        console.error('Error response:', (err as any).response);
-        console.error('Error status:', (err as any).response?.status);
-        console.error('Error data:', (err as any).response?.data);
-      }
+      console.error('Error fetching categories:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Restore category hierarchy when categories are loaded and selectedCategory exists
+  useEffect(() => {
+    if (categories.length > 0 && selectedCategory && !selectedMainCategory) {
+      console.log('🔄 [RESTORE] Restoring category hierarchy for selectedCategory:', selectedCategory);
+      
+      // Find the selected category in the tree
+      const findCategoryInTree = (cats: Category[], targetId: string): Category | null => {
+        for (const cat of cats) {
+          if (cat.id === targetId) return cat;
+          if (cat.children && cat.children.length > 0) {
+            const found = findCategoryInTree(cat.children, targetId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      
+      const selectedCat = findCategoryInTree(categories, selectedCategory);
+      if (selectedCat) {
+        console.log('🔄 [RESTORE] Found selected category:', selectedCat.name, 'level:', selectedCat.level);
+        
+        if (selectedCat.level === 1) {
+          // Main category selected
+          setSelectedMainCategory(selectedCategory);
+          console.log('🔄 [RESTORE] Set selectedMainCategory to:', selectedCategory);
+        } else if (selectedCat.level === 2) {
+          // Sub category selected - need to find parent
+          const parentCat = categories.find(cat => cat.id === selectedCat.parentCategory);
+          if (parentCat) {
+            setSelectedMainCategory(parentCat.id);
+            setSelectedSubCategory(selectedCategory);
+            console.log('🔄 [RESTORE] Set selectedMainCategory to:', parentCat.id, 'and selectedSubCategory to:', selectedCategory);
+          }
+        } else if (selectedCat.level === 3) {
+          // Sub-sub category selected - need to find parent and grandparent
+          const parentCat = categories.find(cat => 
+            cat.children && cat.children.some(child => child.id === selectedCategory)
+          );
+          if (parentCat) {
+            const grandParentCat = categories.find(cat => cat.id === parentCat.parentCategory);
+            if (grandParentCat) {
+              setSelectedMainCategory(grandParentCat.id);
+              setSelectedSubCategory(parentCat.id);
+              setSelectedSubSubCategory(selectedCategory);
+              console.log('🔄 [RESTORE] Set selectedMainCategory to:', grandParentCat.id, 'selectedSubCategory to:', parentCat.id, 'and selectedSubSubCategory to:', selectedCategory);
+            }
+          }
+        }
+      } else {
+        console.log('🔄 [RESTORE] Selected category not found in tree, clearing selection');
+        setSelectedCategory(null);
+      }
+    }
+  }, [categories, selectedCategory]);
+
   const fetchAllProducts = async (page: number) => {
     try {
-      console.log('=== FRONTEND: Fetching all products ===');
-      console.log('Page:', page, 'PageSize:', pageSize, 'FilterStatus:', filterStatus);
+      // Fetching products with current filters
       setIsProductsLoading(true);
       
       // Map filter status to backend expected values
@@ -256,17 +415,26 @@ const ProductManagement: React.FC = () => {
        setPagination(response.pagination);
       setError(null);
     } catch (err) {
-        console.error('=== FRONTEND ERROR ===', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch products');
+        console.error('Error fetching products:', err);
+        let errorMessage = 'Failed to fetch products';
+        
+        if (err && typeof err === 'object' && 'response' in err) {
+          // Handle axios error
+          const axiosError = err as any;
+          errorMessage = axiosError.response?.data?.message || axiosError.message || errorMessage;
+        } else if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        
+        setError(errorMessage);
         setProducts([]);
       } finally {
         setIsProductsLoading(false);
       }
     };
 
-    // Manual refresh function for debugging
+    // Manual refresh function
     const handleManualRefresh = () => {
-      console.log('=== MANUAL REFRESH TRIGGERED ===');
       fetchAllProducts(1);
     };
 
@@ -296,7 +464,18 @@ const ProductManagement: React.FC = () => {
       });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+      console.error('Error fetching products by category:', err);
+      let errorMessage = 'Failed to fetch products';
+      
+      if (err && typeof err === 'object' && 'response' in err) {
+        // Handle axios error
+        const axiosError = err as any;
+        errorMessage = axiosError.response?.data?.message || axiosError.message || errorMessage;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setProducts([]);
     } finally {
       setIsProductsLoading(false);
@@ -311,13 +490,20 @@ const ProductManagement: React.FC = () => {
       }
       
       await authService.createProduct(productData);
-      setIsProductFormOpen(false);
-      if (selectedCategory) {
-        await fetchProductsByCategory(selectedCategory, currentPage);
-      } else {
-        await fetchAllProducts(currentPage);
+      setIsProductWizardOpen(false);
+      
+      // Refresh data - don't let refresh errors affect the success of product creation
+      try {
+        if (selectedCategory) {
+          await fetchProductsByCategory(selectedCategory, currentPage);
+        } else {
+          await fetchAllProducts(currentPage);
+        }
+        await fetchCategoryTree();
+      } catch (refreshError) {
+        console.error('Error refreshing data after product creation:', refreshError);
+        // Don't throw refresh errors - the product was created successfully
       }
-      await fetchCategoryTree();
     } catch (error) {
       
       throw error;
@@ -327,10 +513,16 @@ const ProductManagement: React.FC = () => {
   const handleUpdateProduct = async (productData: FormData) => {
     if (!editingProduct) return;
     
+    const productId = editingProduct.id || editingProduct._id;
+    if (!productId) {
+      console.error('Editing product ID is missing');
+      return;
+    }
+    
     try {
-      await authService.updateProduct(editingProduct.id, productData);
+      await authService.updateProduct(productId, productData);
       
-      setIsProductFormOpen(false);
+      setIsProductWizardOpen(false);
       setEditingProduct(null);
       if (selectedCategory) {
         fetchProductsByCategory(selectedCategory, currentPage);
@@ -364,11 +556,17 @@ const ProductManagement: React.FC = () => {
 
   const handleEditProduct = async (product: Product) => {
     try {
+      const productId = product.id || product._id;
+      if (!productId) {
+        console.error('Product ID is missing');
+        return;
+      }
+      
       // Fetch complete product data including filter values
-      const completeProductData = await authService.getProductById(product.id);
+      const completeProductData = await authService.getProductById(productId);
       
       // Fetch product filter values
-      const filterValuesResponse = await authService.get(`/admin/products/${product.id}/filter-values`);
+      const filterValuesResponse = await authService.get(`/admin/products/${productId}/filter-values`);
       const filterValues = filterValuesResponse.success ? filterValuesResponse.data.filterValues : [];
       
       // Transform filter values to match ProductForm expectations
@@ -401,12 +599,12 @@ const ProductManagement: React.FC = () => {
       };
       
       setEditingProduct({ ...product, ...completeInitialData });
-      setIsProductFormOpen(true);
+      setIsProductWizardOpen(true);
     } catch (error) {
       
       // Fallback to basic product data if detailed fetch fails
       setEditingProduct(product);
-      setIsProductFormOpen(true);
+      setIsProductWizardOpen(true);
     }
   };
 
@@ -436,6 +634,13 @@ const ProductManagement: React.FC = () => {
     setPageSize(12);
     setShowPageSelector(false);
     
+    // Clear localStorage
+    localStorage.removeItem('productManagement_selectedMainCategory');
+    localStorage.removeItem('productManagement_selectedSubCategory');
+    localStorage.removeItem('productManagement_selectedSubSubCategory');
+    localStorage.removeItem('productManagement_selectedCategory');
+    localStorage.removeItem('productManagement_filterStatus');
+    
     // Refresh data
     fetchCategoryTree();
     fetchAllProducts(1);
@@ -451,12 +656,13 @@ const ProductManagement: React.FC = () => {
 
   // Get main categories (level 1)
   const getMainCategories = (): Category[] => {
+    if (!categories || !Array.isArray(categories)) return [];
     return categories.filter(cat => cat.level === 1);
   };
 
   // Get sub-categories for selected main category
   const getSubCategories = (): Category[] => {
-    if (!selectedMainCategory) return [];
+    if (!selectedMainCategory || !categories || !Array.isArray(categories)) return [];
     const mainCat = categories.find(cat => cat.id === selectedMainCategory);
     return mainCat?.children || [];
   };
@@ -464,7 +670,9 @@ const ProductManagement: React.FC = () => {
   // Get sub-sub-categories for selected sub-category
   const getSubSubCategories = (): Category[] => {
     if (!selectedSubCategory) return [];
-    const subCat = getSubCategories().find(cat => cat.id === selectedSubCategory);
+    const subCategories = getSubCategories();
+    if (!subCategories || !Array.isArray(subCategories)) return [];
+    const subCat = subCategories.find(cat => cat.id === selectedSubCategory);
     return subCat?.children || [];
   };
 
@@ -535,7 +743,7 @@ const ProductManagement: React.FC = () => {
     
     return (
       <div 
-        key={product.id} 
+        key={product.id || product._id} 
         className="group bg-white border border-gray-200 rounded-lg p-2 hover:shadow-md transition-all duration-200 hover:border-blue-300 cursor-pointer relative overflow-hidden"
         onClick={() => handleProductClick(product)}
       >
@@ -636,7 +844,7 @@ const ProductManagement: React.FC = () => {
               {new Date(product.createdAt).toLocaleDateString()}
             </span>
             <span className="font-mono bg-gray-50 px-1.5 py-0.5 rounded">
-              #{product.id.slice(-6)}
+              #{(product.id || product._id)?.slice(-6)}
             </span>
           </div>
           {/* Product Owner Information */}
@@ -650,9 +858,43 @@ const ProductManagement: React.FC = () => {
     );
   };
 
+  // Debug logging for component state
+  console.log('ProductManagement render - permissionsLoading:', permissionsLoading);
+  console.log('ProductManagement render - hasModuleAccess(products):', hasModuleAccess('products'));
+  console.log('ProductManagement render - user:', user);
+  console.log('ProductManagement render - isLoading:', isLoading);
+  console.log('ProductManagement render - error:', error);
+
+  // Permission checks - must be after all hooks
+  if (permissionsLoading) {
+    console.log('ProductManagement: Showing permissions loading state');
+    return (
+      <div className="h-full bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-600">Loading permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasModuleAccess('products')) {
+    console.log('ProductManagement: Showing access denied state');
+    return (
+      <div className="h-full bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-4xl mb-4">🚫</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access the Products module.</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('ProductManagement: Rendering main component');
+
   return (
     <div className="h-full bg-gray-50">
-      {/* Products Content */}
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
@@ -757,7 +999,7 @@ const ProductManagement: React.FC = () => {
                 module="products"
                 onClick={() => {
                   setEditingProduct(null);
-                  setIsProductFormOpen(true);
+                  setIsProductWizardOpen(true);
                 }}
                 tooltip="Add a new product"
                 size="sm"
@@ -862,7 +1104,7 @@ const ProductManagement: React.FC = () => {
               <button
                 onClick={() => {
                   setEditingProduct(null);
-                  setIsProductFormOpen(true);
+                  setIsProductWizardOpen(true);
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
               >
@@ -1084,12 +1326,12 @@ const ProductManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Product Form Modal */}
-      {isProductFormOpen && (
-        <ProductForm
-          isOpen={isProductFormOpen}
+      {/* Product Wizard Modal */}
+      {isProductWizardOpen && (
+        <ProductWizard
+          isOpen={isProductWizardOpen}
           onClose={() => {
-            setIsProductFormOpen(false);
+            setIsProductWizardOpen(false);
             setEditingProduct(null);
           }}
           onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
@@ -1123,7 +1365,6 @@ const ProductManagement: React.FC = () => {
           onDelete={handleDeleteProduct}
         />
       )}
-
     </div>
   );
 };

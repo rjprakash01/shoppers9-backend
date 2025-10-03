@@ -433,18 +433,17 @@ const Home: React.FC = () => {
                         <span className="text-sm font-bold" style={{
                           color: 'var(--cta-dark-purple)'
                         }}>
-                          {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                            `From ${formatPrice(product.minPrice)}` : 
-                            formatPrice(product.minPrice || 0)
-                          }
+                          {formatPrice(product.price || 0)}
                         </span>
-                        {product.maxDiscount && product.maxDiscount > 0 && (
-                          <span className="text-xs text-gray-500 line-through">
-                            {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                              `From ${formatPrice(product.minOriginalPrice)}` : 
-                              formatPrice(product.minOriginalPrice || 0)
-                            }
-                          </span>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <>
+                            <span className="text-xs text-gray-500 line-through">
+                              {formatPrice(product.originalPrice)}
+                            </span>
+                            <span className="bg-red-100 text-red-800 px-1 py-0.5 rounded text-xs font-medium">
+                              {calculateDiscountPercentage(product.originalPrice, product.price)}% OFF
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
@@ -524,13 +523,26 @@ const Home: React.FC = () => {
                       ) : (
                         <span className="text-xs text-gray-400">No Image</span>
                       )}
-                      <div className="absolute top-2 left-2">
-                        <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{
-                          backgroundColor: 'var(--gold-highlight)'
-                        }}>
-                          FEATURED
-                        </span>
-                      </div>
+                      {(() => {
+                        const discountPercentage = getMaxDiscountPercentage(product);
+                        return discountPercentage > 0 ? (
+                          <div className="absolute top-2 left-2">
+                            <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{
+                              backgroundColor: 'var(--cta-dark-purple)'
+                            }}>
+                              {discountPercentage}% OFF
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="absolute top-2 left-2">
+                            <span className="text-xs font-bold px-2 py-1 rounded-full text-white" style={{
+                              backgroundColor: 'var(--gold-highlight)'
+                            }}>
+                              FEATURED
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <button 
                       onClick={(e) => handleToggleWishlist(product, e)}
@@ -558,18 +570,15 @@ const Home: React.FC = () => {
                         <span className="text-sm font-bold" style={{
                           color: 'var(--cta-dark-purple)'
                         }}>
-                          {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? 
-                            `From ${formatPrice(product.minPrice)}` : 
-                            formatPrice(product.minPrice || 0)
-                          }
+                          {formatPrice(product.price || 0)}
                         </span>
-                        {product.maxDiscount && product.maxDiscount > 0 && (
+                        {product.originalPrice && product.originalPrice > product.price && (
                           <>
                             <span className="text-xs text-gray-500 line-through">
-                              {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                                `From ${formatPrice(product.minOriginalPrice)}` : 
-                                formatPrice(product.minOriginalPrice || 0)
-                              }
+                              {formatPrice(product.originalPrice)}
+                            </span>
+                            <span className="bg-red-100 text-red-800 px-1 py-0.5 rounded text-xs font-medium">
+                              {calculateDiscountPercentage(product.originalPrice, product.price)}% OFF
                             </span>
                           </>
                         )}

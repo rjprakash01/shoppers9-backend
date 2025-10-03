@@ -1,29 +1,13 @@
+import { Document, Types, Model } from 'mongoose';
 import { Request } from 'express';
-import { Document } from 'mongoose';
-import mongoose from 'mongoose';
 
-// User Types
-export interface IUser extends Document {
-  _id: string;
-  name: string;
-  email?: string;
-  phone: string;
-  password?: string;
-  authMethod: 'phone' | 'email' | 'both';
-  isVerified: boolean;
-  isEmailVerified?: boolean;
-  addresses: IAddress[];
-  lastLogin?: Date;
-  passwordResetToken?: string;
-  passwordResetExpires?: Date;
-  loginAttempts?: number;
-  lockUntil?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  // Methods
-  comparePassword?(candidatePassword: string): Promise<boolean>;
-  isLocked?(): boolean;
-  incLoginAttempts?(): Promise<IUser>;
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    [key: string]: any;
+  };
 }
 
 export interface IAddress {
@@ -37,110 +21,63 @@ export interface IAddress {
   state: string;
   pincode: string;
   landmark?: string;
-  isDefault: boolean;
+  isDefault?: boolean;
+  type?: 'home' | 'work' | 'other';
 }
 
-// Product Types
-export interface IProduct extends Document {
-  _id: string;
+export interface IUser extends Document {
+  firstName: string;
+  lastName: string;
   name: string;
-  description: string;
-  category: mongoose.Types.ObjectId;
-  subCategory: mongoose.Types.ObjectId;
-  subSubCategory?: mongoose.Types.ObjectId;
-  brand: string;
-  images: string[]; // Master/Default images
-  variants: IProductVariant[]; // Color-size combinations
-  availableColors: IAvailableColor[]; // Master color list
-  availableSizes: IAvailableSize[]; // Master size list
-  specifications: IProductSpecification;
-  tags: string[];
+  email: string;
+  password: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  gender?: 'male' | 'female' | 'other';
+  addresses: IAddress[];
   isActive: boolean;
-  isFeatured: boolean;
-  isTrending: boolean;
-  approvalStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested'; // Product approval status
-  displayFilters: mongoose.Types.ObjectId[];
-  createdBy?: string; // User ID who created this product
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
+  isVerified?: boolean;
+  role: 'user' | 'admin';
+  authMethod?: 'email' | 'google' | 'facebook' | 'phone' | 'both';
+  lastLogin?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  loginAttempts?: number;
+  lockUntil?: Date;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
+  phoneVerificationToken?: string;
+  phoneVerificationExpires?: Date;
+  refreshTokens?: string[];
   createdAt: Date;
   updatedAt: Date;
-  // Virtual fields
-  minPrice?: number;
-  maxPrice?: number;
-  totalStock?: number;
+  
+  // Methods
+  comparePassword?(password: string): Promise<boolean>;
+  incLoginAttempts?(): Promise<void>;
+  generateAuthToken?(): string;
+  generateRefreshToken?(): string;
+  isLocked?(): boolean;
 }
 
-// Each variant represents a unique color-size combination
-export interface IProductVariant {
-  _id?: string;
-  color: string;
-  colorCode?: string;
-  size: string;
-  price: number;
-  originalPrice: number;
-  stock: number;
-  sku: string; // Unique SKU for this variant
-  images: string[]; // Variant-specific images
-}
-
-// Available colors for the master product
-export interface IAvailableColor {
-  name: string;
-  code: string;
-  images: string[];
-}
-
-// Available sizes for the master product
-export interface IAvailableSize {
-  name: string;
-}
-
-// Legacy interface for backward compatibility
-export interface IProductSize {
-  size: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  stock: number;
-}
-
-export interface IProductSpecification {
-  fabric?: string;
-  fit?: string;
-  washCare?: string;
-  material?: string;
-  capacity?: string;
-  microwaveSafe?: boolean;
-  dimensions?: string;
-  weight?: string;
-}
-
-// Category Types
-export interface ICategory extends Document {
-  _id: string;
-  name: string;
-  slug: string;
-  parentCategory?: mongoose.Types.ObjectId;
-  level: number;
-  image?: string;
-  description?: string;
-  isActive: boolean;
-  sortOrder: number;
+export interface IOTP extends Document {
+  phone: string;
+  otp: string;
+  purpose: 'registration' | 'login' | 'password_reset' | 'phone_verification';
+  isUsed: boolean;
+  attempts: number;
+  expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Cart Types
-export interface ICart extends Document {
-  _id: string;
-  userId: string;
-  items: ICartItem[];
-  totalAmount: number;
-  totalDiscount: number;
-  subtotal: number;
-  couponDiscount?: number;
-  appliedCoupon?: string;
-  createdAt: Date;
-  updatedAt: Date;
+export interface IOTPModel extends Model<IOTP> {
+  generateOTP(): string;
+  createOTP(phone: string): Promise<{ otp: string; expiresAt: Date }>;
+  verifyOTP(phone: string, otp: string): Promise<boolean>;
+  cleanupExpiredOTPs(): Promise<void>;
 }
 
 export interface ICartItem {
@@ -155,74 +92,44 @@ export interface ICartItem {
   isSelected: boolean;
 }
 
-// Wishlist Types
-export interface IWishlist extends Document {
-  _id: string;
-  userId: mongoose.Types.ObjectId;
-  items: IWishlistItem[];
+export interface ICart extends Document {
+  userId: string;
+  items: ICartItem[];
+  totalAmount: number;
+  totalDiscount: number;
+  subtotal: number;
+  couponDiscount: number;
+  appliedCoupon?: string;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Methods
+  calculateTotal?(): void;
+  addItem?(productId: string, variant?: any, quantity?: number): Promise<void>;
+  removeItem?(productId: string, variant?: any): Promise<void>;
+  updateQuantity?(productId: string, variant: any, quantity: number): Promise<void>;
+  clearCart?(): Promise<void>;
 }
 
 export interface IWishlistItem {
-  _id?: string;
-  product: mongoose.Types.ObjectId;
+  product: Types.ObjectId;
   variantId?: string;
   addedAt: Date;
 }
 
-// Order Types
-export interface IOrder extends Document {
-  _id: string;
-  orderNumber: string;
-  userId: string;
-  items: IOrderItem[];
-  shippingAddress: IAddress;
-  billingAddress?: IAddress;
-  paymentMethod: string;
-  paymentStatus: PaymentStatus;
-  orderStatus: OrderStatus;
-  totalAmount: number;
-  discount: number;
-  platformFee: number;
-  deliveryCharge: number;
-  finalAmount: number;
-  couponCode?: string;
-  couponDiscount?: number;
-  estimatedDelivery?: Date;
-  deliveredAt?: Date;
-  cancelledAt?: Date;
-  returnRequestedAt?: Date;
-  returnedAt?: Date;
-  cancellationReason?: string;
-  returnReason?: string;
-  trackingId?: string;
-  paymentId?: string;
-  paymentIntentId?: string;
-  paidAt?: Date;
-  refundId?: string;
-  refundAmount?: number;
-  refundStatus?: RefundStatus;
-  refundReason?: string;
-  refundInitiatedAt?: Date;
-  refundedAt?: Date;
+export interface IWishlist extends Document {
+  userId: Types.ObjectId;
+  items: IWishlistItem[];
   createdAt: Date;
   updatedAt: Date;
+  
+  // Methods
+  addItem?(productId: string, variantId?: string): Promise<void>;
+  removeItem?(productId: string, variantId?: string): Promise<void>;
+  clearWishlist?(): Promise<void>;
 }
 
-export interface IOrderItem {
-  _id?: string;
-  product: string;
-  variantId: string;
-  size: string;
-  quantity: number;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  status: OrderItemStatus;
-  sellerId?: string; // ID of the admin/seller who created the product
-}
-
+// Order related enums
 export enum OrderStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
@@ -237,6 +144,7 @@ export enum OrderStatus {
 export enum OrderItemStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
+  PROCESSING = 'processing',
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
   CANCELLED = 'cancelled',
@@ -245,52 +153,426 @@ export enum OrderItemStatus {
 
 export enum PaymentStatus {
   PENDING = 'pending',
-  SUCCESS = 'success',
+  COMPLETED = 'completed',
   FAILED = 'failed',
   REFUNDED = 'refunded',
-  PARTIAL_REFUNDED = 'partial_refunded'
+  PARTIALLY_REFUNDED = 'partially_refunded'
 }
 
 export enum RefundStatus {
   PENDING = 'pending',
-  PROCESSING = 'processing',
-  SUCCESS = 'success',
-  FAILED = 'failed'
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  PROCESSED = 'processed'
 }
 
-// Support Types
-export interface ISupport extends Document {
-  _id: string;
-  ticketId: string;
+// Order related interfaces
+export interface IOrderItem {
+  product: Types.ObjectId;
+  variantId: string;
+  size: string;
+  quantity: number;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  status: OrderItemStatus;
+  sellerId?: string;
+}
+
+export interface IOrder extends Document {
+  orderNumber: string;
   userId: string;
-  orderNumber?: string;
-  subject: string;
-  description: string;
-  category: SupportCategory;
-  priority: SupportPriority;
-  status: SupportStatus;
-  messages: ISupportMessage[];
-  assignedTo?: string;
+  items: IOrderItem[];
+  shippingAddress: IAddress;
+  billingAddress?: IAddress;
+  paymentMethod: string;
+  paymentStatus: PaymentStatus;
+  paymentId?: string;
+  paymentIntentId?: string;
+  refundId?: string;
+  refundAmount?: number;
+  refundStatus?: RefundStatus;
+  refundReason?: string;
+  orderStatus: OrderStatus;
+  totalAmount: number;
+  discount: number;
+  platformFee: number;
+  deliveryFee: number;
+  deliveryCharge: number;
+  finalAmount: number;
+  couponCode?: string;
+  couponDiscount: number;
+  notes?: string;
+  cancellationReason?: string;
+  returnReason?: string;
+  trackingNumber?: string;
+  trackingId?: string;
+  estimatedDelivery?: Date;
+  paidAt?: Date;
+  deliveredAt?: Date;
+  cancelledAt?: Date;
+  returnRequestedAt?: Date;
+  returnedAt?: Date;
+  refundInitiatedAt?: Date;
+  refundedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  
   // Methods
-  addMessage(senderId: string, senderType: 'user' | 'agent', message: string, attachments?: string[]): Promise<ISupport>;
-  assignTo(agentId: string): Promise<ISupport>;
-  updateStatus(status: SupportStatus): Promise<ISupport>;
-  updatePriority(priority: SupportPriority): Promise<ISupport>;
-  closeTicket(): Promise<ISupport>;
-  reopenTicket(): Promise<ISupport>;
+  updateStatus?(status: OrderStatus): Promise<void>;
+  canBeCancelled?(): boolean;
+  canBeReturned?(): boolean;
 }
 
-export interface ISupportMessage {
-  _id?: string;
-  senderId: string;
-  senderType: 'user' | 'agent';
+export interface ICategory extends Document {
+  name: string;
+  description?: string;
+  slug: string;
+  image?: string;
+  parentCategory?: Types.ObjectId | ICategory;
+  level: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PaginationQuery {
+  page?: string;
+  limit?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}
+
+export interface ProductFilters {
+  category?: string;
+  subCategory?: string;
+  subSubCategory?: string;
+  brand?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  size?: string[];
+  color?: string[];
+  material?: string[];
+  fabric?: string[];
+  search?: string;
+  isActive?: boolean;
+  isFeatured?: boolean;
+  isTrending?: boolean;
+  approvalStatus?: string;
+  sellerId?: string;
+  [key: string]: any;
+}
+
+export interface ApiResponse<T = any> {
+  success: boolean;
   message: string;
-  attachments?: string[];
-  timestamp: Date;
+  data?: T;
+  error?: string;
+  errors?: any[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
+export interface IProduct extends Document {
+  name: string;
+  description: string;
+  category: Types.ObjectId | ICategory;
+  subCategory?: Types.ObjectId | ICategory;
+  brand: string;
+  images: string[];
+  variants: any[];
+  specifications: Record<string, any>;
+  tags: string[];
+  isActive: boolean;
+  isFeatured: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IBanner extends Document {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image: string;
+  link: string;
+  buttonText?: string;
+  isActive: boolean;
+  order: number;
+  displayType: 'hero' | 'carousel' | 'sidebar';
+  category?: Types.ObjectId | ICategory;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IShipment extends Document {
+  orderId: Types.ObjectId;
+  trackingNumber: string;
+  status: ShippingStatus;
+  provider: string;
+  providerId?: string;
+  orderNumber?: string;
+  shipmentId?: string;
+  currentLocation?: string;
+  estimatedDelivery?: Date;
+  actualDelivery?: Date;
+  trackingEvents?: TrackingEvent[];
+  shippingAddress: {
+    name: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    landmark?: string;
+  };
+  packageDetails: {
+    weight: number;
+    dimensions: {
+      length: number;
+      width: number;
+      height: number;
+    };
+    value: number;
+    description: string;
+  };
+  shippingCost: number;
+  notes?: string;
+  isActive?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  addTrackingEvent: (status: string, location?: string, description?: string, estimatedDelivery?: Date) => Promise<void>;
+}
+
+export interface ShippingCalculationRequest {
+  fromPincode: string;
+  toPincode: string;
+  weight: number;
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+  };
+  value: number;
+  serviceType?: ServiceType;
+  providerId?: string;
+}
+
+export interface ShippingOption {
+  providerId: string;
+  providerName: string;
+  serviceType: ServiceType;
+  cost: number;
+  estimatedDays: number;
+  description?: string;
+  isFreeShipping?: boolean;
+  serviceName?: string;
+  deliveryTime?: {
+    min: number;
+    max: number;
+  };
+  estimatedDelivery?: Date;
+}
+
+export interface TrackingInfo {
+  trackingNumber: string;
+  status: ShippingStatus;
+  events?: TrackingEvent[];
+  estimatedDelivery?: Date;
+  shipmentId?: string;
+  currentLocation?: string;
+  actualDelivery?: Date;
+  trackingEvents?: TrackingEvent[];
+  providerInfo?: any;
+}
+
+export interface TrackingEvent {
+  timestamp: Date;
+  status: string;
+  location?: string;
+  description: string;
+  estimatedDelivery?: Date;
+}
+
+export enum ServiceType {
+  STANDARD = 'standard',
+  EXPRESS = 'express',
+  OVERNIGHT = 'overnight'
+}
+
+export enum ShippingStatus {
+  PENDING = 'pending',
+  PICKED_UP = 'picked_up',
+  IN_TRANSIT = 'in_transit',
+  OUT_FOR_DELIVERY = 'out_for_delivery',
+  DELIVERED = 'delivered',
+  FAILED_DELIVERY = 'failed_delivery',
+  RETURNED = 'returned'
+}
+
+export interface ICoupon extends Document {
+  code: string;
+  description: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount?: number;
+  usageLimit: number;
+  usedCount: number;
+  isActive: boolean;
+  showOnWebsite: boolean;
+  validFrom: Date;
+  validUntil: Date;
+  applicableCategories?: Types.ObjectId[];
+  applicableProducts?: Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Virtual properties
+  isExpired: boolean;
+  isValid: boolean;
+  remainingUses: number;
+  usagePercentage: number;
+  
+  // Methods
+  canBeUsed(orderAmount: number, categoryIds?: string[], productIds?: string[]): {
+    valid: boolean;
+    reason?: string;
+  };
+  calculateDiscount(orderAmount: number): number;
+  incrementUsage(): Promise<ICoupon>;
+  decrementUsage(): Promise<ICoupon>;
+}
+
+export interface ISalesAnalytics extends Document {
+  date: Date;
+  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  totalRevenue: number;
+  totalOrders: number;
+  totalCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  averageOrderValue: number;
+  totalProducts: number;
+  conversionRate: number;
+  categoryBreakdown: Array<{
+    categoryId: Types.ObjectId;
+    categoryName: string;
+    revenue: number;
+    orders: number;
+    products: number;
+  }>;
+  topProducts: Array<{
+    productId: Types.ObjectId;
+    productName: string;
+    revenue: number;
+    orders: number;
+    quantity: number;
+  }>;
+  paymentMethodBreakdown: Array<{
+    method: string;
+    count: number;
+    revenue: number;
+    percentage: number;
+  }>;
+  refunds: {
+    count: number;
+    amount: number;
+  };
+  cancellations: {
+    count: number;
+    amount: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICustomerAnalytics extends Document {
+  customerId: Types.ObjectId;
+  totalOrders: number;
+  totalSpent: number;
+  averageOrderValue: number;
+  firstOrderDate?: Date;
+  lastOrderDate?: Date;
+  daysSinceLastOrder?: number;
+  customerLifetimeValue: number;
+  customerSegment: 'new' | 'regular' | 'vip' | 'at_risk' | 'churned';
+  favoriteCategories: Array<{
+    categoryId: Types.ObjectId;
+    categoryName: string;
+    orderCount: number;
+    totalSpent: number;
+  }>;
+  purchaseFrequency: number;
+  returnRate: number;
+  refundRate: number;
+  lastUpdated: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IConversionTracking extends Document {
+  sessionId: string;
+  customerId?: Types.ObjectId;
+  events: Array<{
+    eventType: 'page_view' | 'product_view' | 'add_to_cart' | 'remove_from_cart' | 'add_to_wishlist' | 'remove_from_wishlist' | 'checkout_start' | 'checkout_complete' | 'purchase' | 'search' | 'filter' | 'sort' | 'share' | 'review' | 'contact';
+    timestamp: Date;
+    data?: any;
+    value?: number;
+    productId?: Types.ObjectId;
+    categoryId?: Types.ObjectId;
+    orderId?: Types.ObjectId;
+  }>;
+  source: 'direct' | 'search' | 'social' | 'email' | 'referral' | 'paid';
+  medium?: string;
+  campaign?: string;
+  device: 'desktop' | 'mobile' | 'tablet';
+  browser?: string;
+  os?: string;
+  country?: string;
+  city?: string;
+  converted: boolean;
+  conversionValue: number;
+  funnelStage: 'awareness' | 'interest' | 'consideration' | 'purchase' | 'retention';
+  sessionDuration?: number;
+  pageViews: number;
+  bounceRate: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IProductAnalytics extends Document {
+  productId: Types.ObjectId;
+  date: Date;
+  period: 'daily' | 'weekly' | 'monthly';
+  views: number;
+  uniqueViews: number;
+  addToCart: number;
+  addToWishlist: number;
+  purchases: number;
+  revenue: number;
+  conversionRate: number;
+  cartAbandonmentRate: number;
+  averageRating: number;
+  reviewCount: number;
+  returnRate: number;
+  stockLevel?: number;
+  priceChanges: Array<{
+    oldPrice: number;
+    newPrice: number;
+    changeDate: Date;
+    reason: string;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Support enums
 export enum SupportCategory {
   ORDER_ISSUE = 'order_issue',
   PAYMENT_ISSUE = 'payment_issue',
@@ -316,228 +598,34 @@ export enum SupportStatus {
   CLOSED = 'closed'
 }
 
-// OTP Types
-export interface IOTP extends Document {
-  _id: string;
-  phone: string;
-  otp: string;
-  expiresAt: Date;
-  isUsed: boolean;
-  attempts: number;
-  createdAt: Date;
-  isExpired(): boolean;
-  maxAttemptsReached(): boolean;
-}
-
-export interface IOTPModel extends mongoose.Model<IOTP> {
-  generateOTP(): string;
-  createOTP(phone: string): Promise<{ otp: string; expiresAt: Date }>;
-  verifyOTP(phone: string, otp: string): Promise<boolean>;
-}
-
-// Coupon Types
-export interface ICoupon extends Document {
-  _id: string;
-  code: string;
-  description: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  minOrderAmount: number;
-  maxDiscountAmount?: number;
-  usageLimit: number;
-  usedCount: number;
-  isActive: boolean;
-  showOnWebsite: boolean;
-  validFrom: Date;
-  validUntil: Date;
-  applicableCategories?: string[];
-  applicableProducts?: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  
-  // Instance methods
-  canBeUsed(orderAmount: number, categoryIds?: string[], productIds?: string[]): { valid: boolean; reason?: string };
-  calculateDiscount(orderAmount: number): number;
-  incrementUsage(): Promise<ICoupon>;
-  decrementUsage(): Promise<ICoupon>;
-}
-
-// API Response Types
-export interface ApiResponse<T = any> {
-  success: boolean;
+// Support interfaces
+export interface ISupportMessage {
+  senderId: string;
+  senderType: 'user' | 'agent';
   message: string;
-  data?: T;
-  error?: string;
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  attachments?: string[];
+  timestamp: Date;
 }
 
-// Analytics Types
-export interface ISalesAnalytics extends Document {
-  _id: string;
-  date: Date;
-  period: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  totalRevenue: number;
-  totalOrders: number;
-  totalCustomers: number;
-  newCustomers: number;
-  returningCustomers: number;
-  averageOrderValue: number;
-  totalProducts: number;
-  conversionRate: number;
-  categoryBreakdown: Array<{
-    categoryId: string;
-    categoryName: string;
-    revenue: number;
-    orders: number;
-    products: number;
-  }>;
-  topProducts: Array<{
-    productId: string;
-    productName: string;
-    revenue: number;
-    orders: number;
-    quantity: number;
-  }>;
-  paymentMethodBreakdown: Array<{
-    method: string;
-    count: number;
-    revenue: number;
-    percentage: number;
-  }>;
-  refunds: {
-    count: number;
-    amount: number;
-  };
-  cancellations: {
-    count: number;
-    amount: number;
-  };
+export interface ISupport extends Document {
+  ticketId: string;
+  userId: string;
+  orderNumber?: string;
+  subject: string;
+  description: string;
+  category: SupportCategory;
+  priority: SupportPriority;
+  status: SupportStatus;
+  messages: ISupportMessage[];
+  assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface ICustomerAnalytics extends Document {
-  _id: string;
-  customerId: string;
-  totalOrders: number;
-  totalSpent: number;
-  averageOrderValue: number;
-  firstOrderDate: Date;
-  lastOrderDate: Date;
-  daysSinceLastOrder: number;
-  customerLifetimeValue: number;
-  customerSegment: 'new' | 'regular' | 'vip' | 'at_risk' | 'churned';
-  favoriteCategories: Array<{
-    categoryId: string;
-    categoryName: string;
-    orderCount: number;
-    totalSpent: number;
-  }>;
-  purchaseFrequency: number;
-  returnRate: number;
-  refundRate: number;
-  lastUpdated: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IConversionTracking extends Document {
-  _id: string;
-  sessionId: string;
-  customerId?: string;
-  events: Array<{
-    eventType: 'page_view' | 'product_view' | 'add_to_cart' | 'remove_from_cart' | 'add_to_wishlist' | 'checkout_start' | 'payment_info' | 'purchase' | 'search' | 'category_view' | 'coupon_apply' | 'signup' | 'login';
-    timestamp: Date;
-    data?: any;
-    value?: number;
-    productId?: string;
-    categoryId?: string;
-    orderId?: string;
-  }>;
-  source: 'direct' | 'search' | 'social' | 'email' | 'referral' | 'paid';
-  medium?: string;
-  campaign?: string;
-  device: 'desktop' | 'mobile' | 'tablet';
-  browser?: string;
-  os?: string;
-  country?: string;
-  city?: string;
-  converted: boolean;
-  conversionValue: number;
-  funnelStage: 'awareness' | 'interest' | 'consideration' | 'purchase' | 'retention';
-  sessionDuration?: number;
-  pageViews: number;
-  bounceRate: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IProductAnalytics extends Document {
-  _id: string;
-  productId: string;
-  date: Date;
-  period: 'daily' | 'weekly' | 'monthly';
-  views: number;
-  uniqueViews: number;
-  addToCart: number;
-  addToWishlist: number;
-  purchases: number;
-  revenue: number;
-  conversionRate: number;
-  cartAbandonmentRate: number;
-  averageRating: number;
-  reviewCount: number;
-  returnRate: number;
-  stockLevel?: number;
-  priceChanges: Array<{
-    oldPrice: number;
-    newPrice: number;
-    changeDate: Date;
-    reason: string;
-  }>;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IMarketingAnalytics extends Document {
-  _id: string;
-  campaignId: string;
-  campaignName: string;
-  campaignType: 'email' | 'social' | 'search' | 'display' | 'affiliate' | 'coupon';
-  startDate: Date;
-  endDate?: Date;
-  budget?: number;
-  spent: number;
-  impressions: number;
-  clicks: number;
-  conversions: number;
-  revenue: number;
-  ctr: number;
-  cpc: number;
-  cpa: number;
-  roas: number;
-  roi: number;
-  targetAudience?: {
-    ageRange?: string;
-    gender?: string;
-    location?: string[];
-    interests?: string[];
-  };
-  performance: Array<{
-    date: Date;
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    revenue: number;
-    spent: number;
-  }>;
-  createdAt: Date;
-  updatedAt: Date;
+  addMessage(senderId: string, senderType: 'user' | 'agent', message: string, attachments?: string[]): Promise<ISupport>;
+  assignTo(agentId: string): Promise<ISupport>;
+  updateStatus(status: SupportStatus): Promise<ISupport>;
+  updatePriority(priority: SupportPriority): Promise<ISupport>;
+  closeTicket(): Promise<ISupport>;
+  reopenTicket(): Promise<ISupport>;
 }
 
 export interface AnalyticsDashboard {
@@ -669,163 +757,70 @@ export interface ConversionReport {
   }>;
 }
 
-// Request Types
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    id: string;
-    phone?: string;
-    email?: string;
-    authMethod?: 'phone' | 'email' | 'both';
-    isVerified: boolean;
-    isAdmin?: boolean;
-    adminRole?: string;
-  };
-  body: any;
-  params: any;
-  query: any;
-  headers: any;
-}
-
-// Filter and Sort Types
-export interface ProductFilters {
-  category?: string;
-  subCategory?: string;
-  brand?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  sizes?: string[];
-  colors?: string[];
-  fabric?: string;
-  fit?: string;
-  material?: string;
-  microwaveSafe?: boolean;
-  inStock?: boolean;
-}
-
-export interface ProductSort {
-  field: 'price' | 'name' | 'createdAt' | 'popularity';
-  order: 'asc' | 'desc';
-}
-
-export interface PaginationOptions {
-  page: number;
-  limit: number;
-}
-
-export interface PaginationQuery {
-  page?: number;
-  limit?: number;
-}
-
-// Payment Types
-export interface PaymentRequest {
-  orderNumber: string;
-  amount: number;
-  currency: string;
-  customerDetails: {
-    customerId: string;
-    customerName: string;
-    customerEmail?: string;
-    customerPhone: string;
-  };
-  returnUrl: string;
-  notifyUrl: string;
-}
-
-export interface PaymentResponse {
-  paymentSessionId: string;
-  paymentUrl: string;
-  orderNumber: string;
-}
-
-// File Upload Types
-export interface UploadedFile {
-  fieldname: string;
-  originalname: string;
-  encoding: string;
-  mimetype: string;
-  size: number;
-  destination: string;
-  filename: string;
-  path: string;
-  buffer: Buffer;
-}
-
-export interface S3UploadResult {
-  url: string;
-  key: string;
-  bucket: string;
-}
-
-// Shipping Types
 export interface IShippingProvider extends Document {
-  _id: string;
   name: string;
-  code: string;
   description?: string;
   logo?: string;
-  contactInfo: {
+  contactInfo?: {
     phone?: string;
     email?: string;
     website?: string;
     supportUrl?: string;
   };
-  apiConfig: {
+  apiConfig?: {
     baseUrl?: string;
     apiKey?: string;
     secretKey?: string;
     trackingUrl?: string;
     webhookUrl?: string;
   };
-  capabilities: {
-    tracking: boolean;
-    realTimeRates: boolean;
-    pickupScheduling: boolean;
-    insurance: boolean;
-    codSupport: boolean;
+  capabilities?: {
+    tracking?: boolean;
+    realTimeRates?: boolean;
+    pickupScheduling?: boolean;
+    insurance?: boolean;
+    codSupport?: boolean;
   };
-  serviceAreas: Array<{
-    name: string;
-    pincodes: string[];
-    isActive: boolean;
-  }>;
   isActive: boolean;
-  priority: number;
+  serviceAreas: any[];
+  code: string;
+  priority?: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
+export interface IRateStructure {
+  type: 'flat' | 'weight_based' | 'distance_based' | 'value_based';
+  baseRate: number;
+  valuePercentage?: number;
+  weightRanges?: {
+    minWeight: number;
+    maxWeight: number;
+    rate: number;
+  }[];
+  distanceRanges?: {
+    minDistance: number;
+    maxDistance: number;
+    rate: number;
+  }[];
+  valueRanges?: {
+    minValue: number;
+    maxValue: number;
+    rate: number;
+  }[];
+}
+
 export interface IShippingRate extends Document {
-  _id: string;
-  providerId: mongoose.Types.ObjectId;
+  providerId: Types.ObjectId;
   name: string;
   description?: string;
-  serviceType: 'standard' | 'express' | 'overnight' | 'same_day';
+  serviceType: ServiceType;
+  zones: any[];
+  rateStructure: IRateStructure;
   deliveryTime: {
     min: number;
     max: number;
   };
-  rateStructure: {
-    type: 'flat' | 'weight_based' | 'distance_based' | 'value_based';
-    baseRate: number;
-    weightRanges?: Array<{
-      minWeight: number;
-      maxWeight: number;
-      rate: number;
-    }>;
-    distanceRanges?: Array<{
-      minDistance: number;
-      maxDistance: number;
-      rate: number;
-    }>;
-    valuePercentage?: number;
-  };
-  zones: Array<{
-    name: string;
-    pincodes: string[];
-    multiplier: number;
-  }>;
   freeShippingThreshold?: number;
   maxWeight: number;
   maxValue: number;
@@ -834,105 +829,15 @@ export interface IShippingRate extends Document {
   updatedAt: Date;
 }
 
-export interface ITrackingEvent {
-  _id?: string;
-  status: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed_delivery' | 'returned';
-  location: string;
-  description: string;
-  timestamp: Date;
-  estimatedDelivery?: Date;
-}
-
-export interface IShipment extends Document {
-  _id: string;
-  shipmentId: string;
-  orderNumber: string;
-  providerId: mongoose.Types.ObjectId;
-  trackingNumber: string;
-  status: 'pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed_delivery' | 'returned';
-  shippingAddress: IAddress;
-  packageDetails: {
-    weight: number;
-    dimensions: {
-      length: number;
-      width: number;
-      height: number;
-    };
-    value: number;
-    description: string;
-  };
-  shippingCost: number;
-  estimatedDelivery: Date;
-  actualDelivery?: Date;
-  trackingEvents: ITrackingEvent[];
-  notes?: string;
-  isActive: boolean;
+export interface IProductFilterValue extends Document {
+  product: Types.ObjectId;
+  filter: Types.ObjectId;
+  filterOption?: Types.ObjectId;
+  value: string;
+  customValue?: string;
+  isActive?: boolean;
+  createdBy?: Types.ObjectId;
+  updatedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
-  // Virtual fields
-  currentLocation?: string;
-  isDelivered?: boolean;
-  isInTransit?: boolean;
-  // Methods
-  addTrackingEvent(status: string, location: string, description: string, estimatedDelivery?: Date): Promise<IShipment>;
-  updateStatus(status: string, location?: string, description?: string): Promise<IShipment>;
-}
-
-export enum ShippingStatus {
-  PENDING = 'pending',
-  PICKED_UP = 'picked_up',
-  IN_TRANSIT = 'in_transit',
-  OUT_FOR_DELIVERY = 'out_for_delivery',
-  DELIVERED = 'delivered',
-  FAILED_DELIVERY = 'failed_delivery',
-  RETURNED = 'returned'
-}
-
-export enum ServiceType {
-  STANDARD = 'standard',
-  EXPRESS = 'express',
-  OVERNIGHT = 'overnight',
-  SAME_DAY = 'same_day'
-}
-
-export interface ShippingCalculationRequest {
-  weight: number;
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-  };
-  value: number;
-  fromPincode: string;
-  toPincode: string;
-  serviceType?: ServiceType;
-  providerId?: string;
-}
-
-export interface ShippingOption {
-  providerId: string;
-  providerName: string;
-  serviceType: 'standard' | 'express' | 'overnight' | 'same_day';
-  serviceName: string;
-  cost: number;
-  deliveryTime: {
-    min: number;
-    max: number;
-  };
-  estimatedDelivery: Date;
-  isFreeShipping: boolean;
-}
-
-export interface TrackingInfo {
-  shipmentId: string;
-  trackingNumber: string;
-  status: ShippingStatus;
-  currentLocation?: string;
-  estimatedDelivery?: Date;
-  actualDelivery?: Date;
-  trackingEvents: ITrackingEvent[];
-  providerInfo: {
-    name: string;
-    trackingUrl?: string;
-  };
 }

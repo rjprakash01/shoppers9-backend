@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { User, Shield, Edit, Trash2, Plus, Search, Filter } from 'lucide-react';
 
 interface AdminUser {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -92,7 +92,14 @@ const AdminManagement: React.FC = () => {
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await api.post('/admin/admins', createForm);
+      // Map primaryRole to role for backend compatibility
+      const adminData = {
+        ...createForm,
+        role: createForm.primaryRole // Use the role as-is since backend Role model expects 'sub_admin', not 'moderator'
+      };
+      delete adminData.primaryRole;
+      
+      const response = await api.post('/admin/admins', adminData);
       if (response.data.success) {
         setShowCreateModal(false);
         setCreateForm({
@@ -271,7 +278,7 @@ const AdminManagement: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {admins.map((admin) => (
-                  <tr key={admin._id} className="hover:bg-gray-50">
+                  <tr key={admin.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -293,7 +300,7 @@ const AdminManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         value={admin.primaryRole}
-                        onChange={(e) => handleUpdateRole(admin._id, e.target.value as 'admin' | 'sub_admin')}
+                        onChange={(e) => handleUpdateRole(admin.id, e.target.value as 'admin' | 'sub_admin')}
                         disabled={admin.primaryRole === 'super_admin'}
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                           admin.primaryRole === 'super_admin' 
@@ -302,18 +309,18 @@ const AdminManagement: React.FC = () => {
                         }`}
                       >
                         {admin.primaryRole === 'super_admin' ? (
-                          <option value="super_admin">Super Admin</option>
+                          <option key="super_admin" value="super_admin">Super Admin</option>
                         ) : (
                           <>
-                            <option value="admin">Admin</option>
-                            <option value="sub_admin">Sub Admin</option>
+                            <option key="admin" value="admin">Admin</option>
+                            <option key="sub_admin" value="sub_admin">Sub Admin</option>
                           </>
                         )}
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleToggleStatus(admin._id)}
+                        onClick={() => handleToggleStatus(admin.id)}
                         disabled={admin.primaryRole === 'super_admin'}
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                           admin.isActive
@@ -340,7 +347,7 @@ const AdminManagement: React.FC = () => {
                         </button>
                         {admin.primaryRole !== 'super_admin' && (
                           <button
-                            onClick={() => handleDeleteAdmin(admin._id)}
+                            onClick={() => handleDeleteAdmin(admin.id)}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-4 w-4" />

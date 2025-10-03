@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # MongoDB Atlas is used - no local MongoDB service needed
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend-shoppers9
+      dockerfile: ../aws-deployment/docker/Dockerfile.backend
+    container_name: shoppers9-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      SMS_API_KEY: ${SMS_API_KEY}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+    networks:
+      - shoppers9-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Backend
+  admin-backend:
+    build:
+      context: ./shoppers9-admin-backend
+      dockerfile: ../aws-deployment/docker/Dockerfile.admin-backend
+    container_name: shoppers9-admin-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      ADMIN_MONGODB_URI: ${ADMIN_MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4000:4000"
+    depends_on:
+      - redis
+    networks:
+      - shoppers9-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Admin Frontend
+  admin:
+    build:
+      context: ./shoppers9-admin-frontend
+      dockerfile: ../aws-deployment/docker/Dockerfile.admin
+    container_name: shoppers9-admin
+    restart: unless-stopped
+    ports:
+      - "3003:8080"
+    depends_on:
+      - admin-backend
+    networks:
+      - shoppers9-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Customer Frontend
+  frontend:
+    build:
+      context: ./shoppers9-frontend
+      dockerfile: ../aws-deployment/docker/Dockerfile.frontend
+    container_name: shoppers9-frontend
+    restart: unless-stopped
+    ports:
+      - "3002:8080"
+    depends_on:
+      - backend
+    networks:
+      - shoppers9-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: shoppers9-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shoppers9-network
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:
+
+networks:
+  shoppers9-network:
+    driver: bridge

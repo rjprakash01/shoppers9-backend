@@ -47,6 +47,7 @@ export const authenticateToken = async (
       id: decoded.userId || decoded.id,
       phone: decoded.phone,
       email: decoded.email,
+      role: decoded.role || 'user',
       authMethod: decoded.authMethod,
       isVerified: decoded.isVerified
     };
@@ -80,6 +81,8 @@ export const optionalAuth = async (
           req.user = {
             userId: decoded.id,
             id: decoded.id,
+            email: decoded.email || `user${decoded.id}@example.com`,
+            role: 'user',
             phone: decoded.phone,
             isVerified: decoded.isVerified
           };
@@ -136,6 +139,8 @@ export const authenticateUserOrAdmin = async (
         req.user = {
           userId: decoded.id,
           id: decoded.id,
+          email: admin.email || `admin${decoded.id}@example.com`,
+          role: admin.role || 'admin',
           phone: admin.phone,
           isVerified: true,
           isAdmin: true,
@@ -151,6 +156,8 @@ export const authenticateUserOrAdmin = async (
     req.user = {
       userId: decoded.id,
       id: decoded.id,
+      email: decoded.email || `user${decoded.id}@example.com`,
+      role: 'user',
       phone: decoded.phone,
       isVerified: decoded.isVerified,
       isAdmin: false

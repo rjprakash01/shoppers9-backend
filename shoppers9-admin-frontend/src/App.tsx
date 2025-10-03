@@ -5,6 +5,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import CustomerManagement from './pages/CustomerManagement';
 import SellerManagement from './pages/SellerManagement';
@@ -48,7 +49,9 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
+                  <ErrorBoundary>
+                    <Dashboard />
+                  </ErrorBoundary>
                 </Layout>
               </ProtectedRoute>
             } />
@@ -56,7 +59,9 @@ function App() {
             <Route path="/customer-management" element={
               <ProtectedRoute>
                 <Layout>
-                  <CustomerManagement />
+                  <ErrorBoundary>
+                    <CustomerManagement />
+                  </ErrorBoundary>
                 </Layout>
               </ProtectedRoute>
             } />
@@ -84,7 +89,9 @@ function App() {
             <Route path="/products" element={
               <ProtectedRoute>
                 <Layout>
-                  <ProductManagement />
+                  <ErrorBoundary>
+                    <ProductManagement />
+                  </ErrorBoundary>
                 </Layout>
               </ProtectedRoute>
             } />
@@ -99,7 +106,9 @@ function App() {
             <Route path="/orders" element={
               <ProtectedRoute>
                 <Layout>
-                  <Orders />
+                  <ErrorBoundary>
+                    <Orders />
+                  </ErrorBoundary>
                 </Layout>
               </ProtectedRoute>
             } />

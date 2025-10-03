@@ -11,7 +11,7 @@ export const applyDataFilter = (req: AuthRequest, res: Response, next: NextFunct
     });
   }
 
-  const userRole = req.admin.primaryRole;
+  const userRole = req.admin.role;
   const userId = req.admin._id;
 
   // Add data filter to request for use in controllers
@@ -125,7 +125,7 @@ export const checkResourceAccess = (modelType: string) => {
       });
     }
 
-    const userRole = req.admin.primaryRole;
+    const userRole = req.admin.role;
     const userId = req.admin._id;
     const resourceId = req.params.id;
 
@@ -178,7 +178,7 @@ export const enforceOwnership = (req: AuthRequest, res: Response, next: NextFunc
     });
   }
 
-  const userRole = req.admin.primaryRole;
+  const userRole = req.admin.role;
   const userId = req.admin._id;
 
   // Super Admin can create anything

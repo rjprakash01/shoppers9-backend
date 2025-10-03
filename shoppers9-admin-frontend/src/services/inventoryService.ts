@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// Create API instance for inventory operations
+// Create API instance for inventory operations (admin backend)
 const inventoryApi = axios.create({
   baseURL: import.meta.env.PROD 
-    ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+    ? import.meta.env.VITE_ADMIN_API_URL || 'https://admin-api.shoppers9.com'
+    : '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,11 +31,9 @@ inventoryApi.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Only clear token, don't force redirect to avoid conflicts
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
-      // Let AuthContext handle redirects
-      // window.location.href = '/login';
+      // Let AuthContext handle the logout state update
     }
     return Promise.reject(error);
   }

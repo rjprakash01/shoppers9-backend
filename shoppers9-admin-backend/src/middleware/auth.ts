@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import User from '../models/User';
+import Admin from '../models/Admin';
 import { AuthRequest } from '../types';
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -36,21 +36,21 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
       throw jwtError;
     }
     
-    // Use id from token and User model
-    const user = await User.findById(decoded.id).select('-password');
-    console.log('🔐 Auth middleware - User found:', user ? `${user.email} (${user.primaryRole})` : 'null');
+    // Use id from token and Admin model
+    const admin = await Admin.findById(decoded.id).select('-password');
+    console.log('🔐 Auth middleware - Admin found:', admin ? `${admin.email} (${admin.role})` : 'null');
 
-    if (!user) {
-      console.log('🔐 Auth middleware - User not found');
+    if (!admin) {
+      console.log('🔐 Auth middleware - Admin not found');
       res.status(401).json({
         success: false,
-        message: 'Invalid token. User not found.'
+        message: 'Invalid token. Admin not found.'
       });
       return;
     }
 
-    if (!user.isActive) {
-      console.log('🔐 Auth middleware - User account deactivated');
+    if (!admin.isActive) {
+      console.log('🔐 Auth middleware - Admin account deactivated');
       res.status(401).json({
         success: false,
         message: 'Account is deactivated.'
@@ -58,9 +58,9 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
       return;
     }
 
-    // Check if user has valid admin role
-    if (!['super_admin', 'admin', 'sub_admin'].includes(user.primaryRole)) {
-      console.log('🔐 Auth middleware - Invalid role:', user.primaryRole);
+    // Check if admin has valid admin role
+    if (!['super_admin', 'admin', 'sub_admin'].includes(admin.role)) {
+      console.log('🔐 Auth middleware - Invalid role:', admin.role);
       res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -68,7 +68,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction):
       return;
     }
     console.log('🔐 Auth middleware - Authentication successful, proceeding to controller');
-    req.admin = user;
+    req.admin = admin;
     next();
   } catch (error) {
     res.status(401).json({
@@ -92,7 +92,7 @@ export const adminOnly = (req: AuthRequest, res: Response, next: NextFunction): 
 };
 
 export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.admin || req.admin.primaryRole !== 'super_admin') {
+  if (!req.admin || req.admin.role !== 'super_admin') {
     res.status(403).json({
       success: false,
       message: 'Access denied. Super admin privileges required.'
@@ -104,7 +104,7 @@ export const superAdminOnly = (req: AuthRequest, res: Response, next: NextFuncti
 };
 
 export const managerOrAbove = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  if (!req.admin || !['admin', 'super_admin'].includes(req.admin.primaryRole)) {
+  if (!req.admin || !['admin', 'super_admin'].includes(req.admin.role)) {
     res.status(403).json({
       success: false,
       message: 'Access denied. Manager privileges or above required.'

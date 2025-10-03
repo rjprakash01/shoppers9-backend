@@ -29,15 +29,19 @@ import permissionRoutes from './routes/permission';
 import dashboardRoutes from './routes/dashboard';
 import couponRoutes from './routes/coupon';
 import roleRoutes from './routes/roles';
+import supportRoutes from './routes/support';
+import shippingRoutes from './routes/shipping';
 import { startScheduler } from './utils/scheduler';
 import { auth } from './middleware/auth';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from both root and local .env files
+// Load root .env first, then local .env (local takes precedence)
+dotenv.config({ path: require('path').join(__dirname, '../../.env') }); // Root .env
+dotenv.config({ path: require('path').join(__dirname, '../.env') }); // Local .env
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.ADMIN_PORT || process.env.PORT || 5001;
 
 // Connect to database
 connectDB().then(async () => {
@@ -657,6 +661,8 @@ app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/admin/testimonials', testimonialRoutes);
 app.use('/api/admin', permissionRoutes);
 app.use('/api/admin/roles', roleRoutes);
+app.use('/api/admin/support', supportRoutes);
+app.use('/api/admin/shipping', shippingRoutes);
 // Public notification endpoint for service-to-service communication
 app.post('/api/admin/notifications', async (req, res) => {
   try {
@@ -695,8 +701,9 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Admin backend server running on port ${PORT}`);
+  console.log(`🌐 Server accessible at: http://localhost:${PORT}`);
   
   // Start notification schedulers
   startScheduler();

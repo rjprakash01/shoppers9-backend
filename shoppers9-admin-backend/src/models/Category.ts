@@ -149,3 +149,4 @@ categorySchema.pre('save', async function(next) {
 const Category = mongoose.model<ICategory>('Category', categorySchema);
 
 export default Category;
+export { categorySchema };

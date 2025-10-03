@@ -1,8 +1,8 @@
 import mongoose, { Schema } from 'mongoose';
-import { IShippingProvider, IShippingRate, IShipment, ITrackingEvent } from '../types';
+import { IShippingProvider, IShippingRate, IShipment, TrackingEvent, ShippingStatus } from '../types';
 
 // Tracking Event Schema
-const trackingEventSchema = new Schema<ITrackingEvent>({
+const trackingEventSchema = new Schema<TrackingEvent>({
   status: {
     type: String,
     required: true,
@@ -55,8 +55,8 @@ const shipmentSchema = new Schema<IShipment>({
   status: {
     type: String,
     required: true,
-    enum: ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed_delivery', 'returned'],
-    default: 'pending'
+    enum: Object.values(ShippingStatus),
+    default: ShippingStatus.PENDING
   },
   shippingAddress: {
     name: { type: String, required: true },
@@ -314,20 +314,23 @@ shipmentSchema.methods.updateStatus = function(status: string, location?: string
 
 // Pre-save middleware
 shipmentSchema.pre('save', function(next) {
-  if (this.isNew && !this.shipmentId) {
+  const doc = this as any;
+  if (doc.isNew && !doc.shipmentId) {
     // Generate shipment ID
     const timestamp = Date.now().toString();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    this.shipmentId = `SHP${timestamp.slice(-6)}${random}`;
+    doc.shipmentId = `SHP${timestamp.slice(-6)}${random}`;
   }
   next();
 });
 
 shippingRateSchema.pre('save', function(next) {
+  const doc = this as any;
+  
   // Validate weight ranges
-  if (this.rateStructure.type === 'weight_based' && this.rateStructure.weightRanges) {
-    for (let i = 0; i < this.rateStructure.weightRanges.length; i++) {
-      const range = this.rateStructure.weightRanges[i];
+  if (doc.rateStructure.type === 'weight_based' && doc.rateStructure.weightRanges) {
+    for (let i = 0; i < doc.rateStructure.weightRanges.length; i++) {
+      const range = doc.rateStructure.weightRanges[i];
       if (range.minWeight >= range.maxWeight) {
         return next(new Error('Invalid weight range: minWeight must be less than maxWeight'));
       }
@@ -335,9 +338,9 @@ shippingRateSchema.pre('save', function(next) {
   }
   
   // Validate distance ranges
-  if (this.rateStructure.type === 'distance_based' && this.rateStructure.distanceRanges) {
-    for (let i = 0; i < this.rateStructure.distanceRanges.length; i++) {
-      const range = this.rateStructure.distanceRanges[i];
+  if (doc.rateStructure.type === 'distance_based' && doc.rateStructure.distanceRanges) {
+    for (let i = 0; i < doc.rateStructure.distanceRanges.length; i++) {
+      const range = doc.rateStructure.distanceRanges[i];
       if (range.minDistance >= range.maxDistance) {
         return next(new Error('Invalid distance range: minDistance must be less than maxDistance'));
       }

@@ -15,11 +15,18 @@ export interface IAuditLog extends Document {
     newValues?: any;
     affectedUsers?: mongoose.Types.ObjectId[];
     reason?: string;
+    action?: string;
   };
   status: 'success' | 'failed' | 'unauthorized';
   errorMessage?: string;
   timestamp: Date;
   sessionId?: string;
+}
+
+export interface IAuditLogModel extends mongoose.Model<IAuditLog> {
+  logAction(logData: Partial<IAuditLog>): Promise<IAuditLog | undefined>;
+  getUserActivity(userId: mongoose.Types.ObjectId, options?: any): any;
+  getSuspiciousActivities(options?: any): any;
 }
 
 const auditLogSchema = new Schema<IAuditLog>({
@@ -184,7 +191,7 @@ auditLogSchema.statics.getSuspiciousActivities = function(options: {
   const failureThreshold = options.failureThreshold || 5;
   const since = new Date(Date.now() - timeWindow * 60 * 1000);
   
-  const pipeline = [
+  const pipeline: any[] = [
     {
       $match: {
         timestamp: { $gte: since },
@@ -219,5 +226,5 @@ auditLogSchema.statics.getSuspiciousActivities = function(options: {
   return this.aggregate(pipeline);
 };
 
-export const AuditLog = mongoose.model<IAuditLog>('AuditLog', auditLogSchema);
+export const AuditLog = mongoose.model<IAuditLog, IAuditLogModel>('AuditLog', auditLogSchema);
 export default AuditLog;

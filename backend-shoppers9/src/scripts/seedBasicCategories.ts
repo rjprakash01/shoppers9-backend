@@ -1,6 +1,10 @@
+import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { Category } from '../models/Category';
 import { connectDB } from '../config/database';
+
+// Load environment variables
+dotenv.config();
 
 const basicCategories = [
   {

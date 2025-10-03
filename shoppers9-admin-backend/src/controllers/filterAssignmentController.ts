@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import FilterAssignment from '../models/FilterAssignment';
 import Filter from '../models/Filter';
 import FilterOption from '../models/FilterOption';
@@ -167,7 +168,7 @@ export const getAvailableFilters = async (req: Request, res: Response): Promise<
       availableFilters = parentAssignments
         .filter(assignment => 
           !assignedFilterIds.some(id => id.toString() === assignment.filter._id.toString()) &&
-          assignment.filter.isActive
+          (assignment.filter as any).isActive
         )
         .map(assignment => assignment.filter);
 
@@ -515,7 +516,7 @@ export const getFilterTree = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const filterTree = await FilterAssignment.getHierarchicalFilters(categoryId);
+    const filterTree = await FilterAssignment.getHierarchicalFilters(new mongoose.Types.ObjectId(categoryId));
 
     res.json({
       success: true,

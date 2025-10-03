@@ -2,13 +2,21 @@ import mongoose from 'mongoose';
 
 export const connectDB = async (): Promise<void> => {
   try {
-    const mongoUri = process.env.MONGODB_URI;
+    // Check for Atlas environment variables first, then fallback to legacy
+    const mongoUri = process.env.SHOPPERS9_DB_URI || process.env.MONGODB_URI;
+    
+    console.log('🔍 Environment variables check:');
+    console.log('SHOPPERS9_DB_URI:', process.env.SHOPPERS9_DB_URI ? 'Found' : 'Not found');
+    console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Found' : 'Not found');
     
     if (!mongoUri) {
-      console.log('⚠️  No MONGODB_URI found in environment variables');
+      console.log('⚠️  No database URI found in environment variables');
       console.log('🔧 Using in-memory database for development');
       return;
     }
+    
+    console.log('🔗 Attempting to connect to MongoDB...');
+    console.log('📍 Database URI:', mongoUri.replace(/:[^:@]*@/, ':***@'));
 
     // Set connection timeout to prevent hanging
     const connectionOptions: any = {
@@ -36,8 +44,10 @@ export const connectDB = async (): Promise<void> => {
 
     try {
       await mongoose.connect(mongoUri, connectionOptions);
+      console.log('🎯 MongoDB connection attempt completed');
     } catch (error: any) {
       console.error('❌ MongoDB connection failed:', error.message);
+      console.error('🔍 Full error:', error);
     }
     
     mongoose.connection.on('connected', () => {

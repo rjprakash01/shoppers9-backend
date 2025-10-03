@@ -61,7 +61,7 @@ class ShippingService {
     
     for (const provider of providers) {
       // Check if provider serves the destination pincode
-      const servesDestination = provider.serviceAreas.some(area => 
+      const servesDestination = provider.serviceAreas.some((area: any) => 
         area.isActive && area.pincodes.includes(toPincode)
       );
       
@@ -79,7 +79,8 @@ class ShippingService {
       
       for (const rate of rates) {
         try {
-          const cost = await this.calculateRateCost(rate, weight, dimensions, value, fromPincode, toPincode);
+          const defaultDimensions = { length: 10, width: 10, height: 10 };
+          const cost = await this.calculateRateCost(rate, weight, dimensions || defaultDimensions, value, fromPincode, toPincode);
           
           if (cost !== null) {
             const estimatedDelivery = new Date();
@@ -93,6 +94,7 @@ class ShippingService {
               serviceType: rate.serviceType,
               serviceName: rate.name,
               cost: isFreeShipping ? 0 : cost,
+              estimatedDays: rate.deliveryTime.max,
               deliveryTime: rate.deliveryTime,
               estimatedDelivery,
               isFreeShipping
@@ -133,7 +135,7 @@ class ShippingService {
       case 'weight_based':
         if (rate.rateStructure.weightRanges) {
           const weightRange = rate.rateStructure.weightRanges.find(
-            range => weight >= range.minWeight && weight <= range.maxWeight
+            (range: any) => weight >= range.minWeight && weight <= range.maxWeight
           );
           if (weightRange) {
             cost = weightRange.rate;
@@ -146,7 +148,7 @@ class ShippingService {
       case 'distance_based':
         // For distance-based, we would need a distance calculation service
         // For now, use base rate with zone multiplier
-        const zone = rate.zones.find(z => z.pincodes.includes(toPincode));
+        const zone = rate.zones.find((z: any) => z.pincodes.includes(toPincode));
         if (zone) {
           cost = rate.rateStructure.baseRate * zone.multiplier;
         }
@@ -163,7 +165,7 @@ class ShippingService {
     }
     
     // Apply zone multiplier if applicable
-    const zone = rate.zones.find(z => z.pincodes.includes(toPincode));
+    const zone = rate.zones.find((z: any) => z.pincodes.includes(toPincode));
     if (zone && rate.rateStructure.type !== 'distance_based') {
       cost *= zone.multiplier;
     }

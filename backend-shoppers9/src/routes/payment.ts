@@ -2,7 +2,7 @@ import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { paymentService } from '../services/paymentService';
 import { Order } from '../models/Order';
-import { AuthenticatedRequest } from '../types';
+import { AuthenticatedRequest, PaymentStatus } from '../types';
 import { authenticateToken, requireVerification } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import { AppError } from '../middleware/errorHandler';
@@ -47,7 +47,7 @@ router.post('/create-intent',
         return next(new AppError('Order not found', 404));
       }
 
-      if (order.paymentStatus === 'success') {
+      if (order.paymentStatus === PaymentStatus.COMPLETED) {
         return next(new AppError('Payment already completed for this order', 400));
       }
 

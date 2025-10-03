@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import Category from '../models/Category';
 import Product from '../models/Product';
-import User from '../models/User';
+import { getUserModel } from '../models/User';
 import { AuthRequest } from '../types';
 import { autoAssignFiltersToCategory } from '../utils/categoryFilterAssignment';
+import { DualWriteService } from '../services/dualWriteService';
+import { categorySchema } from '../models/Category';
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
@@ -156,6 +158,15 @@ export const createCategory = async (req: AuthRequest, res: Response): Promise<v
 
     const category = await Category.create(categoryData);
     await category.populate('parentCategory', 'name level');
+    
+    // Use dual-write service to sync with main website database
+    try {
+      await DualWriteService.create('Category', category.toObject(), categorySchema);
+      console.log('✅ Category synced to main website database');
+    } catch (syncError) {
+      console.error('⚠️ Failed to sync category to main website database:', syncError);
+      // Don't fail the operation if sync fails
+    }
 
     // Auto-assign appropriate filters to the new category
     try {
@@ -256,6 +267,15 @@ export const updateCategory = async (req: AuthRequest, res: Response): Promise<v
       });
       return;
     }
+    
+    // Use dual-write service to sync with main website database
+    try {
+      await DualWriteService.update('Category', { _id: req.params.id }, updateData, categorySchema);
+      console.log('✅ Category update synced to main website database');
+    } catch (syncError) {
+      console.error('⚠️ Failed to sync category update to main website database:', syncError);
+      // Don't fail the operation if sync fails
+    }
 
     res.json({
       success: true,
@@ -311,6 +331,15 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
         message: 'Category not found'
       });
       return;
+    }
+    
+    // Use dual-write service to sync with main website database
+    try {
+      await DualWriteService.delete('Category', { _id: req.params.id }, categorySchema);
+      console.log('✅ Category deletion synced to main website database');
+    } catch (syncError) {
+      console.error('⚠️ Failed to sync category deletion to main website database:', syncError);
+      // Don't fail the operation if sync fails
     }
 
     res.json({
@@ -494,7 +523,7 @@ export const getCategoriesByLevel = async (req: Request, res: Response): Promise
 export const getCategoryTree = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     // Get user role from authenticated request
-    const userRole = req.admin?.role;
+    const userRole = req.admin?.primaryRole;
     
     // Build category filter based on user role
     let categoryFilter: any = { isActive: true };
@@ -502,6 +531,7 @@ export const getCategoryTree = async (req: AuthRequest, res: Response): Promise<
     // For admin and sub_admin roles, only show categories created by super_admin
     if (userRole === 'admin' || userRole === 'sub_admin') {
       // Find super_admin users to filter categories by their createdBy field
+      const User = getUserModel();
       const superAdmins = await User.find({ primaryRole: 'super_admin' }).select('_id');
       const superAdminIds = superAdmins.map(admin => admin._id);
       

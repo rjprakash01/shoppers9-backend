@@ -10,6 +10,11 @@ export interface IRole extends Document {
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  canManageRoles: boolean;
+}
+
+export interface IRoleModel extends mongoose.Model<IRole> {
+  getHierarchy(): Record<number, string>;
 }
 
 const roleSchema = new Schema<IRole>({
@@ -103,5 +108,25 @@ roleSchema.pre('save', function(next) {
   next();
 });
 
-export const Role = mongoose.model<IRole>('Role', roleSchema);
+// Lazy model creation
+let _roleModel: any = null;
+
+// Function to get Role model with proper connection
+export const getRoleModel = () => {
+  if (!_roleModel) {
+    const { adminConnection } = require('../config/database');
+    if (!adminConnection) {
+      throw new Error('Admin connection not established');
+    }
+    _roleModel = adminConnection.model<IRole, IRoleModel>('Role', roleSchema);
+  }
+  return _roleModel;
+};
+
+// Export the model (for backward compatibility)
+export const Role = new Proxy({}, {
+  get(target, prop) {
+    return getRoleModel()[prop];
+  }
+});
 export default Role;

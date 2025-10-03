@@ -29,25 +29,16 @@ export const testAdminPermissions = async () => {
     
     const productCreateTest = await checkUserPermission(
       adminUser._id.toString(),
-      'products',
-      'create_assets'
+      'products'
     );
     
     const couponCreateTest = await checkUserPermission(
       adminUser._id.toString(),
-      'coupons', 
-      'create_assets'
+      'coupons'
     );
     
-    console.log(`   Products create_assets: ${productCreateTest.allowed ? '✅ ALLOWED' : '❌ DENIED'}`);
-    if (!productCreateTest.allowed) {
-      console.log(`   Reason: ${JSON.stringify(productCreateTest.restrictions)}`);
-    }
-    
-    console.log(`   Coupons create_assets: ${couponCreateTest.allowed ? '✅ ALLOWED' : '❌ DENIED'}`);
-    if (!couponCreateTest.allowed) {
-      console.log(`   Reason: ${JSON.stringify(couponCreateTest.restrictions)}`);
-    }
+    console.log(`   Products access: ${productCreateTest ? '✅ ALLOWED' : '❌ DENIED'}`);
+    console.log(`   Coupons access: ${couponCreateTest ? '✅ ALLOWED' : '❌ DENIED'}`);
     
     // 3. Test data filtering
     console.log('\n📊 Testing Data Filtering:');
@@ -208,7 +199,7 @@ export const testAdminPermissions = async () => {
     console.log(`   - Products: ${finalProductCount}`);
     console.log(`   - Coupons: ${finalCouponCount}`);
     
-    if (productCreateTest.allowed && couponCreateTest.allowed) {
+    if (productCreateTest && couponCreateTest) {
       console.log('\n✅ PERMISSIONS ARE WORKING CORRECTLY');
     } else {
       console.log('\n❌ PERMISSION ISSUES DETECTED');

@@ -723,7 +723,7 @@ const BannerManagement: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
                         {banner.categoryId ? (
-                          <span className="text-blue-600">Category: {categories.find(c => c.id === banner.categoryId)?.name || banner.categoryId}</span>
+                          <span className="text-blue-600">Category: {categories && Array.isArray(categories) ? categories.find(c => c.id === banner.categoryId)?.name || banner.categoryId : banner.categoryId}</span>
                         ) : (
                           <span className="text-gray-500">No category</span>
                         )}

@@ -21,6 +21,9 @@ export interface ICoupon extends Document {
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  isValid(): boolean;
+  canBeUsedBy(userId: string): boolean;
+  calculateDiscount(orderAmount: number): number;
 }
 
 const couponSchema = new Schema<ICoupon>({

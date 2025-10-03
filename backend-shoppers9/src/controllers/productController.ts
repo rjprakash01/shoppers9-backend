@@ -5,6 +5,15 @@ import { Category } from '../models/Category';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, PaginationQuery, ProductFilters } from '../types';
 
+// Import FilterAssignment model
+let FilterAssignment: any;
+try {
+  FilterAssignment = require('../models/FilterAssignment').default || require('../models/FilterAssignment');
+} catch (error) {
+  console.warn('FilterAssignment model not found, using fallback');
+  FilterAssignment = null;
+}
+
 // Helper function to get filter option IDs by values
 const getFilterOptionIds = async (filterId: any, values: string[]) => {
   // Simplified implementation - return empty array for now
@@ -172,7 +181,8 @@ export const getProducts = async (req: Request, res: Response) => {
   const skip = (page - 1) * limit;
   const query: any = { 
     isActive: true,
-    approvalStatus: 'approved' // Only show approved products to customers
+    status: 'active',
+    isApproved: true // Only show approved products to customers
   };
 
   // Build filter query
@@ -199,7 +209,7 @@ export const getProducts = async (req: Request, res: Response) => {
          
          if (categoryDoc.level === 3) {
            // Level 3 category - filter by subSubCategory
-           query.subSubCategory = categoryDoc._id;
+           query.subSubCategory = new mongoose.Types.ObjectId(categoryDoc._id);
            console.log('Applied Level 3 filter:', categoryDoc._id);
          } else if (categoryDoc.level === 2) {
            // Level 2 category - get all products in this subcategory and its children
@@ -212,7 +222,7 @@ export const getProducts = async (req: Request, res: Response) => {
            
            query.$or = [
              { subCategory: categoryDoc._id },
-             { subSubCategory: { $in: subsubcategoryIds } }
+             { subSubCategory: { $in: subsubcategories.map(s => s._id) } }
            ];
            console.log('Applied Level 2 filter:', categoryDoc._id);
          } else if (categoryDoc.level === 1) {
@@ -280,67 +290,17 @@ if (!hasEmptyResultsQuery) {
   // Handle dynamic filters from hierarchical filter assignments
   if (!hasEmptyResultsQuery) {
     try {
-      // Import required models
-      const FilterAssignment = require('../models/FilterAssignment').default;
-      const ProductFilterValue = require('../models/ProductFilterValue').default;
+      // Import required models - commented out as these models don't exist yet
+      // const FilterAssignment = require('../models/FilterAssignment').default;
+      // const ProductFilterValue = require('../models/ProductFilterValue').default;
+      
+      // Skip dynamic filtering until models are implemented
+      console.log('FilterAssignment model not found, using fallback');
+      throw new Error('Models not implemented');
       
       // Process dynamic filters from query parameters
-      const dynamicFilterQueries = [];
-      
-      for (const [filterName, filterValues] of Object.entries(dynamicFilters)) {
-        if (filterValues && Array.isArray(filterValues) && filterValues.length > 0) {
-          // Find the filter by name
-          const filterAssignment = await FilterAssignment.findOne({
-            'filter.name': filterName,
-            isActive: true
-          }).populate('filter');
-          
-          if (filterAssignment && filterAssignment.filter) {
-            // Get products that have any of the specified filter values
-            const productIds = await ProductFilterValue.distinct('product', {
-              filter: filterAssignment.filter._id,
-              'filterOption.value': { $in: filterValues },
-              isActive: true
-            });
-            
-            if (productIds.length > 0) {
-              dynamicFilterQueries.push({ _id: { $in: productIds } });
-            } else {
-              // No products match this filter, return empty results
-              dynamicFilterQueries.push({ _id: { $in: [] } });
-            }
-          }
-        } else if (filterValues && typeof filterValues === 'string') {
-          // Handle single filter value
-          const filterAssignment = await FilterAssignment.findOne({
-            'filter.name': filterName,
-            isActive: true
-          }).populate('filter');
-          
-          if (filterAssignment && filterAssignment.filter) {
-            const productIds = await ProductFilterValue.distinct('product', {
-              filter: filterAssignment.filter._id,
-              'filterOption.value': filterValues,
-              isActive: true
-            });
-            
-            if (productIds.length > 0) {
-              dynamicFilterQueries.push({ _id: { $in: productIds } });
-            } else {
-              dynamicFilterQueries.push({ _id: { $in: [] } });
-            }
-          }
-        }
-      }
-      
-      // Apply dynamic filter queries using $and to ensure all filters are satisfied
-      if (dynamicFilterQueries.length > 0) {
-        if (query.$and) {
-          query.$and.push(...dynamicFilterQueries);
-        } else {
-          query.$and = dynamicFilterQueries;
-        }
-      }
+      // TODO: Implement when FilterAssignment and ProductFilterValue models are created
+      console.log('Dynamic filtering skipped - models not implemented yet');
     } catch (error) {
       console.error('Error processing dynamic filters:', error);
       // Continue without dynamic filters if there's an error
@@ -401,9 +361,7 @@ if (!hasEmptyResultsQuery) {
 
 
   
-  // Add approval status filter to only show approved products on frontend
-  query.approvalStatus = 'approved';
-  query.isActive = true;
+  // isApproved and isActive filters are already in the base query
   
   const [products, total] = await Promise.all([
     Product.find(query)
@@ -422,7 +380,7 @@ if (!hasEmptyResultsQuery) {
   
   if (products.length > 0) {
     console.log('All products returned:');
-    products.forEach((product, index) => {
+    products.forEach((product: any, index: number) => {
       const p = product as any;
       console.log(`${index + 1}. ${p.name} (ID: ${p._id})`);
       console.log(`   Category: ${p.category?.name || 'None'} (ID: ${p.category?._id || 'None'})`);
@@ -449,7 +407,7 @@ if (!hasEmptyResultsQuery) {
   const hasPrevPage = page > 1;
 
   // Transform products to ensure proper image and pricing display
-  const transformedProducts = products.map(product => {
+  const transformedProducts = products.map((product: any) => {
     const productObj = (product as any).toObject ? (product as any).toObject() : product;
     const firstVariant = productObj.variants?.[0];
     
@@ -805,9 +763,9 @@ export const getFilters = async (req: Request, res: Response) => {
       success: true,
       data: {
         priceRange: priceRange[0] || { minPrice: 0, maxPrice: 10000 },
-        brands: brands.map(b => ({ name: b._id, count: b.count })),
-        sizes: sizes.map(s => ({ name: s._id, count: s.count })),
-        colors: colors.map(c => ({ 
+        brands: brands.map((b: any) => ({ name: b._id, count: b.count })),
+        sizes: sizes.map((s: any) => ({ name: s._id, count: s.count })),
+        colors: colors.map((c: any) => ({ 
           name: c._id.color, 
           colorCode: c._id.colorCode, 
           count: c.count 
@@ -842,7 +800,7 @@ export const getFeaturedProducts = async (req: Request, res: Response) => {
     .limit(20);
 
   // Transform products to ensure proper image and pricing display
-  const transformedProducts = products.map(product => {
+  const transformedProducts = products.map((product: any) => {
     const productObj = (product as any).toObject ? (product as any).toObject() : product;
     const firstVariant = productObj.variants?.[0];
     
@@ -881,7 +839,7 @@ export const getTrendingProducts = async (req: Request, res: Response) => {
     .limit(20);
 
   // Transform products to ensure proper image and pricing display
-  const transformedProducts = products.map(product => {
+  const transformedProducts = products.map((product: any) => {
     const productObj = (product as any).toObject ? (product as any).toObject() : product;
     const firstVariant = productObj.variants?.[0];
     
@@ -969,15 +927,32 @@ export const getProductById = async (req: Request, res: Response) => {
     // Extract unique colors from variants
     if (!productObj.availableColors || productObj.availableColors.length === 0) {
       const uniqueColors = new Map();
+      
+      // First pass: create color entries
       productObj.variants.forEach((variant: any) => {
         if (variant.color && !uniqueColors.has(variant.color)) {
           uniqueColors.set(variant.color, {
             name: variant.color,
             code: variant.colorCode || '#000000',
-            images: variant.images || []
+            images: []
           });
         }
       });
+      
+      // Second pass: collect ALL images for each color
+      productObj.variants.forEach((variant: any) => {
+        if (variant.color && uniqueColors.has(variant.color)) {
+          const colorEntry = uniqueColors.get(variant.color);
+          if (variant.images && variant.images.length > 0) {
+            variant.images.forEach((img: string) => {
+              if (!colorEntry.images.includes(img)) {
+                colorEntry.images.push(img);
+              }
+            });
+          }
+        }
+      });
+      
       productObj.availableColors = Array.from(uniqueColors.values());
     }
     

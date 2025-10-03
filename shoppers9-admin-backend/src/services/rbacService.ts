@@ -41,7 +41,7 @@ export class RBACService {
       },
       {
         name: 'admin',
-        displayName: 'Administrator',
+        displayName: 'Admin',
         description: 'Administrative access with configurable permissions',
         level: 2
       },
@@ -166,7 +166,7 @@ export class RBACService {
       
       // Check if assigner can assign this role
       const assigner = await User.findById(assignedBy);
-      if (!assigner || !assigner.canManage(user)) {
+      if (!assigner || !assigner.canManage || !assigner.canManage('user')) {
         throw new Error('Insufficient privileges to assign this role');
       }
       
@@ -243,7 +243,7 @@ export class RBACService {
       const revoker = await User.findById(revokedBy);
       const user = await User.findById(userId);
       
-      if (!revoker || !user || !revoker.canManage(user)) {
+      if (!revoker || !user || !revoker.canManage || !revoker.canManage('user')) {
         throw new Error('Insufficient privileges to revoke this role');
       }
       

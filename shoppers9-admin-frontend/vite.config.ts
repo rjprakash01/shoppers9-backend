@@ -7,22 +7,30 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    historyApiFallback: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://127.0.0.1:5002',
         changeOrigin: true,
         secure: false,
       } as ProxyOptions,
       '/uploads': {
-        target: 'http://localhost:5001',
+        target: 'http://127.0.0.1:5002',
         changeOrigin: true,
         secure: false
       } as ProxyOptions,
       '/auth': {
-        target: 'http://localhost:5001',
+        target: 'http://127.0.0.1:5002',
         changeOrigin: true,
         secure: false
       } as ProxyOptions
+    }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
     }
   }
 })

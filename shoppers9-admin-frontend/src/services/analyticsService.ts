@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// Create API instance for analytics operations
+// Create API instance for analytics operations (admin backend)
 const analyticsApi = axios.create({
   baseURL: import.meta.env.PROD 
-    ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5000/api',
+    ? import.meta.env.VITE_ADMIN_API_URL || 'https://admin-api.shoppers9.com'
+    : '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -32,7 +32,8 @@ analyticsApi.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('adminToken');
-      window.location.href = '/login';
+      localStorage.removeItem('adminUser');
+      // Let AuthContext handle the logout state update
     }
     return Promise.reject(error);
   }

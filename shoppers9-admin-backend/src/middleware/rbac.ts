@@ -10,6 +10,7 @@ import { AuthenticatedRequest } from '../types';
 export interface RBACRequest extends AuthenticatedRequest {
   userPermissions?: string[];
   userRoles?: any[];
+  targetUser?: any;
 }
 
 // Authentication middleware - verifies JWT token
@@ -196,7 +197,7 @@ export const requireRole = (allowedRoles: string[]) => {
         });
       }
 
-      const hasRole = allowedRoles.includes(user.primaryRole);
+      const hasRole = allowedRoles.includes(user.role || user.primaryRole);
       
       if (!hasRole) {
         await AuditLog.logAction({
@@ -208,7 +209,7 @@ export const requireRole = (allowedRoles: string[]) => {
             endpoint: req.path,
             ipAddress: req.ip,
             userAgent: req.get('User-Agent'),
-            reason: `Insufficient role. Required: ${allowedRoles.join(', ')}, Has: ${user.primaryRole}`
+            reason: `Insufficient role. Required: ${allowedRoles.join(', ')}, Has: ${user.role || user.primaryRole}`
           },
           status: 'unauthorized'
         });
@@ -324,7 +325,7 @@ export const canManageUser = async (req: RBACRequest, res: Response, next: NextF
       });
     }
 
-    if (!req.user.canManage(targetUser)) {
+    if (!req.user.canManage || !req.user.canManage('user')) {
       await AuditLog.logAction({
         userId: req.user._id,
         action: 'read',
@@ -368,7 +369,7 @@ export const sellerSelfAccess = async (req: RBACRequest, res: Response, next: Ne
     }
 
     // Non-sellers and admins can access any data
-    if (req.user.primaryRole !== 'seller' || req.user.isAdmin()) {
+    if (req.user.primaryRole !== 'seller' || req.user.isAdmin) {
       return next();
     }
 

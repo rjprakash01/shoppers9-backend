@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// Create API instance for shipping operations
+// Create API instance for shipping operations (admin backend)
 const shippingApi = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5000/api',
+    ? process.env.VITE_ADMIN_API_URL || 'https://admin-api.shoppers9.com'
+    : '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,11 +31,14 @@ shippingApi.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Only clear token, don't force redirect to avoid conflicts
+      // Clear localStorage but don't interfere with AuthContext state management
+      // The AuthContext will detect the missing token and handle logout properly
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
-      // Let AuthContext handle redirects
-      // window.location.href = '/login';
+      // Trigger a page reload to let AuthContext reinitialize and redirect to login
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
     return Promise.reject(error);
   }
@@ -229,7 +232,7 @@ class ShippingService {
       const response = await shippingApi.post<ApiResponse<{
         options: ShippingOption[];
         count: number;
-      }>>('/shipping/calculate-rates', request);
+      }>>('/admin/shipping/calculate-rates', request);
       
       if (response.data.success) {
         return response.data.data.options;
@@ -250,7 +253,7 @@ class ShippingService {
       const response = await shippingApi.get<ApiResponse<{
         providers: ShippingProvider[];
         count: number;
-      }>>('/shipping/providers', {
+      }>>('/admin/shipping/providers', {
         params: { includeInactive }
       });
       
@@ -272,7 +275,7 @@ class ShippingService {
     try {
       const response = await shippingApi.post<ApiResponse<{
         provider: ShippingProvider;
-      }>>('/shipping/providers', providerData);
+      }>>('/admin/shipping/providers', providerData);
       
       if (response.data.success) {
         return response.data.data.provider;
@@ -292,7 +295,7 @@ class ShippingService {
     try {
       const response = await shippingApi.put<ApiResponse<{
         provider: ShippingProvider;
-      }>>(`/shipping/providers/${providerId}`, providerData);
+      }>>(`/admin/shipping/providers/${providerId}`, providerData);
       
       if (response.data.success) {
         return response.data.data.provider;
@@ -310,7 +313,7 @@ class ShippingService {
    */
   async deleteProvider(providerId: string): Promise<void> {
     try {
-      const response = await shippingApi.delete<ApiResponse<any>>(`/shipping/providers/${providerId}`);
+      const response = await shippingApi.delete<ApiResponse<any>>(`/admin/shipping/providers/${providerId}`);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to delete shipping provider');
@@ -343,7 +346,7 @@ class ShippingService {
       const response = await shippingApi.get<ApiResponse<{
         rates: ShippingRate[];
         count: number;
-      }>>(`/shipping/providers/${providerId}/rates`, {
+      }>>(`/admin/shipping/providers/${providerId}/rates`, {
         params: { includeInactive }
       });
       
@@ -365,7 +368,7 @@ class ShippingService {
     try {
       const response = await shippingApi.post<ApiResponse<{
         rate: ShippingRate;
-      }>>('/shipping/rates', rateData);
+      }>>('/admin/shipping/rates', rateData);
       
       if (response.data.success) {
         return response.data.data.rate;
@@ -385,7 +388,7 @@ class ShippingService {
     try {
       const response = await shippingApi.put<ApiResponse<{
         rate: ShippingRate;
-      }>>(`/shipping/rates/${rateId}`, rateData);
+      }>>(`/admin/shipping/rates/${rateId}`, rateData);
       
       if (response.data.success) {
         return response.data.data.rate;
@@ -403,7 +406,7 @@ class ShippingService {
    */
   async deleteRate(rateId: string): Promise<void> {
     try {
-      const response = await shippingApi.delete<ApiResponse<any>>(`/shipping/rates/${rateId}`);
+      const response = await shippingApi.delete<ApiResponse<any>>(`/admin/shipping/rates/${rateId}`);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to delete shipping rate');
@@ -443,7 +446,7 @@ class ShippingService {
           total: number;
           pages: number;
         };
-      }>>('/shipping/shipments', { params: filters });
+      }>>('/admin/shipping/shipments', { params: filters });
       
       if (response.data.success) {
         return response.data.data;
@@ -463,7 +466,7 @@ class ShippingService {
     try {
       const response = await shippingApi.get<ApiResponse<{
         shipment: Shipment;
-      }>>(`/shipping/shipments/${shipmentId}`);
+      }>>(`/admin/shipping/shipments/${shipmentId}`);
       
       if (response.data.success) {
         return response.data.data.shipment;
@@ -498,7 +501,7 @@ class ShippingService {
     try {
       const response = await shippingApi.post<ApiResponse<{
         shipment: Shipment;
-      }>>('/shipping/shipments', shipmentData);
+      }>>('/admin/shipping/shipments', shipmentData);
       
       if (response.data.success) {
         return response.data.data.shipment;
@@ -523,7 +526,7 @@ class ShippingService {
     try {
       const response = await shippingApi.put<ApiResponse<{
         shipment: Shipment;
-      }>>(`/shipping/shipments/${shipmentId}/tracking`, trackingData);
+      }>>(`/admin/shipping/shipments/${shipmentId}/tracking`, trackingData);
       
       if (response.data.success) {
         return response.data.data.shipment;
@@ -553,7 +556,7 @@ class ShippingService {
     };
   }> {
     try {
-      const response = await shippingApi.get<ApiResponse<any>>(`/shipping/track/${trackingNumber}`);
+      const response = await shippingApi.get<ApiResponse<any>>(`/admin/shipping/track/${trackingNumber}`);
       
       if (response.data.success) {
         return response.data.data;
@@ -575,7 +578,7 @@ class ShippingService {
       if (fromDate) params.fromDate = fromDate;
       if (toDate) params.toDate = toDate;
 
-      const response = await shippingApi.get<ApiResponse<ShippingAnalytics>>('/shipping/analytics', { params });
+      const response = await shippingApi.get<ApiResponse<ShippingAnalytics>>('/admin/shipping/analytics', { params });
       
       if (response.data.success) {
         return response.data.data;
@@ -609,7 +612,7 @@ class ShippingService {
         failed: Array<{ shipmentId: string; error: string }>;
         total: number;
         successRate: string;
-      }>>('/shipping/shipments/bulk-update', { updates });
+      }>>('/admin/shipping/shipments/bulk-update', { updates });
       
       if (response.data.success) {
         return response.data.data;

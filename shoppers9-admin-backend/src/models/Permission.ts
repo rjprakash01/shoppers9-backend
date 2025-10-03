@@ -1,18 +1,33 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IPermission extends Document {
+  name: string;
   module: string;
-  description: string;
+  action: string;
+  resource?: string;
+  scope?: string;
+  description?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  getKey(): string;
+}
+
+export interface IPermissionModel extends mongoose.Model<IPermission> {
+  getModules(): string[];
+  getActions(): string[];
+  findByModule(module: string): Promise<IPermission[]>;
+  createDefaults(): Promise<void>;
 }
 
 const permissionSchema = new Schema<IPermission>({
+  name: {
+    type: String,
+    required: true
+  },
   module: {
     type: String,
     required: true,
-    unique: true,
     enum: [
       'dashboard',
       'users',
@@ -28,8 +43,21 @@ const permissionSchema = new Schema<IPermission>({
       'testimonials',
       'admin_management',
       'settings',
-      'analytics'
+      'analytics',
+      'product_review_queue'
     ]
+  },
+  action: {
+    type: String,
+    required: true
+  },
+  resource: {
+    type: String,
+    required: false
+  },
+  scope: {
+    type: String,
+    required: false
   },
   description: {
     type: String,
@@ -64,13 +92,33 @@ permissionSchema.statics.getModules = function() {
     'testimonials',
     'admin_management',
     'settings',
-    'analytics'
+    'analytics',
+    'product_review_queue'
+  ];
+};
+
+// Static method to get all actions
+permissionSchema.statics.getActions = function() {
+  return [
+    'create',
+    'read',
+    'edit',
+    'delete',
+    'manage',
+    'view',
+    'export',
+    'import'
   ];
 };
 
 // Method to generate permission key (simplified to just module)
 permissionSchema.methods.getKey = function(): string {
   return this.module;
+};
+
+// Static method to find permissions by module
+permissionSchema.statics.findByModule = function(module: string) {
+  return this.find({ module, isActive: true });
 };
 
 // Static method to create default permissions (simplified binary model)
@@ -90,7 +138,8 @@ permissionSchema.statics.createDefaults = async function() {
     'testimonials',
     'admin_management',
     'settings',
-    'analytics'
+    'analytics',
+    'product_review_queue'
   ];
   
   const permissions = modules.map(module => ({
@@ -108,5 +157,5 @@ permissionSchema.statics.createDefaults = async function() {
   }
 };
 
-export const Permission = mongoose.model<IPermission>('Permission', permissionSchema);
+export const Permission = mongoose.model<IPermission, IPermissionModel>('Permission', permissionSchema);
 export default Permission;

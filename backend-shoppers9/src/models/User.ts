@@ -104,8 +104,11 @@ const userSchema = new Schema<IUser>({
     },
     minlength: [8, 'Password must be at least 8 characters long'],
     validate: {
-      validator: function(v: string) {
-        if (!v) return true; // Allow empty if not required
+      validator: function(this: IUser, v: string) {
+        // Skip validation if authMethod is phone-only
+        if (this.authMethod === 'phone') return true;
+        // Allow empty if not required
+        if (!v) return true;
         // Password must contain at least one uppercase, one lowercase, one number, and one special character
         return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(v);
       },

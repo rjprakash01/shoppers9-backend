@@ -1,158 +1,30 @@
-import express from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { Category } from '../models/Category';
-import mongoose from 'mongoose';
+import { Router } from 'express';
+import {
+  getAllCategories,
+  getCategoryTree,
+  getCategory,
+  getCategoriesByLevel,
+  getCategoryPath,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  toggleCategoryStatus
+} from '../controllers/categoryController';
+import { authenticateToken, authenticateUserOrAdmin } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-/**
- * @route GET /categories/tree
- * @desc Get category tree structure
- * @access Public
- */
-router.get('/tree', asyncHandler(async (req, res) => {
-  // Check if database is connected
-  if (mongoose.connection.readyState !== 1) {
-    // Return mock tree data when database is not connected
-    const mockTree = [
-      {
-        _id: '507f1f77bcf86cd799439011',
-        name: 'Men',
-        slug: 'men',
-        description: 'Men\'s fashion and accessories',
-        isActive: true,
-        sortOrder: 1,
-        level: 1,
-        children: []
-      },
-      {
-        _id: '507f1f77bcf86cd799439012',
-        name: 'Women',
-        slug: 'women',
-        description: 'Women\'s fashion and accessories',
-        isActive: true,
-        sortOrder: 2,
-        level: 1,
-        children: []
-      },
-      {
-        _id: '507f1f77bcf86cd799439013',
-        name: 'Household',
-        slug: 'household',
-        description: 'Home and household essentials',
-        isActive: true,
-        sortOrder: 3,
-        level: 1,
-        children: []
-      }
-    ];
-    
-    return res.json({
-      success: true,
-      data: {
-        categories: mockTree
-      }
-    });
-  }
+// Public routes (no authentication required)
+router.get('/tree', getCategoryTree);
+router.get('/level/:level', getCategoriesByLevel);
+router.get('/path/:id', getCategoryPath);
+router.get('/:id', getCategory);
+router.get('/', getAllCategories);
 
-  // Get all active categories to build complete tree
-  const categories = await Category.find({ 
-    isActive: true
-  })
-    .sort({ level: 1, sortOrder: 1, name: 1 });
-
-  // Build hierarchical tree structure
-  const categoryMap = new Map();
-  const tree: any[] = [];
-
-  // First pass: create all category objects
-  categories.forEach(category => {
-    const categoryJson = category.toJSON();
-    categoryMap.set(category._id.toString(), {
-      ...categoryJson,
-      children: []
-    });
-  });
-
-  // Second pass: build the tree structure
-  categories.forEach(category => {
-    const categoryObj = categoryMap.get(category._id.toString());
-    
-    if (category.parentCategory) {
-      const parentId = category.parentCategory.toString();
-      const parent = categoryMap.get(parentId);
-      if (parent) {
-        parent.children.push(categoryObj);
-      }
-    } else {
-      // Only level 1 categories (no parent) go to root
-      tree.push(categoryObj);
-    }
-  });
-
-  return res.json({
-    success: true,
-    data: {
-      categories: tree
-    }
-  });
-}));
-
-/**
- * @route GET /categories
- * @desc Get all categories (flat list)
- * @access Public
- */
-router.get('/', asyncHandler(async (req, res) => {
-  // Check if database is connected
-  if (mongoose.connection.readyState !== 1) {
-    // Return mock data when database is not connected
-    const mockCategories = [
-      {
-        _id: '507f1f77bcf86cd799439011',
-        name: 'Men',
-        slug: 'men',
-        description: 'Men\'s fashion and accessories',
-        isActive: true,
-        sortOrder: 1
-      },
-      {
-        _id: '507f1f77bcf86cd799439012',
-        name: 'Women',
-        slug: 'women',
-        description: 'Women\'s fashion and accessories',
-        isActive: true,
-        sortOrder: 2
-      },
-      {
-        _id: '507f1f77bcf86cd799439013',
-        name: 'Household',
-        slug: 'household',
-        description: 'Home and household essentials',
-        isActive: true,
-        sortOrder: 3
-      }
-    ];
-    
-    return res.json({
-      success: true,
-      data: {
-        categories: mockCategories
-      }
-    });
-  }
-
-  const categories = await Category.find({ 
-    isActive: true,
-    level: 1  // Filter for level 1 categories only
-  }).sort({ sortOrder: 1, name: 1 });
-
-  return res.json({
-    success: true,
-    data: {
-      categories
-    }
-  });
-}));
+// Protected routes (admin authentication required)
+router.post('/', authenticateUserOrAdmin, createCategory);
+router.put('/:id', authenticateUserOrAdmin, updateCategory);
+router.delete('/:id', authenticateUserOrAdmin, deleteCategory);
+router.patch('/:id/toggle-status', authenticateUserOrAdmin, toggleCategoryStatus);
 
 export default router;

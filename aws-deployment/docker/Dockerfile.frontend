@@ -4,16 +4,16 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY shoppers9-frontend/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm ci
 
 # Copy source code
-COPY shoppers9-frontend/ ./
+COPY . ./
 
-# Copy production environment file
-COPY shoppers9-frontend/.env.production ./.env.production
+# Copy production environment file (if exists)
+# COPY .env.production ./.env.production
 
 # Temporarily disable strict unused checks for build
 RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/' tsconfig.app.json
@@ -31,7 +31,7 @@ RUN apk add --no-cache curl
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
-COPY aws-deployment/nginx/frontend.conf /etc/nginx/conf.d/default.conf
+COPY ../aws-deployment/nginx/frontend.conf /etc/nginx/conf.d/default.conf
 
 # Create non-root user (nginx group already exists)
 RUN adduser -S -D -H -u 1001 -s /sbin/nologin -G nginx appuser

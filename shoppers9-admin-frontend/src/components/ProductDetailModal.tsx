@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-import ProductForm from './ProductForm';
+import ProductWizard from './ProductWizard';
 import {
   X,
   Edit,
@@ -165,7 +165,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
           ) : product ? (
             isEditing ? (
-              <ProductForm
+              <ProductWizard
                 isOpen={true}
                 onClose={() => setIsEditing(false)}
                 onSubmit={handleProductUpdate}
@@ -182,7 +182,8 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   features: product.features && typeof product.features === 'string' ? product.features.split(',').map(f => f.trim()) : [],
                   tags: product.tags && typeof product.tags === 'string' ? product.tags.split(',').map(t => t.trim()) : [],
                   isActive: product.isActive,
-                  isFeatured: false
+                  isFeatured: false,
+                  specifications: product.specifications || {}
                 }}
                 isEditing={true}
               />
@@ -314,6 +315,125 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </div>
                 </div>
 
+                {/* Product Variants Section */}
+                {(product as any).variants && (product as any).variants.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Product Variants</h3>
+                    <div className="space-y-4">
+                      {(product as any).variants.map((variant: any, index: number) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
+                              <div className="flex items-center space-x-2">
+                                <div 
+                                  className="w-4 h-4 rounded border border-gray-300" 
+                                  style={{ backgroundColor: variant.colorCode || '#000000' }}
+                                ></div>
+                                <span className="text-sm text-gray-900">{variant.color}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Size</label>
+                              <span className="text-sm text-gray-900">{variant.size}</span>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-semibold text-green-600">
+                                  {formatCurrency(variant.price)}
+                                </span>
+                                {variant.originalPrice && variant.originalPrice !== variant.price && (
+                                  <span className="text-xs text-gray-500 line-through">
+                                    {formatCurrency(variant.originalPrice)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Stock</label>
+                              <span className={`text-sm font-medium ${
+                                variant.stock > 10 ? 'text-green-600' : 
+                                variant.stock > 0 ? 'text-yellow-600' : 'text-red-600'
+                              }`}>
+                                {variant.stock} units
+                              </span>
+                            </div>
+                          </div>
+                          {variant.sku && (
+                            <div className="mt-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
+                              <span className="text-xs text-gray-600 font-mono">{variant.sku}</span>
+                            </div>
+                          )}
+                          {variant.images && variant.images.length > 0 && (
+                            <div className="mt-3">
+                              <label className="block text-xs font-medium text-gray-700 mb-2">Variant Images</label>
+                              <div className="flex space-x-2">
+                                {variant.images.slice(0, 4).map((image: string, imgIndex: number) => (
+                                  <img
+                                    key={imgIndex}
+                                    src={image.startsWith('http') ? image : `http://localhost:4000${image}`}
+                                    alt={`${variant.color} ${variant.size}`}
+                                    className="w-12 h-12 object-cover rounded border border-gray-200"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02NCA5NkM4MC41Njg1IDk2IDk2IDgwLjU2ODUgOTYgNjRDOTYgNDcuNDMxNSA4MC41Njg1IDMyIDY0IDMyQzQ3LjQzMTUgMzIgMzIgNDcuNDMxNSAzMiA2NEMzMiA4MC41Njg1IDQ3LjQzMTUgOTYgNjQgOTZaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik02NCA4MEM3Mi44MzY2IDgwIDgwIDcyLjgzNjYgODAgNjRDODAgNTUuMTYzNCA3Mi44MzY2IDQ4IDY0IDQ4QzU1LjE2MzQgNDggNDggNTUuMTYzNCA0OCA2NEM0OCA3Mi44MzY2IDU1LjE2MzQgODAgNjQgODBaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+                                    }}
+                                  />
+                                ))}
+                                {variant.images.length > 4 && (
+                                  <div className="w-12 h-12 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">+{variant.images.length - 4}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Available Colors & Sizes */}
+                {((product as any).availableColors || (product as any).availableSizes) && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Available Options</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {(product as any).availableColors && (product as any).availableColors.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-3">Available Colors</label>
+                          <div className="flex flex-wrap gap-2">
+                            {(product as any).availableColors.map((color: any, index: number) => (
+                              <div key={index} className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg border">
+                                <div 
+                                  className="w-4 h-4 rounded border border-gray-300" 
+                                  style={{ backgroundColor: color.code }}
+                                ></div>
+                                <span className="text-sm text-gray-900">{color.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(product as any).availableSizes && (product as any).availableSizes.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-3">Available Sizes</label>
+                          <div className="flex flex-wrap gap-2">
+                            {(product as any).availableSizes.map((size: any, index: number) => (
+                              <span key={index} className="bg-gray-50 px-3 py-2 rounded-lg border text-sm text-gray-900">
+                                {size.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Additional Details */}
                 {(product.specifications || product.features || product.tags) && (
                   <div className="border-t border-gray-200 pt-6">
@@ -325,11 +445,20 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             Specifications
                           </label>
                           <div className="bg-gray-50 p-3 rounded-md">
-                            <pre className="text-sm text-gray-600 whitespace-pre-wrap">
-                              {typeof product.specifications === 'object' 
-                                ? JSON.stringify(product.specifications, null, 2)
-                                : product.specifications}
-                            </pre>
+                            {typeof product.specifications === 'object' ? (
+                              <div className="space-y-2">
+                                {Object.entries(product.specifications).map(([key, value]) => (
+                                  <div key={key} className="flex justify-between text-sm">
+                                    <span className="font-medium text-gray-700 capitalize">
+                                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
+                                    </span>
+                                    <span className="text-gray-600">{String(value)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-600">{product.specifications}</div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -340,7 +469,27 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             Features
                           </label>
                           <div className="bg-gray-50 p-3 rounded-md">
-                            <p className="text-sm text-gray-600">{product.features}</p>
+                            {typeof product.features === 'string' ? (
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                {product.features.split(',').map((feature, index) => (
+                                  <li key={index} className="flex items-center">
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                    {feature.trim()}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : Array.isArray(product.features) ? (
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                {product.features.map((feature, index) => (
+                                  <li key={index} className="flex items-center">
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                    {feature}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-gray-600">{product.features}</p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -351,7 +500,25 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             Tags
                           </label>
                           <div className="bg-gray-50 p-3 rounded-md">
-                            <p className="text-sm text-gray-600">{product.tags}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {typeof product.tags === 'string' ? (
+                                product.tags.split(',').map((tag, index) => (
+                                  <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                    #{tag.trim()}
+                                  </span>
+                                ))
+                              ) : Array.isArray(product.tags) ? (
+                                product.tags.map((tag, index) => (
+                                  <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                    #{tag}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                  #{product.tags}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}

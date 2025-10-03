@@ -4,7 +4,7 @@ import { api } from './api';
 // Use the same API configuration as other services
 const API_BASE_URL = import.meta.env.PROD 
   ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-  : import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+  : '/api'; // Use relative URL in development to work with Vite proxy
 
 class AuthService {
   private getErrorMessage(error: unknown, defaultMessage: string): string {
@@ -257,9 +257,21 @@ class AuthService {
 
   async approveProduct(productId: string, comments?: string) {
     try {
+      console.log('🌐 authService.approveProduct called with:', {
+        productId,
+        comments,
+        url: `/admin/products/${productId}/approve`
+      });
+      
+      if (!productId) {
+        throw new Error('Product ID is required');
+      }
+      
       const response = await api.patch(`/admin/products/${productId}/approve`, {
         comments
       });
+      
+      console.log('✅ authService.approveProduct response:', response.data);
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(this.getErrorMessage(error, 'Failed to approve product'));
@@ -275,7 +287,7 @@ class AuthService {
       });
       
       const requestData = {
-        reason,
+        rejectionReason: reason,
         comments
       };
       

@@ -40,7 +40,7 @@ export const getProductFilterValues = async (req: Request, res: Response): Promi
         product: {
           _id: product._id,
           name: product.name,
-          subCategory: product.subCategory
+          category: product.category
         },
         filterValues
       }

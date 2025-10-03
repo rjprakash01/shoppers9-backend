@@ -52,10 +52,23 @@ const Category: React.FC = () => {
 
   useEffect(() => {
     if (categorySlug) {
-      parseCategoryPath();
-      fetchCategoryProducts();
+      // Clear products immediately when category changes to prevent showing stale data
+      setProducts([]);
+      setIsLoading(true);
+      
+      // Parse category path first, then fetch products
+      parseCategoryPath().then(() => {
+        fetchCategoryProducts();
+      });
     }
-  }, [categorySlug]); // Removed filters dependency to prevent infinite loop
+  }, [categorySlug]);
+
+  // Separate useEffect for filter changes (excluding category changes)
+  useEffect(() => {
+    if (categorySlug && filters.category === categorySlug) {
+      fetchCategoryProductsWithFilters(filters);
+    }
+  }, [filters.page, filters.sortBy, filters.sortOrder, filters.minPrice, filters.maxPrice]);
 
   const parseCategoryPath = async () => {
     try {
@@ -175,7 +188,13 @@ const Category: React.FC = () => {
   };
   
   const fetchCategoryProducts = async () => {
-    await fetchCategoryProductsWithFilters(filters);
+    // Ensure category filter matches current categorySlug
+    const categoryFilters = {
+      ...filters,
+      category: categorySlug
+    };
+    setFilters(categoryFilters);
+    await fetchCategoryProductsWithFilters(categoryFilters);
   };
 
   const updateFilters = (newFilters: Partial<ProductFilters>) => {
@@ -183,11 +202,8 @@ const Category: React.FC = () => {
     setFilters(updatedFilters);
     setCurrentPage(updatedFilters.page || 1);
     
-    // Manually trigger product fetch when filters change
-    // Use setTimeout to ensure state updates are applied first
-    setTimeout(() => {
-      fetchCategoryProductsWithFilters(updatedFilters);
-    }, 0);
+    // Directly fetch products with updated filters
+    fetchCategoryProductsWithFilters(updatedFilters);
   };
 
   const handleFiltersChange = (newFilters: Partial<ProductFilters>) => {

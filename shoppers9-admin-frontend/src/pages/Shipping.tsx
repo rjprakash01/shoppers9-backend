@@ -142,7 +142,7 @@ const Shipping: React.FC = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  if (loading && !analytics && !shipments.length && !providers.length) {
+  if (loading && !analytics && !(shipments?.length) && !(providers?.length)) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
@@ -258,7 +258,7 @@ const Shipping: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold mb-4">Status Breakdown</h3>
               <div className="space-y-3">
-                {analytics.statusBreakdown.map((status, index) => (
+                {analytics?.statusBreakdown && analytics.statusBreakdown.map((status, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(status.status)}
@@ -278,7 +278,7 @@ const Shipping: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold mb-4">Top Providers</h3>
               <div className="space-y-3">
-                {analytics.topProviders.map((provider, index) => (
+                {analytics?.topProviders && analytics.topProviders.map((provider, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{provider.providerName}</div>
@@ -286,7 +286,7 @@ const Shipping: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium text-green-600">
-                        {provider.deliveryRate.toFixed(1)}%
+                        {(provider.deliveryRate || 0).toFixed(1)}%
                       </div>
                       <div className="text-xs text-gray-500">delivery rate</div>
                     </div>
@@ -382,7 +382,7 @@ const Shipping: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {shipments.map((shipment) => (
+                      {shipments && shipments.map((shipment) => (
                         <tr key={shipment._id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -497,7 +497,7 @@ const Shipping: React.FC = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900">
-              Shipping Providers ({providers.length})
+              Shipping Providers ({providers?.length || 0})
             </h2>
             <button
               onClick={() => {
@@ -512,7 +512,7 @@ const Shipping: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {providers.map((provider) => (
+            {providers && providers.map((provider) => (
               <div key={provider._id} className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">

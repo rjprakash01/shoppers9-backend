@@ -5,7 +5,7 @@ import { productService, type Product, type ProductFilters } from '../services/p
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWishlist } from '../contexts/WishlistContext';
-import { formatPrice, formatPriceRange } from '../utils/currency';
+import { formatPrice, formatPriceRange, formatDiscount, calculateDiscountPercentage } from '../utils/currency';
 import { getImageUrl } from '../utils/imageUtils';
 import FilterSidebar from '../components/FilterSidebar';
 import LoginModal from '../components/LoginModal';
@@ -56,8 +56,8 @@ const Products: React.FC = () => {
       categoryFilter = decodeURIComponent(category);
     }
     
-    // Clear products immediately when category changes to prevent showing stale data
-    setProducts([]);
+    // Don't clear products immediately to prevent blinking effect
+    // Let the loading state handle the transition
     
     setFilters(prev => ({
       ...prev,
@@ -100,15 +100,20 @@ const Products: React.FC = () => {
       
       const response = await productService.getProducts(filtersWithCacheBust);
       console.log('API Response - Total products:', response.products.length);
+      console.log('API Response - Full response:', JSON.stringify(response, null, 2));
       console.log('First 3 products from API:');
       response.products.slice(0, 3).forEach((product, index) => {
-        console.log(`${index + 1}. ${product.name}`);
+        console.log(`${index + 1}. ${product.name} - Category: ${product.category?.name || 'No category'}`);
       });
       console.log('=== END FRONTEND FILTERS DEBUG ===\n');
       setProducts(response.products);
       setTotalPages(response.pagination.totalPages);
     } catch (error) {
-      
+      console.error('=== API ERROR ===');
+      console.error('Error fetching products:', error);
+      console.error('Filters that caused error:', JSON.stringify(filters, null, 2));
+      console.error('=== END API ERROR ===');
+      setProducts([]);
     } finally {
       setIsLoading(false);
     }
@@ -239,6 +244,12 @@ const Products: React.FC = () => {
                 target.src = '/placeholder-image.svg';
               }}
             />
+            {/* Discount Badge */}
+            {product.originalPrice && product.originalPrice > product.price && (
+              <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                {calculateDiscountPercentage(product.originalPrice, product.price)}% OFF
+              </div>
+            )}
             {product.totalStock === 0 && (
               <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
                 <span className="text-white font-medium text-xs px-2 py-1 rounded" style={{
@@ -275,27 +286,18 @@ const Products: React.FC = () => {
           
           <div className="flex flex-col space-y-1">
             <div className="flex items-center space-x-2">
-              {/* Show price range if min and max prices are different */}
-              {product.minPrice && product.maxPrice && product.minPrice !== product.maxPrice ? (
-                <span className="text-sm font-bold" style={{
-                  color: 'var(--cta-dark-purple)'
-                }}>
-                  {formatPrice(product.minPrice)}
-                </span>
-              ) : (
-                <span className="text-sm font-bold" style={{
-                  color: 'var(--cta-dark-purple)'
-                }}>
-                  {formatPrice(product.minPrice || 0)}
-                </span>
-              )}
-              {product.maxDiscount && product.maxDiscount > 0 && (
+              <span className="text-sm font-bold" style={{
+                color: 'var(--cta-dark-purple)'
+              }}>
+                {formatPrice(product.price)}
+              </span>
+              {product.originalPrice && product.originalPrice > product.price && (
                 <>
                   <span className="text-xs text-gray-500 line-through">
-                    {product.minOriginalPrice && product.maxOriginalPrice && product.minOriginalPrice !== product.maxOriginalPrice ? 
-                      `From ${formatPrice(product.minOriginalPrice)}` : 
-                      formatPrice(product.minOriginalPrice || 0)
-                    }
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium text-xs">
+                    {calculateDiscountPercentage(product.originalPrice, product.price)}% OFF
                   </span>
                 </>
               )}

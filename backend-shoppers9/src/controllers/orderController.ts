@@ -466,7 +466,7 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
     order.cancellationReason = reason;
 
     // If payment was made, initiate refund
-    if (order.paymentStatus === PaymentStatus.SUCCESS) {
+    if (order.paymentStatus === PaymentStatus.COMPLETED) {
       order.refundStatus = RefundStatus.PENDING;
       order.refundAmount = order.finalAmount;
     }
@@ -491,7 +491,7 @@ export const cancelOrder = async (req: AuthenticatedRequest, res: Response, next
 
     // Restore product stock using inventory service
     const stockItems = order.items.map(item => ({
-      productId: item.product,
+      productId: item.product.toString(),
       variantId: item.variantId,
       quantity: item.quantity
     }));
@@ -548,7 +548,7 @@ export const updateOrderStatus = async (req: Request, res: Response, next: NextF
 
     if (status === OrderStatus.DELIVERED) {
       order.deliveredAt = new Date();
-      order.paymentStatus = PaymentStatus.SUCCESS;
+      order.paymentStatus = PaymentStatus.COMPLETED;
     }
 
     await order.save();
@@ -582,7 +582,7 @@ export const processPayment = async (req: AuthenticatedRequest, res: Response, n
     // For now, we'll simulate payment processing
     // In a real app, you'd integrate with payment gateways like Razorpay, Stripe, etc.
     
-    order.paymentStatus = PaymentStatus.SUCCESS;
+    order.paymentStatus = PaymentStatus.COMPLETED;
     order.paymentId = paymentId;
     order.orderStatus = OrderStatus.CONFIRMED;
 

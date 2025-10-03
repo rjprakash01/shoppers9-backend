@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-// Create separate API instance for support operations (main backend)
+// Create separate API instance for support operations (admin backend)
 const supportApi = axios.create({
   baseURL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5000/api',
+    ? process.env.VITE_ADMIN_API_URL || 'https://admin-api.shoppers9.com'
+    : '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,8 +31,14 @@ supportApi.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      // Clear localStorage but don't interfere with AuthContext state management
+      // The AuthContext will detect the missing token and handle logout properly
       localStorage.removeItem('adminToken');
-      window.location.href = '/login';
+      localStorage.removeItem('adminUser');
+      // Trigger a page reload to let AuthContext reinitialize and redirect to login
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
     return Promise.reject(error);
   }
@@ -140,7 +146,7 @@ class AdminSupportService {
     search?: string;
   }): Promise<TicketsResponse> {
     try {
-      const response = await supportApi.get<SupportResponse<TicketsResponse>>('/support/admin/tickets', { params });
+      const response = await supportApi.get<SupportResponse<TicketsResponse>>('/admin/support/tickets', { params });
       
       if (response.data.success) {
         return response.data.data;
@@ -158,7 +164,7 @@ class AdminSupportService {
    */
   async getTicket(ticketId: string): Promise<SupportTicket> {
     try {
-      const response = await supportApi.get<SupportResponse<{ ticket: SupportTicket }>>(`/support/admin/tickets/${ticketId}`);
+      const response = await supportApi.get<SupportResponse<{ ticket: SupportTicket }>>(`/admin/support/tickets/${ticketId}`);
       
       if (response.data.success) {
         return response.data.data.ticket;
@@ -177,7 +183,7 @@ class AdminSupportService {
   async updateTicket(ticketId: string, updateData: UpdateTicketRequest): Promise<SupportTicket> {
     try {
       const response = await supportApi.patch<SupportResponse<{ ticket: SupportTicket }>>(
-        `/support/admin/tickets/${ticketId}`, 
+        `/admin/support/tickets/${ticketId}`, 
         updateData
       );
       
@@ -198,7 +204,7 @@ class AdminSupportService {
   async addAgentMessage(ticketId: string, messageData: AddAgentMessageRequest): Promise<SupportTicket> {
     try {
       const response = await supportApi.post<SupportResponse<{ ticket: SupportTicket }>>(
-        `/support/admin/tickets/${ticketId}/messages`, 
+        `/admin/support/tickets/${ticketId}/messages`, 
         messageData
       );
       
@@ -218,7 +224,7 @@ class AdminSupportService {
    */
   async getCategories(): Promise<{ value: SupportCategory; label: string }[]> {
     try {
-      const response = await supportApi.get<SupportResponse<{ categories: { value: SupportCategory; label: string }[] }>>('/support/categories/list');
+      const response = await supportApi.get<SupportResponse<{ categories: { value: SupportCategory; label: string }[] }>>('/admin/support/categories/list');
       
       if (response.data.success) {
         return response.data.data.categories;

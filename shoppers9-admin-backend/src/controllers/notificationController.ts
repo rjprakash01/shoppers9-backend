@@ -254,7 +254,7 @@ export const checkLowStockAndNotify = async () => {
         const existingNotification = await Notification.findOne({
           type: NotificationType.LOW_STOCK,
           'data.productId': product._id.toString(),
-          'data.variantId': variant._id?.toString(),
+          'data.variantSku': variant.sku,
           createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
         });
 
@@ -266,7 +266,7 @@ export const checkLowStockAndNotify = async () => {
             {
               productId: product._id.toString(),
               productName: product.name,
-              variantId: variant._id?.toString(),
+              variantSku: variant.sku,
               color: variant.color,
               size: variant.size,
               stock: variant.stock
@@ -290,7 +290,7 @@ export const checkLowStockAndNotify = async () => {
         const existingNotification = await Notification.findOne({
           type: NotificationType.OUT_OF_STOCK,
           'data.productId': product._id.toString(),
-          'data.variantId': variant._id?.toString(),
+          'data.variantSku': variant.sku,
           createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
         });
 
@@ -302,7 +302,7 @@ export const checkLowStockAndNotify = async () => {
             {
               productId: product._id.toString(),
               productName: product.name,
-              variantId: variant._id?.toString(),
+              variantSku: variant.sku,
               color: variant.color,
               size: variant.size,
               stock: 0

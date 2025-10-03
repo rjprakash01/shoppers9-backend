@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { IFilterAssignment } from '../types';
+import { IFilterAssignment, IFilterAssignmentModel } from '../types';
 
 const filterAssignmentSchema = new Schema<IFilterAssignment>({
   filter: {
@@ -236,6 +236,6 @@ filterAssignmentSchema.statics.getHierarchicalFilters = function(categoryId: mon
   ]);
 };
 
-const FilterAssignment = mongoose.model<IFilterAssignment>('FilterAssignment', filterAssignmentSchema);
+const FilterAssignment = mongoose.model<IFilterAssignment, IFilterAssignmentModel>('FilterAssignment', filterAssignmentSchema);
 
 export default FilterAssignment;

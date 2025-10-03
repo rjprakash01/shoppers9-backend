@@ -177,6 +177,7 @@ const PermissionManagement: React.FC = () => {
   };
 
   const handleUserModuleAccessToggle = (userId: string, module: string, hasAccess: boolean) => {
+    console.log(`🔄 handleUserModuleAccessToggle called:`, { userId, module, hasAccess });
     // Update UI immediately
     setUserPermissions(prevUserPermissions => 
       prevUserPermissions.map(userPerm => {
@@ -224,6 +225,7 @@ const PermissionManagement: React.FC = () => {
     });
     
     setHasUnsavedChanges(true);
+    console.log(`✅ hasUnsavedChanges set to true for user ${userId}`);
   };
 
   // Removed handleUserPermissionToggle - using handleUserModuleAccessToggle instead
@@ -231,6 +233,7 @@ const PermissionManagement: React.FC = () => {
   // Removed handleSaveRestrictions - no longer needed with binary access model
 
   const handleSaveAllChanges = async () => {
+    console.log('🚀 === SAVE ALL CHANGES BUTTON CLICKED ===');
     console.log('=== SAVE ALL CHANGES STARTED ===');
     console.log('Current roles:', roles);
     console.log('Original roles:', originalRoles);
@@ -349,13 +352,29 @@ const PermissionManagement: React.FC = () => {
       const results = await Promise.all(savePromises);
       console.log('All API calls completed successfully:', results);
       
-      // Update original state to match current state
-      console.log('Updating original state to match current state');
-      setOriginalRoles(JSON.parse(JSON.stringify(roles)));
-      setOriginalUserPermissions(JSON.parse(JSON.stringify(userPermissions)));
+      // Refetch data from server to ensure consistency but preserve original state for future comparisons
+      console.log('Refetching data from server to verify changes');
+      const [permissionsRes, rolesRes, userPermissionsRes] = await Promise.all([
+        api.get('/admin/permissions'),
+        api.get('/admin/roles'),
+        api.get('/admin/all-user-permissions')
+      ]);
       
-      // Clear pending changes
-      console.log('Clearing pending changes');
+      const fetchedPermissions = permissionsRes.data.data || [];
+      const fetchedRoles = rolesRes.data.data || [];
+      const fetchedUserPermissions = userPermissionsRes.data.data || [];
+      
+      // Update current state with fresh data
+      setPermissions(fetchedPermissions);
+      setRoles(fetchedRoles);
+      setUserPermissions(fetchedUserPermissions);
+      
+      // IMPORTANT: Update original state to match current state after successful save
+      // This ensures future changes are detected correctly
+      setOriginalRoles(JSON.parse(JSON.stringify(fetchedRoles)));
+      setOriginalUserPermissions(JSON.parse(JSON.stringify(fetchedUserPermissions)));
+      
+      // Clear pending changes since they've been saved
       setPendingChanges({ roleChanges: {}, userChanges: {} });
       setHasUnsavedChanges(false);
       
@@ -365,6 +384,12 @@ const PermissionManagement: React.FC = () => {
       
       console.log('=== SAVE COMPLETED SUCCESSFULLY ===');
       alert('All changes saved successfully!');
+      
+      // Verify that changes were actually saved by checking the refetched data
+      console.log('Verifying changes were persisted...');
+      const freshUserPermissionsResponse = await api.get('/admin/all-user-permissions');
+      const freshUserPermissions = freshUserPermissionsResponse.data.data || [];
+      console.log('Fresh user permissions from server:', freshUserPermissions);
     } catch (error: any) {
       console.error('=== SAVE FAILED ===');
       console.error('Error details:', error);
@@ -374,15 +399,31 @@ const PermissionManagement: React.FC = () => {
       console.error('Error message:', error.response?.data?.message);
       console.error('Full error object:', JSON.stringify(error.response?.data, null, 2));
       alert(error.response?.data?.message || 'Failed to save changes');
-      // Refresh data to ensure consistency
+      // Refresh data to ensure consistency but don't update original state on error
       console.log('Refreshing data due to error');
-      fetchData();
+      const [permissionsRes, rolesRes, userPermissionsRes] = await Promise.all([
+        api.get('/admin/permissions'),
+        api.get('/admin/roles'),
+        api.get('/admin/all-user-permissions')
+      ]);
+      
+      const fetchedPermissions = permissionsRes.data.data || [];
+      const fetchedRoles = rolesRes.data.data || [];
+      const fetchedUserPermissions = userPermissionsRes.data.data || [];
+      
+      // Update current state with fresh data but keep original state for comparison
+      setPermissions(fetchedPermissions);
+      setRoles(fetchedRoles);
+      setUserPermissions(fetchedUserPermissions);
+      
+      // Don't update original state on error - keep pending changes for retry
     }
   };
   
   const handleCancelChanges = () => {
-    // Revert all changes by refetching data
-    fetchData();
+    // Revert all changes by restoring from original state
+    setRoles(JSON.parse(JSON.stringify(originalRoles)));
+    setUserPermissions(JSON.parse(JSON.stringify(originalUserPermissions)));
     setPendingChanges({ roleChanges: {}, userChanges: {} });
     setHasUnsavedChanges(false);
   };
@@ -804,9 +845,15 @@ const PermissionManagement: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  // Save all module access changes
-                  editingUser.moduleAccess?.forEach(moduleAccess => {
-                    handleUserModuleAccessToggle(editingUser.userId, moduleAccess.module, moduleAccess.hasAccess);
+                  console.log('🔥 === MODAL SAVE BUTTON CLICKED ===');
+                  console.log('editingUser:', editingUser);
+                  console.log('modules:', modules);
+                  // Save all module access changes for ALL modules
+                  modules.forEach(module => {
+                    const moduleAccess = editingUser.moduleAccess?.find(m => m.module === module);
+                    const hasAccess = moduleAccess?.hasAccess || false;
+                    console.log(`📝 Processing module ${module}: hasAccess = ${hasAccess}`);
+                    handleUserModuleAccessToggle(editingUser.userId, module, hasAccess);
                   });
                   setEditingUser(null);
                 }}

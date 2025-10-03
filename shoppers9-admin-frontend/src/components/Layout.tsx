@@ -123,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                   <div className="hidden sm:block text-left">
                     <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                    <p className="text-xs text-gray-500">Admin</p>
+                    <p className="text-xs text-gray-500">{user?.primaryRole ? user.primaryRole.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'User'}</p>
                   </div>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`} />
                 </button>

@@ -8,6 +8,7 @@ export enum NotificationType {
   RETURN_PICKED = 'return_picked',
   LOW_STOCK = 'low_stock',
   OUT_OF_STOCK = 'out_of_stock',
+  PRODUCT_SUBMITTED = 'product_submitted',
   PRODUCT_APPROVED = 'product_approved',
   PRODUCT_REJECTED = 'product_rejected',
   PRODUCT_NEEDS_CHANGES = 'product_needs_changes',

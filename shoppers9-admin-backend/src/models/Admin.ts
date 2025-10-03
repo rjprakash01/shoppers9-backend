@@ -38,8 +38,8 @@ const adminSchema = new Schema<IAdmin>({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'moderator'],
-    default: 'moderator'
+    enum: ['super_admin', 'admin', 'sub_admin'],
+    default: 'sub_admin'
   },
   isActive: {
     type: Boolean,
@@ -153,6 +153,8 @@ adminSchema.pre('save', async function(next) {
   }
 });
 
+// Create the model using default mongoose connection for now
+// This will be updated to use adminConnection once it's properly established
 const Admin = mongoose.model<IAdmin>('Admin', adminSchema);
 
 export default Admin;

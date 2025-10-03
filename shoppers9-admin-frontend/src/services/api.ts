@@ -4,7 +4,7 @@ import axios from 'axios';
 export const api = axios.create({
   baseURL: import.meta.env.PROD 
     ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+    : '/api', // Use relative URL in development to work with Vite proxy
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -38,7 +38,7 @@ api.interceptors.response.use(
       localStorage.removeItem('adminUser');
       // Don't force redirect here - let the app handle it naturally
       // window.location.href = '/login';
-    } else if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
+    } else if (error.response?.status === 404) {
       // Handle missing endpoints gracefully
       console.warn(`API endpoint not found: ${error.config?.url}`);
       // Return empty data structure to prevent app crashes
@@ -49,6 +49,9 @@ api.interceptors.response.use(
           data: null
         }
       });
+    } else if (error.code === 'ERR_NETWORK') {
+      // Let network errors propagate to show the real issue
+      console.error('Network error:', error);
     }
     return Promise.reject(error);
   }

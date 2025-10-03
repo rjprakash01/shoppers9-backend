@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Permission from '../models/Permission';
-import Role from '../models/Role';
-import UserRole from '../models/UserRole';
-import User from '../models/User';
+import Role, { getRoleModel } from '../models/Role';
+import UserRole, { getUserRoleModel } from '../models/UserRole';
+import Admin from '../models/Admin';
 import AuditLog from '../models/AuditLog';
 import { AuthRequest } from '../types';
 
@@ -28,7 +29,8 @@ export const getAllPermissions = async (req: Request, res: Response) => {
 // Get all roles with their permissions
 export const getAllRoles = async (req: Request, res: Response) => {
   try {
-    const roles = await Role.find({ isActive: true })
+    const RoleModel = getRoleModel();
+    const roles = await RoleModel.find({ isActive: true })
       .sort({ level: 1 });
 
     return res.status(200).json({
@@ -50,7 +52,8 @@ export const updateRolePermissions = async (req: AuthRequest, res: Response) => 
     const { roleId } = req.params;
     const { permissionId, granted } = req.body;
 
-    const role = await Role.findById(roleId);
+    const RoleModel = getRoleModel();
+    const role = await RoleModel.findById(roleId);
     if (!role) {
       return res.status(404).json({
         success: false,
@@ -85,6 +88,11 @@ export const updateRolePermissions = async (req: AuthRequest, res: Response) => 
     }
 
     if (changesMade) {
+      // Ensure createdBy field is set for non-super_admin roles
+      if (role.name !== 'super_admin' && !role.createdBy) {
+        role.createdBy = req.admin!._id;
+      }
+      
       await role.save();
 
       // Log the permission change
@@ -96,13 +104,12 @@ export const updateRolePermissions = async (req: AuthRequest, res: Response) => 
         resourceId: role._id,
         details: {
           method: req.method,
-          url: req.originalUrl,
+          endpoint: req.originalUrl,
           userAgent: req.get('User-Agent'),
-          ip: req.ip,
+          ipAddress: req.ip,
           oldValues: { permissions: oldPermissions },
           newValues: { permissions: role.permissions },
-          permissionId,
-          granted
+          reason: `Updated permission ${permissionId} with granted: ${granted}`
         },
         status: 'success'
       });
@@ -135,7 +142,8 @@ export const bulkUpdateRolePermissions = async (req: AuthRequest, res: Response)
       });
     }
 
-    const role = await Role.findById(roleId);
+    const RoleModel = getRoleModel();
+    const role = await RoleModel.findById(roleId);
     if (!role) {
       return res.status(404).json({
         success: false,
@@ -158,6 +166,12 @@ export const bulkUpdateRolePermissions = async (req: AuthRequest, res: Response)
 
     const oldPermissions = [...role.permissions];
     role.permissions = permissions;
+    
+    // Ensure createdBy field is set for non-super_admin roles
+    if (role.name !== 'super_admin' && !role.createdBy) {
+      role.createdBy = req.admin!._id;
+    }
+    
     await role.save();
 
     // Log the bulk permission change
@@ -169,12 +183,12 @@ export const bulkUpdateRolePermissions = async (req: AuthRequest, res: Response)
       resourceId: role._id,
       details: {
         method: req.method,
-        url: req.originalUrl,
+        endpoint: req.originalUrl,
         userAgent: req.get('User-Agent'),
-        ip: req.ip,
+        ipAddress: req.ip,
         oldValues: { permissions: oldPermissions },
         newValues: { permissions: role.permissions },
-        permissionsCount: permissions.length
+        reason: `Bulk updated ${permissions.length} permissions`
       },
       status: 'success'
     });
@@ -199,16 +213,18 @@ export const bulkUpdateRolePermissions = async (req: AuthRequest, res: Response)
 // Helper function to sync role permissions to all users with that role
 const syncRolePermissionsToUsers = async (roleId: string) => {
   try {
-    const role = await Role.findById(roleId).populate('permissions');
+    const RoleModel = getRoleModel();
+    const role = await RoleModel.findById(roleId).populate('permissions');
     if (!role) return;
 
     // Find all UserRole entries for this role
-    const userRoles = await UserRole.find({ roleId, isActive: true });
+    const UserRoleModel = getUserRoleModel();
+    const userRoles = await UserRoleModel.find({ roleId, isActive: true });
     
     // Update each user's role-based permissions
     for (const userRole of userRoles) {
-      // Keep individual permissions, update role-based permissions
-      const individualPermissions = userRole.permissions.filter(p => p.source === 'individual');
+      // Keep existing permissions structure
+      const individualPermissions = userRole.permissions || [];
       const rolePermissions = role.permissions.map((perm: any) => ({
         permissionId: perm._id,
         granted: true,
@@ -236,7 +252,7 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
     }
 
     // Super admin has all permissions
-    if (req.admin?.primaryRole === 'super_admin') {
+    if (req.admin?.role === 'super_admin') {
       const allPermissions = await Permission.find({ isActive: true });
       const formattedPermissions = allPermissions.map(perm => ({
         key: perm.module,
@@ -251,7 +267,8 @@ export const getUserPermissions = async (req: AuthRequest, res: Response) => {
     }
 
     // Get user's specific module access
-    const userRole = await UserRole.findOne({ userId, isActive: true })
+    const UserRoleModel = getUserRoleModel();
+    const userRole = await UserRoleModel.findOne({ userId, isActive: true })
       .populate({
         path: 'roleId',
         select: 'name permissions',
@@ -330,10 +347,14 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
   try {
     console.log('🔍 Starting getAllUserPermissions...');
     
-    const userRoles = await UserRole.find({ isActive: true })
+    // Ensure all models are registered in admin connection
+    const RoleModel = getRoleModel();
+    const UserRoleModel = getUserRoleModel();
+    const userRoles = await UserRoleModel.find({ isActive: true })
       .populate({
         path: 'userId',
-        select: 'firstName lastName email primaryRole'
+        model: 'Admin', // Use Admin model since admins are created in Admin collection
+        select: 'firstName lastName email role'
       })
       .populate({
         path: 'roleId',
@@ -348,8 +369,8 @@ export const getAllUserPermissions = async (req: Request, res: Response) => {
         const user = userRole.userId as any;
         const role = userRole.roleId as any;
         
-        // Filter out super admin users - they don't need individual module permissions
-        if (user && user.primaryRole === 'super_admin') {
+        // Only filter out super admin users - admin role users should be included for module access assignment
+        if (user && user.role === 'super_admin') {
           return false;
         }
         
@@ -398,19 +419,21 @@ export const updateUserPermissions = async (req: AuthRequest, res: Response) => 
     const { module, hasAccess } = req.body;
 
     // Find or create UserRole entry
-    let userRole = await UserRole.findOne({ userId, isActive: true });
+    const UserRoleModel = getUserRoleModel();
+    let userRole = await UserRoleModel.findOne({ userId, isActive: true });
     if (!userRole) {
       // Get user to determine their role
-      const user = await User.findById(userId);
+      const user = await Admin.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found'
+          message: 'Admin not found'
         });
       }
 
       // Find the role for this user
-      const role = await Role.findOne({ name: user.primaryRole });
+      const RoleModel = getRoleModel();
+      const role = await RoleModel.findOne({ name: user.role });
       if (!role) {
         return res.status(404).json({
           success: false,
@@ -419,7 +442,7 @@ export const updateUserPermissions = async (req: AuthRequest, res: Response) => 
       }
 
       // Create new UserRole entry
-      userRole = await UserRole.create({
+      userRole = await UserRoleModel.create({
         userId,
         roleId: role._id,
         moduleAccess: [],
@@ -483,19 +506,21 @@ export const bulkUpdateUserPermissions = async (req: AuthRequest, res: Response)
     }
 
     // Find or create UserRole entry
-    let userRole = await UserRole.findOne({ userId, isActive: true });
+    const UserRoleModel = getUserRoleModel();
+    let userRole = await UserRoleModel.findOne({ userId, isActive: true });
     if (!userRole) {
       // Get user to determine their role
-      const user = await User.findById(userId);
+      const user = await Admin.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found'
+          message: 'Admin not found'
         });
       }
 
       // Find the role for this user
-      const role = await Role.findOne({ name: user.primaryRole });
+      const RoleModel = getRoleModel();
+      const role = await RoleModel.findOne({ name: user.role });
       if (!role) {
         return res.status(404).json({
           success: false,
@@ -504,7 +529,7 @@ export const bulkUpdateUserPermissions = async (req: AuthRequest, res: Response)
       }
 
       // Create new UserRole entry
-      userRole = await UserRole.create({
+      userRole = await UserRoleModel.create({
         userId,
         roleId: role._id,
         permissions: [],
@@ -527,8 +552,8 @@ export const bulkUpdateUserPermissions = async (req: AuthRequest, res: Response)
       });
     }
 
-    // Keep role-based permissions, update individual permissions
-    const rolePermissions = userRole.permissions.filter(p => p.source === 'role');
+    // Keep existing permissions structure
+    const rolePermissions = userRole.permissions || [];
     const individualPermissions = permissions.map(p => ({
       permissionId: p.permissionId,
       granted: p.granted,
@@ -545,14 +570,14 @@ export const bulkUpdateUserPermissions = async (req: AuthRequest, res: Response)
       action: 'bulk_user_permissions_updated',
       module: 'user_management',
       resource: 'user',
-      resourceId: userId,
+      resourceId: new mongoose.Types.ObjectId(userId),
       details: {
         method: req.method,
-        url: req.originalUrl,
+        endpoint: req.originalUrl,
         userAgent: req.get('User-Agent'),
-        ip: req.ip,
-        permissionsCount: permissions.length,
-        targetUserId: userId
+        ipAddress: req.ip,
+        reason: `Updated permissions for user ${userId}`,
+        affectedUsers: [new mongoose.Types.ObjectId(userId)]
       },
       status: 'success'
     });
@@ -577,7 +602,8 @@ export const updateUserPermissionRestrictions = async (req: AuthRequest, res: Re
     const { userId } = req.params;
     const { permissionId, restrictions } = req.body;
 
-    const userRole = await UserRole.findOne({ userId, isActive: true });
+    const UserRoleModel = getUserRoleModel();
+    const userRole = await UserRoleModel.findOne({ userId, isActive: true });
     if (!userRole) {
       return res.status(404).json({
         success: false,
@@ -741,13 +767,14 @@ export const initializeRoles = async (req: AuthRequest, res: Response) => {
       }
     ];
 
-    const Role = (await import('../models/Role')).default;
+    const { getRoleModel } = await import('../models/Role');
+    const RoleModel = getRoleModel();
     const createdRoles = [];
 
     for (const roleData of defaultRoles) {
-      const existingRole = await Role.findOne({ name: roleData.name });
+      const existingRole = await RoleModel.findOne({ name: roleData.name });
       if (!existingRole) {
-        const role = await Role.create(roleData);
+        const role = await RoleModel.create(roleData);
         createdRoles.push(role);
       }
     }
@@ -827,6 +854,81 @@ export const checkUserPermission = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to check user permission',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Create UserRole entries for existing admin users
+export const createUserRolesForAdmins = async (req: AuthRequest, res: Response) => {
+  try {
+    console.log('🔄 Creating UserRole entries for existing admin users...');
+
+    // Find all admin and sub_admin users
+    const adminUsers = await Admin.find({
+      role: { $in: ['admin', 'sub_admin'] },
+      isActive: true
+    });
+
+    console.log(`Found ${adminUsers.length} admin users`);
+
+    let createdCount = 0;
+    let existingCount = 0;
+
+    for (const user of adminUsers) {
+      // Check if UserRole already exists
+      const UserRoleModel = getUserRoleModel();
+      const existingUserRole = await UserRoleModel.findOne({ 
+        userId: user._id, 
+        isActive: true 
+      });
+
+      if (existingUserRole) {
+        console.log(`✅ UserRole already exists for ${user.email}`);
+        existingCount++;
+        continue;
+      }
+
+      // Find the role for this user
+      const RoleModel = getRoleModel();
+      const role = await RoleModel.findOne({ name: user.role });
+      if (!role) {
+        console.log(`❌ Role '${user.role}' not found for user ${user.email}`);
+        continue;
+      }
+
+      // Create UserRole entry
+      await UserRoleModel.create({
+        userId: user._id,
+        roleId: role._id,
+        moduleAccess: [],
+        isActive: true,
+        assignedBy: req.admin?._id || user._id
+      });
+
+      console.log(`✅ Created UserRole entry for ${user.email} (${user.role})`);
+      createdCount++;
+    }
+
+    console.log('\n📊 UserRole Creation Summary:');
+    console.log(`- Created: ${createdCount} new UserRole entries`);
+    console.log(`- Existing: ${existingCount} UserRole entries`);
+    console.log(`- Total Admin Users: ${adminUsers.length}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'UserRole entries created successfully',
+      data: {
+        created: createdCount,
+        existing: existingCount,
+        total: adminUsers.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error creating UserRole entries:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create UserRole entries',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

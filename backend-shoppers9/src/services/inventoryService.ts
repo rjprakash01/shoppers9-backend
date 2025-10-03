@@ -1,5 +1,5 @@
-import { Product } from '../models/Product';
-import { IProduct, IProductVariant } from '../types';
+import { Product, IProductVariant } from '../models/Product';
+import { IProduct } from '../types';
 import mongoose from 'mongoose';
 
 export interface StockUpdateRequest {

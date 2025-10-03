@@ -335,6 +335,35 @@ userSchema.statics.findPendingSellers = function() {
   });
 };
 
-const User = mongoose.model<IUser>('User', userSchema);
+// Lazy model creation
+let _userModel: any = null;
 
-export default User;
+// Function to get User model with proper connection
+export const getUserModel = () => {
+  if (!_userModel) {
+    const { adminConnection } = require('../config/database');
+    if (!adminConnection) {
+      throw new Error('Admin connection not established');
+    }
+    // Check if model already exists on this connection to prevent re-registration
+    try {
+      _userModel = adminConnection.model<IUser>('User');
+    } catch (error) {
+      // Model doesn't exist, create it
+      _userModel = adminConnection.model<IUser>('User', userSchema);
+    }
+  }
+  return _userModel;
+};
+
+// Export the model getter function to prevent immediate registration
+export { getUserModel };
+
+// Export the model (for backward compatibility) - lazy loaded
+export const User = new Proxy({}, {
+  get(target, prop) {
+    return getUserModel()[prop];
+  }
+});
+
+export default getUserModel;

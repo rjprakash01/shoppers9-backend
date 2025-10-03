@@ -208,8 +208,21 @@ const ProductReviewQueue: React.FC = () => {
 
   const handleDirectApproval = async (product: Product) => {
     try {
+      console.log('🚀 handleDirectApproval called with product:', {
+        id: product.id,
+        name: product.name,
+        productObject: product
+      });
+      
+      if (!product.id) {
+        console.error('❌ Product ID is missing!', product);
+        toast.error('Product ID is required');
+        return;
+      }
+      
       setLoadingProductId(product.id);
       
+      console.log('📤 Calling authService.approveProduct with ID:', product.id);
       // Make API call first, only update UI after success
       await authService.approveProduct(product.id, '');
       

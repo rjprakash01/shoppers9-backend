@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import Product from '../models/Product';
 import Order from '../models/Order';
-import User from '../models/User';
+import { getUserModel } from '../models/User';
 import AuditLog from '../models/AuditLog';
 import mongoose from 'mongoose';
 
@@ -16,7 +16,7 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
       });
     }
 
-    const userRole = req.admin.primaryRole;
+    const userRole = req.admin.role;
     const userId = req.admin._id;
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
@@ -56,9 +56,7 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
         method: req.method,
         endpoint: req.originalUrl,
         userAgent: req.get('User-Agent'),
-        ipAddress: req.ip,
-        dateRange: { startDate, endDate },
-        role: userRole
+        ipAddress: req.ip
       },
       status: 'success'
     });
@@ -103,6 +101,7 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
 
 // Super Admin Dashboard - Global overview of all data
 async function getSuperAdminDashboard(startDate: Date, endDate: Date) {
+  const User = getUserModel();
   const [totalUsers, totalProducts, totalOrders, totalRevenue, recentOrders, topProducts, userGrowth, salesTrend] = await Promise.all([
     // Total users across all roles
     User.countDocuments({ isActive: true }),
@@ -231,6 +230,7 @@ async function getSuperAdminDashboard(startDate: Date, endDate: Date) {
 
 // Admin Dashboard - Only admin's own data
 async function getAdminDashboard(userId: string, startDate: Date, endDate: Date) {
+  const User = getUserModel();
   const [totalUsers, totalProducts, totalOrders, totalRevenue, recentOrders, topProducts, userGrowth, salesTrend] = await Promise.all([
     // Total users (customers only)
     User.countDocuments({ isActive: true, primaryRole: 'customer' }),

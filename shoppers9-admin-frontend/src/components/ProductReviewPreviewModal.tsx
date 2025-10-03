@@ -93,6 +93,8 @@ const ProductReviewPreviewModal: React.FC<ProductReviewPreviewModalProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
@@ -108,7 +110,7 @@ const ProductReviewPreviewModal: React.FC<ProductReviewPreviewModalProps> = ({
             <Package className="h-6 w-6 text-blue-600" />
             <h2 className="text-xl font-semibold text-gray-900">Product Preview</h2>
             <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(product.reviewStatus)}`}>
-              {product.reviewStatus.replace('_', ' ').toUpperCase()}
+              {(product.reviewStatus || 'pending').replace('_', ' ').toUpperCase()}
             </span>
           </div>
           <button
@@ -285,7 +287,7 @@ const ProductReviewPreviewModal: React.FC<ProductReviewPreviewModalProps> = ({
                     {Object.entries(product.specifications).map(([key, value]) => (
                       <div key={key} className="flex justify-between py-2 border-b border-gray-100">
                         <span className="text-sm font-medium text-gray-500 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                          {(key || '').replace(/([A-Z])/g, ' $1').trim()}
                         </span>
                         <span className="text-sm text-gray-900">
                           {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}

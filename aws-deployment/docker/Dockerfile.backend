@@ -4,14 +4,14 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY backend-shoppers9/package*.json ./
-COPY backend-shoppers9/tsconfig.json ./
+COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install all dependencies (including devDependencies for build)
 RUN npm install
 
 # Copy source code
-COPY backend-shoppers9/src/ ./src/
+COPY src/ ./src/
 
 # Build the application
 RUN npm run build
@@ -29,7 +29,7 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
 # Copy package files and install production dependencies
-COPY --chown=nodejs:nodejs backend-shoppers9/package*.json ./
+COPY --chown=nodejs:nodejs package*.json ./
 RUN npm install --only=production && npm cache clean --force
 
 # Copy built application

@@ -652,6 +652,30 @@ html {
   @apply bg-white bg-opacity-20 backdrop-blur-lg border border-white border-opacity-30;
 }
 
+/* Color swatch override - removed to allow inline styles */
+
+/* Debug Color Swatch Styles */
+.debug-color-swatch {
+  position: relative;
+  cursor: pointer;
+}
+
+.debug-color-swatch:hover::after {
+  content: attr(data-color-name) ': ' attr(data-color-code);
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+}
+
 /* Dual Range Slider Styles */
 .slider-thumb {
   -webkit-appearance: none;

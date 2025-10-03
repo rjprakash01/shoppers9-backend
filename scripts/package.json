@@ -1,0 +1,26 @@
+{
+  "name": "shoppers9-database-scripts",
+  "version": "1.0.0",
+  "description": "Database initialization and management scripts for Shoppers9",
+  "main": "init-atlas-databases.js",
+  "scripts": {
+    "init-atlas": "node init-atlas-databases.js",
+    "init-three-atlas": "node init-three-atlas-databases.js",
+    "migrate-to-atlas": "node migrate-to-atlas.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "mongodb",
+    "atlas",
+    "database",
+    "initialization",
+    "shoppers9"
+  ],
+  "author": "Shoppers9 Team",
+  "license": "MIT"
+}

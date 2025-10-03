@@ -99,7 +99,7 @@ const Login: React.FC = () => {
 
   const loadDemoCredentials = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/demo-credentials`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || '/api'}/auth/demo-credentials`);
       if (response.data.success) {
         setDemoCredentials(response.data.data);
       }
@@ -118,7 +118,7 @@ const Login: React.FC = () => {
           email: 'admin1@shoppers9.com',
           phone: '9876543210',
           password: 'admin123',
-          role: 'Administrator',
+          role: 'Admin',
           description: 'Administrative access with configurable permissions'
         },
         subAdmin: {
@@ -200,7 +200,7 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/send-otp`,
+        `${import.meta.env.VITE_API_URL || '/api'}/auth/send-otp`,
         { phone: phoneForm.phone }
       );
       
@@ -239,7 +239,7 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/verify-otp`,
+        `${import.meta.env.VITE_API_URL || '/api'}/auth/verify-otp`,
         { phone: phoneForm.phone, otp: phoneForm.otp }
       );
       

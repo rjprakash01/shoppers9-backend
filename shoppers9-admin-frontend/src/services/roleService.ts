@@ -4,7 +4,7 @@ import axios from 'axios';
 const roleApi = axios.create({
   baseURL: import.meta.env.PROD 
     ? import.meta.env.VITE_API_URL || 'https://api.shoppers9.com'
-    : 'http://localhost:5001/api',
+    : '/api', // Use relative URL in development to work with Vite proxy
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -391,6 +391,9 @@ class RoleService {
 
   // Utility methods - deprecated, use usePermissions hook instead
   hasModuleAccess(moduleAccess: any[], module: string): boolean {
+    if (!moduleAccess || !Array.isArray(moduleAccess)) {
+      return false;
+    }
     const moduleAccessItem = moduleAccess.find(m => m.module === module);
     return moduleAccessItem?.hasAccess || false;
   }
@@ -413,7 +416,7 @@ class RoleService {
   getRoleDisplayName(roleName: string): string {
     const roleNames: Record<string, string> = {
       'super_admin': 'Super Administrator',
-      'admin': 'Administrator',
+      'admin': 'Admin',
       'sub_admin': 'Sub Administrator',
       'seller': 'Seller',
       'customer': 'Customer'

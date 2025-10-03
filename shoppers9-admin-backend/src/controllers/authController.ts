@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import User from '../models/User';
 import Admin from '../models/Admin';
 import Role from '../models/Role';
 import UserRole from '../models/UserRole';
+import { getUserModel } from '../models/User';
 import { AuthenticatedRequest, AuthRequest } from '../types';
 
 // OTP storage (in production, use Redis or database)
@@ -13,7 +13,7 @@ const otpStore = new Map<string, { otp: string; expiresAt: Date; attempts: numbe
 // Generate JWT Token
 const generateToken = (userId: string): string => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRE || '24h'
+    expiresIn: process.env.JWT_EXPIRES_IN || '24h'
   } as jwt.SignOptions);
 };
 
@@ -44,59 +44,43 @@ export const createDemoAccounts = async (): Promise<void> => {
         email: 'superadmin@shoppers9.com',
         phone: '9999999999',
         password: 'SuperAdmin@123',
-        primaryRole: 'super_admin',
-        adminInfo: {
-          employeeId: 'SA001',
-          department: 'System Administration',
-          accessLevel: 1
-        }
+        role: 'super_admin'
       },
       {
         firstName: 'Admin',
         lastName: 'User',
-        email: 'admin@shoppers9.com',
-        phone: '9999999998',
-        password: 'Admin@123',
-        primaryRole: 'admin',
-        adminInfo: {
-          employeeId: 'AD001',
-          department: 'Administration',
-          accessLevel: 2
-        }
+        email: 'admin1@shoppers9.com',
+        phone: '9876543210',
+        password: 'admin123',
+        role: 'admin'
       },
       {
         firstName: 'Sub',
         lastName: 'Admin',
-        email: 'subadmin@shoppers9.com',
-        phone: '9999999997',
-        password: 'SubAdmin@123',
-        primaryRole: 'sub_admin',
-        adminInfo: {
-          employeeId: 'SA001',
-          department: 'Support',
-          accessLevel: 3
-        }
+        email: 'admin2@shoppers9.com',
+        phone: '9876543211',
+        password: 'admin123',
+        role: 'sub_admin'
       }
     ];
 
     for (const accountData of demoAccounts) {
-      const existingUser = await User.findOne({ 
+      const existingAdmin = await Admin.findOne({ 
         $or: [{ email: accountData.email }, { phone: accountData.phone }] 
       });
       
-      if (!existingUser) {
+      if (!existingAdmin) {
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(accountData.password, salt);
         
-        await User.create({
+        await Admin.create({
           ...accountData,
           password: hashedPassword,
-          isActive: true,
-          isVerified: true
+          isActive: true
         });
         
-        console.log(`✅ Demo ${accountData.primaryRole} created: ${accountData.email}`);
+        console.log(`✅ Demo ${accountData.role} created: ${accountData.email}`);
       }
     }
   } catch (error) {
@@ -119,12 +103,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Find user by email
-    const user = await User.findOne({ 
+    // Find admin by email
+    const admin = await Admin.findOne({ 
       email: email.toLowerCase()
     }).select('+password');
 
-    if (!user) {
+    if (!admin) {
       console.log(`Failed login attempt for email: ${email}`);
       res.status(401).json({
         success: false,
@@ -134,8 +118,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if account is active
-    if (!user.isActive) {
-      console.log(`Login attempt on deactivated account: ${user.email}`);
+    if (!admin.isActive) {
+      console.log(`Login attempt on deactivated account: ${admin.email}`);
       res.status(401).json({
         success: false,
         message: 'Account is deactivated'
@@ -144,10 +128,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, admin.password);
     
     if (!isPasswordValid) {
-      console.log(`Invalid password attempt for user: ${user.email}`);
+      console.log(`Invalid password attempt for admin: ${admin.email}`);
       res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -156,13 +140,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate token
-    const token = generateToken(user._id.toString());
+    const token = generateToken(admin._id.toString());
     
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    admin.lastLogin = new Date();
+    await admin.save();
 
-    console.log(`Successful login for admin: ${user.email}`);
+    console.log(`Successful login for admin: ${admin.email}`);
 
     res.status(200).json({
       success: true,
@@ -170,14 +154,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       data: {
         accessToken: token,
         user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          primaryRole: user.primaryRole,
-          isActive: user.isActive,
-          lastLogin: user.lastLogin
+          id: admin._id,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          email: admin.email,
+          phone: admin.phone,
+          role: admin.role,
+          primaryRole: admin.role,
+          isActive: admin.isActive,
+          lastLogin: admin.lastLogin
         }
       }
     });
@@ -216,6 +201,7 @@ export const sendOTPToPhone = async (req: Request, res: Response): Promise<void>
     }
 
     // Find user by phone
+    const User = getUserModel();
     const user = await User.findOne({ 
       phone,
       primaryRole: { $in: ['super_admin', 'admin', 'sub_admin'] }
@@ -334,6 +320,7 @@ export const verifyOTPAndLogin = async (req: Request, res: Response): Promise<vo
     }
 
     // Find user
+    const User = getUserModel();
     const user = await User.findOne({ 
       phone,
       primaryRole: { $in: ['super_admin', 'admin', 'sub_admin'] }
@@ -433,7 +420,7 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
           lastName: admin.lastName,
           email: admin.email,
           phone: admin.phone,
-          role: admin.role,
+          role: admin.primaryRole,
           isActive: admin.isActive,
           lastLogin: admin.lastLogin
         }
@@ -462,16 +449,16 @@ export const getDemoCredentials = async (req: Request, res: Response): Promise<v
         description: 'Complete platform control with all permissions'
       },
       admin: {
-        email: 'admin@shoppers9.com',
-        phone: '9999999998',
-        password: 'Admin@123',
+        email: 'admin1@shoppers9.com',
+        phone: '9876543210',
+        password: 'admin123',
         role: 'Administrator',
         description: 'Administrative access with configurable permissions'
       },
       subAdmin: {
-        email: 'subadmin@shoppers9.com',
-        phone: '9999999997',
-        password: 'SubAdmin@123',
+        email: 'admin2@shoppers9.com',
+        phone: '9876543211',
+        password: 'admin123',
         role: 'Sub Administrator',
         description: 'Limited administrative access with specific modules'
       }

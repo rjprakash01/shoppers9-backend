@@ -4,7 +4,7 @@ import Permission from '../models/Permission';
 import { AuthRequest } from '../types';
 
 // Simplified permission checking middleware for binary module access
-export const requirePermission = (module: string) => {
+export const requirePermission = (module: string, action?: string) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.admin?.id;
@@ -17,7 +17,7 @@ export const requirePermission = (module: string) => {
       }
 
       // Super admin has all permissions
-      if (req.admin?.primaryRole === 'super_admin') {
+      if (req.admin?.role === 'super_admin') {
         return next();
       }
 
@@ -34,7 +34,8 @@ export const requirePermission = (module: string) => {
 
       // Add permission info to request for further processing
       req.permissions = {
-        module
+        module,
+        action
       };
 
       next();
@@ -145,10 +146,13 @@ const filterFields = (obj: any, allowedFields: string[]): any => {
 };
 
 // Simplified convenience functions for module access
-export const requireModuleAccess = (module: string) => requirePermission(module);
+export const requireModuleAccess = (module: string, action?: string) => requirePermission(module, action);
 
 // Legacy compatibility functions (all map to module access)
-export const canRead = (module: string) => requirePermission(module);
-export const canEdit = (module: string) => requirePermission(module);
-export const canDelete = (module: string) => requirePermission(module);
-export const canCreate = (module: string) => requirePermission(module);
+export const canRead = (module: string) => requirePermission(module, 'read');
+export const canEdit = (module: string) => requirePermission(module, 'edit');
+export const canDelete = (module: string) => requirePermission(module, 'delete');
+export const canCreate = (module: string) => requirePermission(module, 'create');
+
+// Alias for checkUserModuleAccess for backward compatibility
+export const checkUserPermission = checkUserModuleAccess;

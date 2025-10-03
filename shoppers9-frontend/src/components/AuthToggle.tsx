@@ -65,7 +65,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
           throw new Error('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
         }
         
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -106,7 +106,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
           throw new Error('Password is required');
         }
         
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -156,7 +156,7 @@ const AuthToggle: React.FC<AuthToggleProps> = ({ mode, onModeChange }) => {
           throw new Error('Please enter a valid 10-digit phone number');
         }
         
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/send-otp`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: formData.phone })
