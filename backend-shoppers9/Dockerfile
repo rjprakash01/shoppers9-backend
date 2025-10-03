@@ -22,11 +22,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Create uploads directory
-RUN mkdir -p uploads
-
 # Expose port
-EXPOSE 5001
+EXPOSE 5000
 
 # Start development server
 CMD ["npm", "run", "dev"]
@@ -35,7 +32,7 @@ CMD ["npm", "run", "dev"]
 FROM base AS build
 
 # Install all dependencies including dev dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -63,14 +60,11 @@ RUN npm install --only=production && npm cache clean --force
 COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=build --chown=nodejs:nodejs /app/package.json ./
 
-# Create uploads directory with proper permissions
-RUN mkdir -p uploads && chown nodejs:nodejs uploads
-
 # Switch to non-root user
 USER nodejs
 
 # Expose port
-EXPOSE 5001
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

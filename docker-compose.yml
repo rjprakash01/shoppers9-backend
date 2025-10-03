@@ -1,100 +1,118 @@
-version: '3.8'
-
 services:
-  # MongoDB Atlas is used - no local MongoDB service needed
-
-  # Backend API
-  backend:
-    build:
-      context: ./backend-shoppers9
-      dockerfile: ../aws-deployment/docker/Dockerfile.backend
-    container_name: shoppers9-backend
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: shoppers9-mongodb
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      PORT: 3001
-      MONGODB_URI: ${MONGODB_URI}
-      JWT_SECRET: ${JWT_SECRET}
-      SMS_API_KEY: ${SMS_API_KEY}
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
-      REDIS_URL: redis://redis:6379
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: shoppers9
     ports:
-      - "3001:3001"
-    depends_on:
-      - redis
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
     networks:
       - shoppers9-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  # Admin Backend
-  admin-backend:
+  # Customer Backend Service
+  backend-shoppers9:
+    build:
+      context: ./backend-shoppers9
+      target: development
+    container_name: backend-shoppers9
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:admin123@mongodb:27017/shoppers9?authSource=admin
+      JWT_SECRET: dev_jwt_secret_key_2024
+      JWT_REFRESH_SECRET: dev_jwt_refresh_secret_key_2024
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend-shoppers9:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - shoppers9-network
+    command: npm run dev
+
+  # Admin Backend Service
+  shoppers9-admin-backend:
     build:
       context: ./shoppers9-admin-backend
-      dockerfile: ../aws-deployment/docker/Dockerfile.admin-backend
+      target: development
     container_name: shoppers9-admin-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      PORT: 4000
-      ADMIN_MONGODB_URI: ${ADMIN_MONGODB_URI}
-      JWT_SECRET: ${JWT_SECRET}
-      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+      PORT: 5001
+      MONGODB_URI: mongodb://admin:admin123@mongodb:27017/shoppers9_admin?authSource=admin
+      JWT_SECRET: dev_admin_jwt_secret_key_2024
+      JWT_REFRESH_SECRET: dev_admin_jwt_refresh_secret_key_2024
+      SUPER_ADMIN_PASSWORD: SuperAdmin@123
+      CORS_ORIGIN: http://localhost:3001
     ports:
-      - "4000:4000"
+      - "5001:5001"
+    volumes:
+      - ./shoppers9-admin-backend:/app
+      - /app/node_modules
+      - ./shoppers9-admin-backend/uploads:/app/uploads
     depends_on:
-      - redis
+      - mongodb
     networks:
       - shoppers9-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    command: npm run dev
 
-  # Admin Frontend
-  admin:
-    build:
-      context: ./shoppers9-admin-frontend
-      dockerfile: ../aws-deployment/docker/Dockerfile.admin
-    container_name: shoppers9-admin
-    restart: unless-stopped
-    ports:
-      - "3003:8080"
-    depends_on:
-      - admin-backend
-    networks:
-      - shoppers9-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Customer Frontend
-  frontend:
+  # Customer Frontend Service
+  shoppers9-frontend:
     build:
       context: ./shoppers9-frontend
-      dockerfile: ../aws-deployment/docker/Dockerfile.frontend
+      target: development
     container_name: shoppers9-frontend
     restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+      VITE_APP_NAME: Shoppers9
     ports:
-      - "3002:8080"
+      - "3000:5173"
+    volumes:
+      - ./shoppers9-frontend:/app
+      - /app/node_modules
     depends_on:
-      - backend
+      - backend-shoppers9
     networks:
       - shoppers9-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    stdin_open: true
+    tty: true
 
-  # Redis for caching (optional)
+  # Admin Frontend Service
+  shoppers9-admin-frontend:
+    build:
+      context: ./shoppers9-admin-frontend
+      target: development
+    container_name: shoppers9-admin-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5001/api
+      VITE_APP_NAME: Shoppers9 Admin
+    ports:
+      - "3001:5173"
+    volumes:
+      - ./shoppers9-admin-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - shoppers9-admin-backend
+    networks:
+      - shoppers9-network
+    stdin_open: true
+    tty: true
+
+  # Redis (for caching and sessions)
   redis:
     image: redis:7-alpine
     container_name: shoppers9-redis
@@ -108,8 +126,14 @@ services:
     command: redis-server --appendonly yes
 
 volumes:
+  mongodb_data:
+    driver: local
   redis_data:
+    driver: local
 
 networks:
   shoppers9-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
